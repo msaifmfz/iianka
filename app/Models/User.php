@@ -42,4 +42,12 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(ConstructionSchedule::class)->withTimestamps();
     }
+
+    /**
+     * @return BelongsToMany<BusinessSchedule, $this>
+     */
+    public function businessSchedules(): BelongsToMany
+    {
+        return $this->belongsToMany(BusinessSchedule::class)->withTimestamps();
+    }
 }

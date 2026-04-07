@@ -1,5 +1,5 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, UploadCloud } from 'lucide-react';
+import { ArrowLeft, ExternalLink, FileText, UploadCloud } from 'lucide-react';
 import {
     store as scheduleStore,
     update as scheduleUpdate,
@@ -7,18 +7,21 @@ import {
 } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import type {
     ConstructionSchedule,
     ConstructionScheduleStatus,
     ConstructionSite,
     ConstructionUser,
+    SiteGuideFile,
 } from '@/types';
 
 type Props = {
     schedule: ConstructionSchedule | null;
     users: ConstructionUser[];
     sites: ConstructionSite[];
+    generalContractorOptions: string[];
 };
 
 type ScheduleForm = {
@@ -48,6 +51,8 @@ const statuses: { value: ConstructionScheduleStatus; label: string }[] = [
     { value: 'canceled', label: '中止' },
 ];
 
+const timeNotePresets = ['本日中'];
+
 function Field({
     label,
     error,
@@ -72,10 +77,23 @@ function toggleNumber(values: number[], value: number) {
         : [...values, value];
 }
 
+function guideFileTypeLabel(file: SiteGuideFile) {
+    if (file.mime_type?.includes('pdf')) {
+        return 'PDF';
+    }
+
+    if (file.mime_type?.startsWith('image/')) {
+        return '画像';
+    }
+
+    return 'ファイル';
+}
+
 export default function ConstructionScheduleForm({
     schedule,
     users,
     sites,
+    generalContractorOptions,
 }: Props) {
     const { data, setData, post, processing, progress, errors } =
         useForm<ScheduleForm>({
@@ -112,10 +130,39 @@ export default function ConstructionScheduleForm({
         });
     }
 
+    function selectTimeNotePreset(timeNote: string) {
+        setData((values) => ({
+            ...values,
+            starts_at: '',
+            ends_at: '',
+            time_note: timeNote,
+        }));
+    }
+
+    function setStartTime(startsAt: string) {
+        setData((values) => ({
+            ...values,
+            starts_at: startsAt,
+            time_note: timeNotePresets.includes(values.time_note)
+                ? ''
+                : values.time_note,
+        }));
+    }
+
+    function setEndTime(endsAt: string) {
+        setData((values) => ({
+            ...values,
+            ends_at: endsAt,
+            time_note: timeNotePresets.includes(values.time_note)
+                ? ''
+                : values.time_note,
+        }));
+    }
+
     return (
         <>
             <Head title={schedule ? '予定編集' : '新規予定'} />
-            <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
+            <div className="mx-auto max-w-5xl space-y-6 px-2 py-4 sm:p-4 md:p-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <p className="text-sm text-muted-foreground">
@@ -135,7 +182,7 @@ export default function ConstructionScheduleForm({
 
                 <form
                     onSubmit={submit}
-                    className="grid gap-6 rounded-3xl border bg-white p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950"
+                    className="grid gap-6 rounded-3xl border bg-white p-4 shadow-sm sm:p-5 dark:border-neutral-800 dark:bg-neutral-950"
                 >
                     <section className="grid gap-4 md:grid-cols-3">
                         <Field label="日付" error={errors.scheduled_on}>
@@ -152,7 +199,7 @@ export default function ConstructionScheduleForm({
                                 type="time"
                                 value={data.starts_at}
                                 onChange={(event) =>
-                                    setData('starts_at', event.target.value)
+                                    setStartTime(event.target.value)
                                 }
                             />
                         </Field>
@@ -161,7 +208,7 @@ export default function ConstructionScheduleForm({
                                 type="time"
                                 value={data.ends_at}
                                 onChange={(event) =>
-                                    setData('ends_at', event.target.value)
+                                    setEndTime(event.target.value)
                                 }
                             />
                         </Field>
@@ -171,8 +218,22 @@ export default function ConstructionScheduleForm({
                                 onChange={(event) =>
                                     setData('time_note', event.target.value)
                                 }
-                                placeholder="例: 午前中、時間未定"
+                                placeholder="例: 本日中、午前中、時間未定"
                             />
+                            <div className="flex flex-wrap gap-2">
+                                {timeNotePresets.map((timeNote) => (
+                                    <button
+                                        key={timeNote}
+                                        type="button"
+                                        className="rounded-full border px-3 py-1 text-xs text-muted-foreground transition hover:bg-muted"
+                                        onClick={() =>
+                                            selectTimeNotePreset(timeNote)
+                                        }
+                                    >
+                                        {timeNote}
+                                    </button>
+                                ))}
+                            </div>
                         </Field>
                         <Field label="予定か" error={errors.status}>
                             <select
@@ -229,6 +290,7 @@ export default function ConstructionScheduleForm({
                             error={errors.general_contractor}
                         >
                             <Input
+                                list="general-contractor-options"
                                 value={data.general_contractor}
                                 onChange={(event) =>
                                     setData(
@@ -237,6 +299,16 @@ export default function ConstructionScheduleForm({
                                     )
                                 }
                             />
+                            <datalist id="general-contractor-options">
+                                {generalContractorOptions.map(
+                                    (generalContractor) => (
+                                        <option
+                                            key={generalContractor}
+                                            value={generalContractor}
+                                        />
+                                    ),
+                                )}
+                            </datalist>
                         </Field>
                         <Field label="担当" error={errors.person_in_charge}>
                             <Input
@@ -340,29 +412,68 @@ export default function ConstructionScheduleForm({
                             <h2 className="font-semibold">現場案内図</h2>
                             <div className="mt-3 grid gap-2">
                                 {selectedSite?.guide_files.length ? (
-                                    selectedSite.guide_files.map((file) => (
-                                        <label
-                                            key={file.id}
-                                            className="flex items-center gap-2 text-sm"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={data.site_guide_file_ids.includes(
-                                                    file.id,
+                                    selectedSite.guide_files.map((file) => {
+                                        const isSelected =
+                                            data.site_guide_file_ids.includes(
+                                                file.id,
+                                            );
+                                        const inputId = `site-guide-file-${file.id}`;
+
+                                        return (
+                                            <div
+                                                key={file.id}
+                                                className={cn(
+                                                    'flex items-start gap-3 rounded-xl border p-3 transition',
+                                                    isSelected
+                                                        ? 'border-primary bg-primary/5'
+                                                        : 'border-neutral-200 hover:bg-muted/50 dark:border-neutral-800',
                                                 )}
-                                                onChange={() =>
-                                                    setData(
-                                                        'site_guide_file_ids',
-                                                        toggleNumber(
-                                                            data.site_guide_file_ids,
-                                                            file.id,
-                                                        ),
-                                                    )
-                                                }
-                                            />
-                                            {file.name}
-                                        </label>
-                                    ))
+                                            >
+                                                <label
+                                                    htmlFor={inputId}
+                                                    className="flex min-w-0 flex-1 cursor-pointer items-start gap-3 text-sm"
+                                                >
+                                                    <input
+                                                        id={inputId}
+                                                        type="checkbox"
+                                                        className="mt-1"
+                                                        checked={isSelected}
+                                                        onChange={() =>
+                                                            setData(
+                                                                'site_guide_file_ids',
+                                                                toggleNumber(
+                                                                    data.site_guide_file_ids,
+                                                                    file.id,
+                                                                ),
+                                                            )
+                                                        }
+                                                    />
+                                                    <span className="min-w-0 space-y-1">
+                                                        <span className="flex min-w-0 items-center gap-2 font-medium">
+                                                            <FileText className="size-4 shrink-0 text-muted-foreground" />
+                                                            <span className="truncate">
+                                                                {file.name}
+                                                            </span>
+                                                        </span>
+                                                        <span className="block text-xs text-muted-foreground">
+                                                            {guideFileTypeLabel(
+                                                                file,
+                                                            )}
+                                                        </span>
+                                                    </span>
+                                                </label>
+                                                <a
+                                                    href={file.url}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="inline-flex shrink-0 items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                                >
+                                                    <ExternalLink className="size-3.5" />
+                                                    確認
+                                                </a>
+                                            </div>
+                                        );
+                                    })
                                 ) : (
                                     <p className="text-sm text-muted-foreground">
                                         現場ライブラリを選択すると既存の案内図を選べます。

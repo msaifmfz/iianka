@@ -43,7 +43,7 @@ export default function ConstructionScheduleShow({
     return (
         <>
             <Head title={`${schedule.location} - 予定詳細`} />
-            <div className="mx-auto max-w-5xl space-y-5 p-4 pb-28 md:p-6 md:pb-6">
+            <div className="mx-auto w-full max-w-7xl space-y-6 p-4 pb-28 md:p-6 md:pb-6 xl:p-8">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <Button asChild variant="outline">
                         <Link
@@ -68,14 +68,14 @@ export default function ConstructionScheduleShow({
                     )}
                 </div>
 
-                <Card>
-                    <CardHeader>
+                <Card className="xl:rounded-3xl">
+                    <CardHeader className="xl:px-8">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                             <div>
                                 <p className="text-sm text-muted-foreground">
                                     {schedule.scheduled_on} / {schedule.time}
                                 </p>
-                                <CardTitle className="mt-2 text-3xl">
+                                <CardTitle className="mt-2 text-3xl xl:text-4xl">
                                     {schedule.location}
                                 </CardTitle>
                             </div>
@@ -84,8 +84,8 @@ export default function ConstructionScheduleShow({
                             </span>
                         </div>
                     </CardHeader>
-                    <CardContent className="space-y-5">
-                        <div className="grid gap-3 md:grid-cols-2">
+                    <CardContent className="space-y-6 xl:px-8">
+                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 xl:gap-4">
                             <Detail
                                 label="集合場所"
                                 value={schedule.meeting_place}
@@ -150,7 +150,7 @@ export default function ConstructionScheduleShow({
                                     案内図は登録されていません。
                                 </p>
                             ) : (
-                                <div className="grid gap-2 md:grid-cols-2">
+                                <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                                     {schedule.guide_files.map((file) => (
                                         <Button
                                             key={file.id}

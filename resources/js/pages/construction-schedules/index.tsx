@@ -1,15 +1,22 @@
 import { Head, Link } from '@inertiajs/react';
 import {
+    BriefcaseBusiness,
     CalendarDays,
     ChevronDown,
     ChevronLeft,
     ChevronRight,
     FileText,
+    Hammer,
     MapPin,
     Pencil,
     Plus,
     Users,
 } from 'lucide-react';
+import {
+    create as businessScheduleCreate,
+    edit as businessScheduleEdit,
+    show as businessScheduleShow,
+} from '@/actions/App/Http/Controllers/BusinessScheduleController';
 import {
     index as scheduleIndex,
     show as scheduleShow,
@@ -19,15 +26,18 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { dashboard } from '@/routes';
-import type { ConstructionSchedule } from '@/types';
+import type { ConstructionSchedule, ScheduleEvent } from '@/types';
 
 type CalendarDay = {
     date: string;
     count: number;
+    construction_count: number;
+    business_count: number;
 };
 
 type Filters = {
     range: 'today' | 'week' | 'month';
+    type: 'all' | 'construction' | 'business';
     date: string;
     starts_on: string;
     ends_on: string;
@@ -42,8 +52,8 @@ type Props = {
     filters: Filters;
     calendarDays: CalendarDay[];
     scheduleNavigation: ScheduleNavigation;
-    mySchedules: ConstructionSchedule[];
-    teamSchedules: ConstructionSchedule[];
+    mySchedules: ScheduleEvent[];
+    teamSchedules: ScheduleEvent[];
     canManage: boolean;
 };
 
@@ -107,6 +117,8 @@ type MonthDay = {
     date: string;
     label: number;
     count: number;
+    constructionCount: number;
+    businessCount: number;
     isSelected: boolean;
     isToday: boolean;
     isCurrentMonth: boolean;
@@ -119,7 +131,7 @@ function monthDays(selectedDate: string, calendarDays: CalendarDay[]) {
     const last = new Date(date.getFullYear(), date.getMonth() + 1, 0);
     const visibleStart = new Date(first);
     const visibleEnd = new Date(last);
-    const counts = new Map(calendarDays.map((day) => [day.date, day.count]));
+    const counts = new Map(calendarDays.map((day) => [day.date, day]));
 
     visibleStart.setDate(first.getDate() - first.getDay());
     visibleEnd.setDate(last.getDate() + (6 - last.getDay()));
@@ -129,10 +141,13 @@ function monthDays(selectedDate: string, calendarDays: CalendarDay[]) {
 
     while (current <= visibleEnd) {
         const key = formatInputDate(current);
+        const count = counts.get(key);
         days.push({
             date: key,
             label: current.getDate(),
-            count: counts.get(key) ?? 0,
+            count: count?.count ?? 0,
+            constructionCount: count?.construction_count ?? 0,
+            businessCount: count?.business_count ?? 0,
             isSelected: key === selectedDate,
             isToday: key === formatInputDate(new Date()),
             isCurrentMonth: current.getMonth() === date.getMonth(),
@@ -166,6 +181,14 @@ function calendarDayClass(day: MonthDay) {
     return 'bg-neutral-100 hover:bg-amber-100 dark:bg-neutral-900 dark:hover:bg-amber-950';
 }
 
+function scheduleQuery(filters: Filters, query: Partial<Filters>) {
+    return {
+        range: query.range ?? filters.range,
+        date: query.date ?? filters.date,
+        type: query.type ?? filters.type,
+    };
+}
+
 function RangeLink({
     label,
     range,
@@ -181,8 +204,34 @@ function RangeLink({
 
     return (
         <Link
-            href={scheduleIndex({ query: { range, date: filters.date } })}
+            href={scheduleIndex({
+                query: scheduleQuery(filters, { range }),
+            })}
             className={`rounded-full px-4 py-2 text-sm font-medium transition ${active ? 'bg-neutral-950 text-white dark:bg-white dark:text-neutral-950' : 'bg-white/80 text-neutral-700 ring-1 ring-neutral-200 hover:bg-neutral-100 dark:bg-neutral-900 dark:text-neutral-200 dark:ring-neutral-800'} ${className}`}
+            preserveScroll
+        >
+            {label}
+        </Link>
+    );
+}
+
+function TypeLink({
+    label,
+    type,
+    filters,
+}: {
+    label: string;
+    type: Filters['type'];
+    filters: Filters;
+}) {
+    const active = filters.type === type;
+
+    return (
+        <Link
+            href={scheduleIndex({
+                query: scheduleQuery(filters, { type }),
+            })}
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${active ? 'bg-amber-500 text-white' : 'bg-white/80 text-neutral-700 ring-1 ring-neutral-200 hover:bg-neutral-100 dark:bg-neutral-900 dark:text-neutral-200 dark:ring-neutral-800'}`}
             preserveScroll
         >
             {label}
@@ -194,88 +243,147 @@ function ScheduleCard({
     schedule,
     canManage,
 }: {
-    schedule: ConstructionSchedule;
+    schedule: ScheduleEvent;
     canManage: boolean;
 }) {
+    const scheduleDetail =
+        schedule.type === 'construction'
+            ? scheduleShow(schedule.id)
+            : businessScheduleShow(schedule.id);
+    const scheduleEditHref =
+        schedule.type === 'construction'
+            ? scheduleEdit(schedule.id)
+            : businessScheduleEdit(schedule.id);
+    const typeBadge =
+        schedule.type === 'construction'
+            ? 'bg-orange-100 text-orange-900 dark:bg-orange-950 dark:text-orange-200'
+            : 'bg-violet-100 text-violet-900 dark:bg-violet-950 dark:text-violet-200';
+
     return (
-        <Card className="overflow-hidden border-neutral-200 bg-white/95 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/85">
-            <CardHeader className="gap-3 p-4 md:p-6">
-                <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                        <p className="text-sm text-muted-foreground">
-                            {formatDate(schedule.scheduled_on)}
-                        </p>
-                        <CardTitle className="mt-1 text-xl leading-tight">
-                            {schedule.location}
-                        </CardTitle>
+        <Card className="gap-0 overflow-hidden border-neutral-200 bg-white/95 py-0 shadow-sm transition hover:border-neutral-300 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-950/85 dark:hover:border-neutral-700">
+            <Link
+                href={scheduleDetail}
+                className="block rounded-xl transition hover:bg-neutral-50/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none dark:hover:bg-neutral-900/40"
+                aria-label={`${schedule.location}の予定詳細を見る`}
+            >
+                <CardHeader className="gap-3 p-4 md:p-6">
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                            <p className="text-sm text-muted-foreground">
+                                {formatDate(schedule.scheduled_on)}
+                            </p>
+                            <CardTitle className="mt-1 text-xl leading-tight">
+                                {schedule.location}
+                            </CardTitle>
+                            <p className="mt-2 text-xs font-medium text-sky-700 dark:text-sky-300">
+                                詳細を見る
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap justify-end gap-2">
+                            <span
+                                className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${typeBadge}`}
+                            >
+                                {schedule.type === 'construction' ? (
+                                    <Hammer className="size-3.5" />
+                                ) : (
+                                    <BriefcaseBusiness className="size-3.5" />
+                                )}
+                                {schedule.type === 'construction'
+                                    ? '工事'
+                                    : '業務'}
+                            </span>
+                            {schedule.type === 'construction' && (
+                                <span
+                                    className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClasses[schedule.status]}`}
+                                >
+                                    {statusLabels[schedule.status]}
+                                </span>
+                            )}
+                        </div>
                     </div>
-                    <span
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClasses[schedule.status]}`}
-                    >
-                        {statusLabels[schedule.status]}
-                    </span>
-                </div>
-                <div className="flex flex-wrap gap-2 text-sm text-neutral-700 dark:text-neutral-300">
-                    <span className="rounded-full bg-neutral-100 px-3 py-1 dark:bg-neutral-900">
-                        {schedule.time}
-                    </span>
-                    {schedule.general_contractor && (
+                    <div className="flex flex-wrap gap-2 text-sm text-neutral-700 dark:text-neutral-300">
                         <span className="rounded-full bg-neutral-100 px-3 py-1 dark:bg-neutral-900">
-                            {schedule.general_contractor}
+                            {schedule.time}
                         </span>
-                    )}
-                    {schedule.person_in_charge && (
-                        <span className="rounded-full bg-neutral-100 px-3 py-1 dark:bg-neutral-900">
-                            担当: {schedule.person_in_charge}
-                        </span>
-                    )}
-                </div>
-            </CardHeader>
-            <CardContent className="space-y-4 p-4 pt-0 md:p-6 md:pt-0">
-                <div className="grid gap-2 text-sm md:grid-cols-2 md:gap-3">
-                    <div className="rounded-xl bg-neutral-50 p-3 dark:bg-neutral-900">
-                        <p className="text-muted-foreground">集合場所</p>
-                        <p className="mt-1 font-medium">
-                            {schedule.meeting_place}
+                        {schedule.general_contractor && (
+                            <span className="rounded-full bg-neutral-100 px-3 py-1 dark:bg-neutral-900">
+                                {schedule.general_contractor}
+                            </span>
+                        )}
+                        {schedule.person_in_charge && (
+                            <span className="rounded-full bg-neutral-100 px-3 py-1 dark:bg-neutral-900">
+                                担当: {schedule.person_in_charge}
+                            </span>
+                        )}
+                    </div>
+                </CardHeader>
+                <CardContent className="space-y-4 p-4 pt-0 md:p-6 md:pt-0">
+                    <div className="grid gap-2 text-sm md:grid-cols-2 md:gap-3">
+                        {schedule.type === 'construction' && (
+                            <div className="rounded-xl bg-neutral-50 p-3 dark:bg-neutral-900">
+                                <p className="text-muted-foreground">
+                                    集合場所
+                                </p>
+                                <p className="mt-1 font-medium">
+                                    {schedule.meeting_place}
+                                </p>
+                            </div>
+                        )}
+                        <div className="rounded-xl bg-neutral-50 p-3 dark:bg-neutral-900">
+                            <p className="text-muted-foreground">人員</p>
+                            <p className="mt-1 font-medium">
+                                {schedule.personnel || '未設定'}
+                            </p>
+                        </div>
+                    </div>
+                    <p className="line-clamp-3 text-sm leading-6 md:line-clamp-none">
+                        {schedule.content}
+                    </p>
+                    {schedule.type === 'business' && schedule.memo && (
+                        <p className="line-clamp-2 rounded-xl bg-violet-50 p-3 text-sm leading-6 text-violet-950 dark:bg-violet-950/30 dark:text-violet-100">
+                            {schedule.memo}
                         </p>
-                    </div>
-                    <div className="rounded-xl bg-neutral-50 p-3 dark:bg-neutral-900">
-                        <p className="text-muted-foreground">人員</p>
-                        <p className="mt-1 font-medium">
-                            {schedule.personnel || '未設定'}
-                        </p>
-                    </div>
-                </div>
-                <p className="line-clamp-3 text-sm leading-6 md:line-clamp-none">
-                    {schedule.content}
-                </p>
-                {schedule.assigned_users.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                        <Users className="size-4" />
-                        {schedule.assigned_users
-                            .map((user) => user.name)
-                            .join('、')}
-                    </div>
-                )}
-                <div className="grid gap-2 sm:grid-cols-3">
-                    <Button asChild className="min-h-11 justify-center">
-                        <a
-                            href={schedule.google_maps_url}
-                            target="_blank"
-                            rel="noreferrer"
-                        >
-                            <MapPin className="size-4" />
-                            ナビ
-                        </a>
-                    </Button>
+                    )}
+                    {schedule.assigned_users.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                            <Users className="size-4" />
+                            {schedule.assigned_users
+                                .map((user) => user.name)
+                                .join('、')}
+                        </div>
+                    )}
+                </CardContent>
+            </Link>
+            <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
+                <div
+                    className={
+                        schedule.type === 'construction'
+                            ? 'grid gap-2 sm:grid-cols-3'
+                            : 'grid gap-2 sm:grid-cols-2'
+                    }
+                >
+                    {schedule.type === 'construction' && (
+                        <Button asChild className="min-h-11 justify-center">
+                            <a
+                                href={schedule.google_maps_url}
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                <MapPin className="size-4" />
+                                ナビ
+                            </a>
+                        </Button>
+                    )}
                     <Button
                         asChild
                         variant="outline"
                         className="min-h-11 justify-center sm:justify-start"
                     >
-                        <Link href={scheduleShow(schedule.id)}>
+                        <Link href={scheduleDetail}>
                             <FileText className="size-4" />
-                            案内図 {schedule.guide_files.length}
+                            {schedule.type === 'construction'
+                                ? `詳細・案内図 (${schedule.guide_files.length})`
+                                : '詳細'}
                         </Link>
                     </Button>
                     {canManage && (
@@ -284,7 +392,7 @@ function ScheduleCard({
                             variant="outline"
                             className="min-h-11 justify-center sm:justify-start"
                         >
-                            <Link href={scheduleEdit(schedule.id)}>
+                            <Link href={scheduleEditHref}>
                                 <Pencil className="size-4" />
                                 編集
                             </Link>
@@ -304,7 +412,7 @@ function ScheduleSection({
 }: {
     title: string;
     empty: string;
-    schedules: ConstructionSchedule[];
+    schedules: ScheduleEvent[];
     canManage: boolean;
 }) {
     return (
@@ -323,7 +431,7 @@ function ScheduleSection({
                 <div className="space-y-3">
                     {schedules.map((schedule) => (
                         <ScheduleCard
-                            key={schedule.id}
+                            key={`${schedule.type}-${schedule.id}`}
                             schedule={schedule}
                             canManage={canManage}
                         />
@@ -366,7 +474,7 @@ export default function ConstructionSchedulesIndex({
                             <div className="flex items-center justify-between gap-3">
                                 <div>
                                     <p className="text-sm text-muted-foreground">
-                                        Construction Schedule
+                                        Unified Schedule
                                     </p>
                                     <h1 className="text-2xl font-bold">
                                         予定表
@@ -398,10 +506,10 @@ export default function ConstructionSchedulesIndex({
                                     >
                                         <Link
                                             href={scheduleIndex({
-                                                query: {
+                                                query: scheduleQuery(filters, {
                                                     range: 'today',
                                                     date: scheduleNavigation.previous_date,
-                                                },
+                                                }),
                                             })}
                                             preserveScroll
                                         >
@@ -429,10 +537,10 @@ export default function ConstructionSchedulesIndex({
                                     >
                                         <Link
                                             href={scheduleIndex({
-                                                query: {
+                                                query: scheduleQuery(filters, {
                                                     range: 'today',
                                                     date: scheduleNavigation.next_date,
-                                                },
+                                                }),
                                             })}
                                             preserveScroll
                                         >
@@ -443,14 +551,53 @@ export default function ConstructionSchedulesIndex({
                                 )}
                             </div>
                             {canManage && (
-                                <Button asChild className="mt-5 w-full">
-                                    <Link href={scheduleCreate()}>
-                                        <Plus className="size-4" />
-                                        新規予定
-                                    </Link>
-                                </Button>
+                                <div className="mt-5 grid gap-2">
+                                    <Button asChild className="w-full">
+                                        <Link href={scheduleCreate()}>
+                                            <Plus className="size-4" />
+                                            新規工事予定
+                                        </Link>
+                                    </Button>
+                                    <Button
+                                        asChild
+                                        variant="outline"
+                                        className="w-full"
+                                    >
+                                        <Link href={businessScheduleCreate()}>
+                                            <BriefcaseBusiness className="size-4" />
+                                            新規業務予定
+                                        </Link>
+                                    </Button>
+                                </div>
                             )}
                             <div className="mt-5 border-t border-neutral-200 pt-4 dark:border-neutral-800">
+                                <div className="flex flex-wrap gap-2">
+                                    <TypeLink
+                                        label="すべて"
+                                        type="all"
+                                        filters={filters}
+                                    />
+                                    <TypeLink
+                                        label="工事"
+                                        type="construction"
+                                        filters={filters}
+                                    />
+                                    <TypeLink
+                                        label="業務"
+                                        type="business"
+                                        filters={filters}
+                                    />
+                                </div>
+                                <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                                    <span className="inline-flex items-center gap-1">
+                                        <span className="size-2 rounded-full bg-orange-500" />
+                                        工事
+                                    </span>
+                                    <span className="inline-flex items-center gap-1">
+                                        <span className="size-2 rounded-full bg-violet-500" />
+                                        業務
+                                    </span>
+                                </div>
                                 <div className="mt-5 flex items-center justify-between gap-3">
                                     <Button
                                         asChild
@@ -460,10 +607,10 @@ export default function ConstructionSchedulesIndex({
                                     >
                                         <Link
                                             href={scheduleIndex({
-                                                query: {
+                                                query: scheduleQuery(filters, {
                                                     range: 'month',
                                                     date: previousMonthDate,
-                                                },
+                                                }),
                                             })}
                                             preserveScroll
                                             aria-label="前月へ"
@@ -511,6 +658,7 @@ export default function ConstructionSchedulesIndex({
                                                                     query: {
                                                                         range: 'month',
                                                                         date: item.date,
+                                                                        type: filters.type,
                                                                     },
                                                                 },
                                                             )}
@@ -533,6 +681,7 @@ export default function ConstructionSchedulesIndex({
                                                                             filters.date,
                                                                             year,
                                                                         ),
+                                                                        type: filters.type,
                                                                     },
                                                                 },
                                                             )}
@@ -540,7 +689,7 @@ export default function ConstructionSchedulesIndex({
                                                             preserveScroll
                                                             aria-current={
                                                                 year ===
-                                                                    selectedYear
+                                                                selectedYear
                                                                     ? 'date'
                                                                     : undefined
                                                             }
@@ -561,6 +710,7 @@ export default function ConstructionSchedulesIndex({
                                                 href={scheduleIndex({
                                                     query: {
                                                         range: 'today',
+                                                        type: filters.type,
                                                     },
                                                 })}
                                                 preserveScroll
@@ -578,10 +728,10 @@ export default function ConstructionSchedulesIndex({
                                     >
                                         <Link
                                             href={scheduleIndex({
-                                                query: {
+                                                query: scheduleQuery(filters, {
                                                     range: 'month',
                                                     date: nextMonthDate,
-                                                },
+                                                }),
                                             })}
                                             preserveScroll
                                             aria-label="翌月へ"
@@ -618,10 +768,10 @@ export default function ConstructionSchedulesIndex({
                                         <Link
                                             key={day.date}
                                             href={scheduleIndex({
-                                                query: {
+                                                query: scheduleQuery(filters, {
                                                     range: 'today',
                                                     date: day.date,
-                                                },
+                                                }),
                                             })}
                                             className={`relative flex aspect-square items-center justify-center rounded-xl text-sm font-medium transition ${calendarDayClass(day)}`}
                                             preserveScroll
@@ -640,6 +790,13 @@ export default function ConstructionSchedulesIndex({
                                                     {day.count}
                                                 </span>
                                             )}
+                                            {day.constructionCount > 0 &&
+                                                day.businessCount > 0 && (
+                                                    <span className="absolute bottom-1 left-1/2 flex -translate-x-1/2 gap-0.5">
+                                                        <span className="size-1.5 rounded-full bg-orange-500" />
+                                                        <span className="size-1.5 rounded-full bg-violet-500" />
+                                                    </span>
+                                                )}
                                         </Link>
                                     ))}
                                 </div>

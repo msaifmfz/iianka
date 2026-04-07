@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\BusinessSchedule;
 use App\Models\ConstructionSchedule;
 use App\Models\ConstructionSite;
 use App\Models\User;
@@ -95,5 +96,24 @@ class DatabaseSeeder extends Seeder
 
             $constructionSchedule->assignedUsers()->sync([$testUser->id, $admin->id]);
         }
+
+        $businessSchedule = BusinessSchedule::query()->updateOrCreate(
+            [
+                'scheduled_on' => today()->addDays(2)->toDateString(),
+                'location' => 'デモ会議室',
+            ],
+            [
+                'starts_at' => '10:00',
+                'ends_at' => '11:30',
+                'time_note' => null,
+                'personnel' => '3名',
+                'general_contractor' => 'デモ建設株式会社',
+                'person_in_charge' => '佐藤',
+                'content' => '安全協議会',
+                'memo' => '営業・管理系の予定表示確認用です。',
+            ],
+        );
+
+        $businessSchedule->assignedUsers()->sync([$admin->id]);
     }
 }

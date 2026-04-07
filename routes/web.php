@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BusinessScheduleController;
 use App\Http\Controllers\ConstructionScheduleController;
 use App\Http\Controllers\ConstructionSiteController;
 use Illuminate\Support\Facades\Route;
@@ -12,6 +13,7 @@ Route::inertia('/', 'welcome', [
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::redirect('dashboard', 'construction-schedules')->name('dashboard');
     Route::resource('construction-schedules', ConstructionScheduleController::class);
+    Route::resource('business-schedules', BusinessScheduleController::class);
     Route::resource('construction-sites', ConstructionSiteController::class);
 });
 

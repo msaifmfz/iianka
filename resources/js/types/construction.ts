@@ -27,6 +27,7 @@ export type ConstructionScheduleStatus =
 
 export type ConstructionSchedule = {
     id: number;
+    type: 'construction';
     scheduled_on: string;
     time: string;
     starts_at: string | null;
@@ -46,3 +47,22 @@ export type ConstructionSchedule = {
     guide_files: SiteGuideFile[];
     selected_site_guide_file_ids: number[];
 };
+
+export type BusinessSchedule = {
+    id: number;
+    type: 'business';
+    scheduled_on: string;
+    time: string;
+    starts_at: string | null;
+    ends_at: string | null;
+    time_note: string | null;
+    personnel: string | null;
+    location: string;
+    general_contractor: string | null;
+    person_in_charge: string | null;
+    content: string;
+    memo: string | null;
+    assigned_users: ConstructionUser[];
+};
+
+export type ScheduleEvent = ConstructionSchedule | BusinessSchedule;

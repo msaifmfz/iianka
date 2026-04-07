@@ -1,7 +1,9 @@
 <?php
 
+use App\Models\BusinessSchedule;
 use App\Models\ConstructionSchedule;
 use App\Models\ConstructionSite;
+use App\Models\GeneralContractor;
 use App\Models\SiteGuideFile;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
@@ -109,13 +111,126 @@ test('calendar includes adjacent month offset days and non empty day navigation'
         );
 });
 
+test('calendar includes construction and business schedules together', function () {
+    $user = User::factory()->create();
+    $date = '2026-05-04';
+
+    $constructionSchedule = ConstructionSchedule::factory()->create([
+        'scheduled_on' => $date,
+        'location' => '選択中の工事',
+    ]);
+    $constructionSchedule->assignedUsers()->attach($user);
+
+    $businessSchedule = BusinessSchedule::factory()->create([
+        'scheduled_on' => $date,
+        'location' => '安全協議会',
+        'content' => '安全協議会',
+        'memo' => '名刺持参',
+    ]);
+    $businessSchedule->assignedUsers()->attach($user);
+
+    $this->actingAs($user)
+        ->get(route('construction-schedules.index', [
+            'range' => 'today',
+            'date' => $date,
+        ]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('construction-schedules/index')
+            ->where('filters.type', 'all')
+            ->has('mySchedules', 2)
+            ->where('mySchedules', fn ($schedules) => collect($schedules)->contains(
+                fn (array $schedule) => $schedule['type'] === 'construction' && $schedule['location'] === '選択中の工事'
+            ) && collect($schedules)->contains(
+                fn (array $schedule) => $schedule['type'] === 'business' && $schedule['location'] === '安全協議会'
+            ))
+            ->where('calendarDays', fn ($calendarDays) => collect($calendarDays)->contains(
+                fn (array $day) => $day['date'] === $date
+                    && $day['count'] === 2
+                    && $day['construction_count'] === 1
+                    && $day['business_count'] === 1
+            ))
+        );
+});
+
+test('calendar can filter to business schedules', function () {
+    $user = User::factory()->create();
+    $date = '2026-05-04';
+
+    $constructionSchedule = ConstructionSchedule::factory()->create([
+        'scheduled_on' => $date,
+        'location' => '選択中の工事',
+    ]);
+    $constructionSchedule->assignedUsers()->attach($user);
+
+    $businessSchedule = BusinessSchedule::factory()->create([
+        'scheduled_on' => $date,
+        'location' => '定時総会',
+        'content' => '定時総会',
+    ]);
+    $businessSchedule->assignedUsers()->attach($user);
+
+    $this->actingAs($user)
+        ->get(route('construction-schedules.index', [
+            'range' => 'today',
+            'date' => $date,
+            'type' => 'business',
+        ]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('construction-schedules/index')
+            ->where('filters.type', 'business')
+            ->has('mySchedules', 1, fn (Assert $page) => $page
+                ->where('type', 'business')
+                ->where('location', '定時総会')
+                ->etc()
+            )
+            ->where('calendarDays', fn ($calendarDays) => collect($calendarDays)->contains(
+                fn (array $day) => $day['date'] === $date
+                    && $day['count'] === 1
+                    && $day['construction_count'] === 0
+                    && $day['business_count'] === 1
+            ))
+        );
+});
+
+test('users can open a day with only business schedules', function () {
+    $user = User::factory()->create();
+    $date = '2026-05-04';
+
+    $businessSchedule = BusinessSchedule::factory()->create([
+        'scheduled_on' => $date,
+        'location' => '定時総会',
+        'content' => '定時総会',
+    ]);
+    $businessSchedule->assignedUsers()->attach($user);
+
+    $this->actingAs($user)
+        ->get(route('construction-schedules.index', [
+            'range' => 'today',
+            'date' => $date,
+            'type' => 'all',
+        ]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('construction-schedules/index')
+            ->where('filters.type', 'all')
+            ->has('mySchedules', 1, fn (Assert $page) => $page
+                ->where('type', 'business')
+                ->where('location', '定時総会')
+                ->etc()
+            )
+        );
+});
+
 test('database seeder creates demo schedules across adjacent months', function () {
     $this->seed(DatabaseSeeder::class);
 
     expect(User::query()->where('email', 'admin@example.com')->where('is_admin', true)->exists())->toBeTrue()
         ->and(ConstructionSchedule::query()->whereDate('scheduled_on', today()->toDateString())->exists())->toBeTrue()
         ->and(ConstructionSchedule::query()->whereDate('scheduled_on', today()->subMonthNoOverflow()->startOfMonth()->addDays(9)->toDateString())->exists())->toBeTrue()
-        ->and(ConstructionSchedule::query()->whereDate('scheduled_on', today()->addMonthNoOverflow()->startOfMonth()->addDays(4)->toDateString())->exists())->toBeTrue();
+        ->and(ConstructionSchedule::query()->whereDate('scheduled_on', today()->addMonthNoOverflow()->startOfMonth()->addDays(4)->toDateString())->exists())->toBeTrue()
+        ->and(BusinessSchedule::query()->whereDate('scheduled_on', today()->addDays(2)->toDateString())->exists())->toBeTrue();
 });
 
 test('admins can create schedules with assigned users and guide files', function () {
@@ -157,8 +272,84 @@ test('admins can create schedules with assigned users and guide files', function
     expect($schedule->assignedUsers()->whereKey($worker)->exists())->toBeTrue();
     expect($schedule->selectedGuideFiles()->whereKey($siteGuide)->exists())->toBeTrue();
     expect($schedule->directGuideFiles)->toHaveCount(1);
+    expect(GeneralContractor::query()->where('name', '山田建設')->exists())->toBeTrue();
 
     Storage::disk('public')->assertExists($schedule->directGuideFiles->first()->path);
+});
+
+test('schedule form includes remembered general contractor options', function () {
+    $admin = User::factory()->admin()->create();
+
+    GeneralContractor::factory()->create(['name' => '大成建設']);
+    ConstructionSchedule::factory()->create(['general_contractor' => '清水建設']);
+
+    $this->actingAs($admin)
+        ->get(route('construction-schedules.create'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('construction-schedules/form')
+            ->where('generalContractorOptions', fn ($options) => collect($options)->contains('大成建設')
+                && collect($options)->contains('清水建設'))
+            ->etc()
+        );
+});
+
+test('blank general contractor names are not remembered', function () {
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)
+        ->post(route('construction-schedules.store'), [
+            'scheduled_on' => today()->toDateString(),
+            'status' => ConstructionSchedule::STATUS_SCHEDULED,
+            'meeting_place' => '正面ゲート',
+            'location' => '東京現場',
+            'general_contractor' => '   ',
+            'content' => '作業内容',
+            'navigation_address' => '東京都千代田区1-1',
+        ])
+        ->assertRedirect();
+
+    expect(GeneralContractor::query()->count())->toBe(0);
+});
+
+test('admins can create business schedules with assigned users', function () {
+    $admin = User::factory()->admin()->create();
+    $worker = User::factory()->create();
+
+    $this->actingAs($admin)
+        ->post(route('business-schedules.store'), [
+            'scheduled_on' => today()->toDateString(),
+            'starts_at' => '10:00',
+            'ends_at' => '11:30',
+            'time_note' => null,
+            'personnel' => '3名',
+            'location' => '本社会議室',
+            'general_contractor' => '山田建設',
+            'person_in_charge' => '佐藤',
+            'content' => '安全協議会',
+            'memo' => '名刺持参',
+            'assigned_user_ids' => [$worker->id],
+        ])
+        ->assertRedirect(route('construction-schedules.index', [
+            'range' => 'today',
+            'date' => today()->toDateString(),
+            'type' => 'business',
+        ]));
+
+    $schedule = BusinessSchedule::query()->where('location', '本社会議室')->firstOrFail();
+
+    expect($schedule->assignedUsers()->whereKey($worker)->exists())->toBeTrue();
+    expect(GeneralContractor::query()->where('name', '山田建設')->exists())->toBeTrue();
+});
+
+test('schedule time note supports same day preset', function () {
+    $schedule = ConstructionSchedule::factory()->make([
+        'starts_at' => '08:00',
+        'ends_at' => '17:00',
+        'time_note' => '本日中',
+    ]);
+
+    expect($schedule->formattedTime())->toBe('本日中');
 });
 
 test('non admins cannot create schedules', function () {

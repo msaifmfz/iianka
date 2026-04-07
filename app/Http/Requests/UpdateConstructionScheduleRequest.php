@@ -9,6 +9,18 @@ use Illuminate\Validation\Rules\File;
 
 class UpdateConstructionScheduleRequest extends FormRequest
 {
+    #[\Override]
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('general_contractor')) {
+            $generalContractor = trim((string) $this->input('general_contractor'));
+
+            $this->merge([
+                'general_contractor' => $generalContractor === '' ? null : $generalContractor,
+            ]);
+        }
+    }
+
     /**
      * Determine if the user is authorized to make this request.
      */

@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreConstructionScheduleRequest;
 use App\Http\Requests\UpdateConstructionScheduleRequest;
+use App\Models\BusinessSchedule;
 use App\Models\ConstructionSchedule;
 use App\Models\ConstructionSite;
+use App\Models\GeneralContractor;
 use App\Models\SiteGuideFile;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -23,57 +25,74 @@ class ConstructionScheduleController extends Controller
         $range = in_array($request->query('range'), ['today', 'week', 'month'], true)
             ? $request->query('range')
             : 'today';
+        $type = in_array($request->query('type'), ['all', 'construction', 'business'], true)
+            ? $request->query('type')
+            : 'all';
         $date = Carbon::parse($request->query('date', today()->toDateString()));
         [$startsOn, $endsOn] = $this->rangeBounds($range, $date);
 
-        $schedules = ConstructionSchedule::query()
-            ->with(['assignedUsers:id,name,email', 'site.guideFiles', 'selectedGuideFiles', 'directGuideFiles'])
-            ->whereDate('scheduled_on', '>=', $startsOn->toDateString())
-            ->whereDate('scheduled_on', '<=', $endsOn->toDateString())
-            ->orderBy('scheduled_on')
-            ->orderBy('starts_at')
-            ->get();
+        $constructionSchedules = collect();
+        $businessSchedules = collect();
+
+        if ($type !== 'business') {
+            $constructionSchedules = ConstructionSchedule::query()
+                ->with(['assignedUsers:id,name,email', 'site.guideFiles', 'selectedGuideFiles', 'directGuideFiles'])
+                ->whereDate('scheduled_on', '>=', $startsOn->toDateString())
+                ->whereDate('scheduled_on', '<=', $endsOn->toDateString())
+                ->orderBy('scheduled_on')
+                ->orderBy('starts_at')
+                ->get();
+        }
+
+        if ($type !== 'construction') {
+            $businessSchedules = BusinessSchedule::query()
+                ->with('assignedUsers:id,name,email')
+                ->whereDate('scheduled_on', '>=', $startsOn->toDateString())
+                ->whereDate('scheduled_on', '<=', $endsOn->toDateString())
+                ->orderBy('scheduled_on')
+                ->orderBy('starts_at')
+                ->get();
+        }
 
         $monthStart = $date->copy()->startOfMonth();
         $monthEnd = $date->copy()->endOfMonth();
         $calendarStart = $monthStart->copy()->subDays($monthStart->dayOfWeek);
         $calendarEnd = $monthEnd->copy()->addDays(6 - $monthEnd->dayOfWeek);
 
-        $calendarDays = ConstructionSchedule::query()
-            ->selectRaw('scheduled_on, count(*) as schedule_count')
-            ->whereDate('scheduled_on', '>=', $calendarStart->toDateString())
-            ->whereDate('scheduled_on', '<=', $calendarEnd->toDateString())
-            ->groupBy('scheduled_on')
-            ->orderBy('scheduled_on')
-            ->get()
-            ->map(fn (ConstructionSchedule $schedule) => [
-                'date' => $schedule->scheduled_on->toDateString(),
-                'count' => (int) $schedule->schedule_count,
-            ]);
+        $calendarDays = $this->calendarDays($calendarStart, $calendarEnd, $type);
 
         $user = $request->user();
-        $mySchedules = $schedules->filter(
+        $myConstructionSchedules = $constructionSchedules->filter(
             fn (ConstructionSchedule $schedule) => $schedule->assignedUsers->contains('id', $user->id)
-        )->values();
+        );
 
-        $teamSchedules = $schedules->reject(
+        $teamConstructionSchedules = $constructionSchedules->reject(
             fn (ConstructionSchedule $schedule) => $schedule->assignedUsers->contains('id', $user->id)
-        )->values();
+        );
+
+        $myBusinessSchedules = $businessSchedules->filter(
+            fn (BusinessSchedule $schedule) => $schedule->assignedUsers->contains('id', $user->id)
+        );
+
+        $teamBusinessSchedules = $businessSchedules->reject(
+            fn (BusinessSchedule $schedule) => $schedule->assignedUsers->contains('id', $user->id)
+        );
 
         return Inertia::render('construction-schedules/index', [
             'filters' => [
                 'range' => $range,
+                'type' => $type,
                 'date' => $date->toDateString(),
                 'starts_on' => $startsOn->toDateString(),
                 'ends_on' => $endsOn->toDateString(),
             ],
             'calendarDays' => $calendarDays,
             'scheduleNavigation' => [
-                'previous_date' => $this->previousScheduleDate($date),
-                'next_date' => $this->nextScheduleDate($date),
+                'previous_date' => $this->previousScheduleDate($date, $type),
+                'next_date' => $this->nextScheduleDate($date, $type),
             ],
-            'mySchedules' => $this->schedulePayload($mySchedules),
-            'teamSchedules' => $this->schedulePayload($teamSchedules),
+            'mySchedules' => $this->combinedSchedulePayload($myConstructionSchedules, $myBusinessSchedules),
+            'teamSchedules' => $this->combinedSchedulePayload($teamConstructionSchedules, $teamBusinessSchedules),
             'canManage' => $user->is_admin === true,
         ]);
     }
@@ -90,11 +109,13 @@ class ConstructionScheduleController extends Controller
 
     public function store(StoreConstructionScheduleRequest $request): RedirectResponse
     {
-        $schedule = ConstructionSchedule::create($this->scheduleAttributes($request->validated()));
+        $validated = $request->validated();
+        $schedule = ConstructionSchedule::create($this->scheduleAttributes($validated));
 
         $schedule->assignedUsers()->sync($request->input('assigned_user_ids', []));
         $schedule->selectedGuideFiles()->sync($request->input('site_guide_file_ids', []));
         $this->storeGuideFiles($schedule, $request->file('guide_files', []));
+        $this->rememberGeneralContractor($validated['general_contractor'] ?? null);
 
         return redirect()
             ->route('construction-schedules.index', [
@@ -128,10 +149,12 @@ class ConstructionScheduleController extends Controller
 
     public function update(UpdateConstructionScheduleRequest $request, ConstructionSchedule $constructionSchedule): RedirectResponse
     {
-        $constructionSchedule->update($this->scheduleAttributes($request->validated()));
+        $validated = $request->validated();
+        $constructionSchedule->update($this->scheduleAttributes($validated));
         $constructionSchedule->assignedUsers()->sync($request->input('assigned_user_ids', []));
         $constructionSchedule->selectedGuideFiles()->sync($request->input('site_guide_file_ids', []));
         $this->storeGuideFiles($constructionSchedule, $request->file('guide_files', []));
+        $this->rememberGeneralContractor($validated['general_contractor'] ?? null);
 
         return redirect()
             ->route('construction-schedules.show', $constructionSchedule)
@@ -161,22 +184,44 @@ class ConstructionScheduleController extends Controller
         };
     }
 
-    private function previousScheduleDate(Carbon $date): ?string
+    private function previousScheduleDate(Carbon $date, string $type): ?string
     {
-        $scheduledOn = ConstructionSchedule::query()
-            ->whereDate('scheduled_on', '<', $date->toDateString())
-            ->orderByDesc('scheduled_on')
-            ->value('scheduled_on');
+        $dates = collect();
+
+        if ($type !== 'business') {
+            $dates->push(ConstructionSchedule::query()
+                ->whereDate('scheduled_on', '<', $date->toDateString())
+                ->max('scheduled_on'));
+        }
+
+        if ($type !== 'construction') {
+            $dates->push(BusinessSchedule::query()
+                ->whereDate('scheduled_on', '<', $date->toDateString())
+                ->max('scheduled_on'));
+        }
+
+        $scheduledOn = $dates->filter()->max();
 
         return $scheduledOn === null ? null : Carbon::parse($scheduledOn)->toDateString();
     }
 
-    private function nextScheduleDate(Carbon $date): ?string
+    private function nextScheduleDate(Carbon $date, string $type): ?string
     {
-        $scheduledOn = ConstructionSchedule::query()
-            ->whereDate('scheduled_on', '>', $date->toDateString())
-            ->orderBy('scheduled_on')
-            ->value('scheduled_on');
+        $dates = collect();
+
+        if ($type !== 'business') {
+            $dates->push(ConstructionSchedule::query()
+                ->whereDate('scheduled_on', '>', $date->toDateString())
+                ->min('scheduled_on'));
+        }
+
+        if ($type !== 'construction') {
+            $dates->push(BusinessSchedule::query()
+                ->whereDate('scheduled_on', '>', $date->toDateString())
+                ->min('scheduled_on'));
+        }
+
+        $scheduledOn = $dates->filter()->min();
 
         return $scheduledOn === null ? null : Carbon::parse($scheduledOn)->toDateString();
     }
@@ -239,7 +284,110 @@ class ConstructionScheduleController extends Controller
                     'address' => $site->address,
                     'guide_files' => $this->guideFilePayload($site->guideFiles),
                 ]),
+            'generalContractorOptions' => $this->generalContractorOptions(),
         ];
+    }
+
+    /**
+     * @return Collection<int, string>
+     */
+    private function generalContractorOptions(): Collection
+    {
+        return GeneralContractor::query()
+            ->orderBy('name')
+            ->pluck('name')
+            ->merge(
+                ConstructionSchedule::query()
+                    ->whereNotNull('general_contractor')
+                    ->where('general_contractor', '!=', '')
+                    ->distinct()
+                    ->pluck('general_contractor')
+            )
+            ->merge(
+                BusinessSchedule::query()
+                    ->whereNotNull('general_contractor')
+                    ->where('general_contractor', '!=', '')
+                    ->distinct()
+                    ->pluck('general_contractor')
+            )
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
+    }
+
+    private function rememberGeneralContractor(?string $generalContractor): void
+    {
+        if ($generalContractor === null || $generalContractor === '') {
+            return;
+        }
+
+        GeneralContractor::query()->firstOrCreate([
+            'name' => $generalContractor,
+        ]);
+    }
+
+    private function calendarDays(Carbon $calendarStart, Carbon $calendarEnd, string $type): Collection
+    {
+        $days = collect();
+
+        if ($type !== 'business') {
+            ConstructionSchedule::query()
+                ->selectRaw('scheduled_on, count(*) as schedule_count')
+                ->whereDate('scheduled_on', '>=', $calendarStart->toDateString())
+                ->whereDate('scheduled_on', '<=', $calendarEnd->toDateString())
+                ->groupBy('scheduled_on')
+                ->get()
+                ->each(function (ConstructionSchedule $schedule) use ($days): void {
+                    $date = $schedule->scheduled_on->toDateString();
+                    $day = $days->get($date, [
+                        'date' => $date,
+                        'count' => 0,
+                        'construction_count' => 0,
+                        'business_count' => 0,
+                    ]);
+
+                    $day['count'] += (int) $schedule->schedule_count;
+                    $day['construction_count'] += (int) $schedule->schedule_count;
+                    $days->put($date, $day);
+                });
+        }
+
+        if ($type !== 'construction') {
+            BusinessSchedule::query()
+                ->selectRaw('scheduled_on, count(*) as schedule_count')
+                ->whereDate('scheduled_on', '>=', $calendarStart->toDateString())
+                ->whereDate('scheduled_on', '<=', $calendarEnd->toDateString())
+                ->groupBy('scheduled_on')
+                ->get()
+                ->each(function (BusinessSchedule $schedule) use ($days): void {
+                    $date = $schedule->scheduled_on->toDateString();
+                    $day = $days->get($date, [
+                        'date' => $date,
+                        'count' => 0,
+                        'construction_count' => 0,
+                        'business_count' => 0,
+                    ]);
+
+                    $day['count'] += (int) $schedule->schedule_count;
+                    $day['business_count'] += (int) $schedule->schedule_count;
+                    $days->put($date, $day);
+                });
+        }
+
+        return $days->sortKeys()->values();
+    }
+
+    private function combinedSchedulePayload(Collection $constructionSchedules, Collection $businessSchedules): Collection
+    {
+        return $this->schedulePayload($constructionSchedules)
+            ->merge($this->businessSchedulePayload($businessSchedules))
+            ->sortBy([
+                ['scheduled_on', 'asc'],
+                ['starts_at', 'asc'],
+                ['type', 'asc'],
+            ])
+            ->values();
     }
 
     /**
@@ -248,8 +396,9 @@ class ConstructionScheduleController extends Controller
      */
     private function schedulePayload(Collection $schedules): Collection
     {
-        return $schedules->map(fn (ConstructionSchedule $schedule) => [
+        return $schedules->toBase()->map(fn (ConstructionSchedule $schedule) => [
             'id' => $schedule->id,
+            'type' => 'construction',
             'scheduled_on' => $schedule->scheduled_on->toDateString(),
             'time' => $schedule->formattedTime(),
             'starts_at' => $schedule->starts_at,
@@ -276,6 +425,34 @@ class ConstructionScheduleController extends Controller
             ])->values(),
             'guide_files' => $this->guideFilePayload($schedule->allGuideFiles()),
             'selected_site_guide_file_ids' => $schedule->selectedGuideFiles->pluck('id')->values(),
+        ])->values();
+    }
+
+    /**
+     * @param  Collection<int, BusinessSchedule>  $schedules
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function businessSchedulePayload(Collection $schedules): Collection
+    {
+        return $schedules->toBase()->map(fn (BusinessSchedule $schedule) => [
+            'id' => $schedule->id,
+            'type' => 'business',
+            'scheduled_on' => $schedule->scheduled_on->toDateString(),
+            'time' => $schedule->formattedTime(),
+            'starts_at' => $schedule->starts_at,
+            'ends_at' => $schedule->ends_at,
+            'time_note' => $schedule->time_note,
+            'personnel' => $schedule->personnel,
+            'location' => $schedule->location,
+            'general_contractor' => $schedule->general_contractor,
+            'person_in_charge' => $schedule->person_in_charge,
+            'content' => $schedule->content,
+            'memo' => $schedule->memo,
+            'assigned_users' => $schedule->assignedUsers->map(fn (User $user) => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ])->values(),
         ])->values();
     }
 

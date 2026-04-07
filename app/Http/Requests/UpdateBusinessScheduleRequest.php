@@ -4,10 +4,8 @@ namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\File;
 
-class StoreConstructionScheduleRequest extends FormRequest
+class UpdateBusinessScheduleRequest extends FormRequest
 {
     #[\Override]
     protected function prepareForValidation(): void
@@ -37,27 +35,18 @@ class StoreConstructionScheduleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'construction_site_id' => ['nullable', 'integer', 'exists:construction_sites,id'],
             'scheduled_on' => ['required', 'date'],
             'starts_at' => ['nullable', 'date_format:H:i'],
             'ends_at' => ['nullable', 'date_format:H:i', 'after_or_equal:starts_at'],
             'time_note' => ['nullable', 'string', 'max:255'],
-            'status' => ['required', Rule::in(['scheduled', 'confirmed', 'postponed', 'canceled'])],
-            'meeting_place' => ['required', 'string', 'max:255'],
             'personnel' => ['nullable', 'string', 'max:255'],
             'location' => ['required', 'string', 'max:255'],
             'general_contractor' => ['nullable', 'string', 'max:255'],
             'person_in_charge' => ['nullable', 'string', 'max:255'],
             'content' => ['required', 'string'],
-            'navigation_address' => ['required', 'string', 'max:255'],
+            'memo' => ['nullable', 'string'],
             'assigned_user_ids' => ['nullable', 'array'],
             'assigned_user_ids.*' => ['integer', 'exists:users,id'],
-            'site_guide_file_ids' => ['nullable', 'array'],
-            'site_guide_file_ids.*' => ['integer', 'exists:site_guide_files,id'],
-            'guide_files' => ['nullable', 'array'],
-            'guide_files.*' => [
-                File::types(['pdf', 'jpg', 'jpeg', 'png', 'webp'])->max(10 * 1024),
-            ],
         ];
     }
 }
