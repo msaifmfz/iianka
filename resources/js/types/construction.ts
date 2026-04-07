@@ -42,10 +42,30 @@ export type ConstructionSchedule = {
     content: string;
     navigation_address: string;
     google_maps_url: string;
+    voucher_checked: boolean;
+    voucher_checked_at: string | null;
+    voucher_checked_by: ConstructionUser | null;
+    voucher_note: string | null;
     site: Pick<ConstructionSite, 'id' | 'name' | 'address'> | null;
     assigned_users: ConstructionUser[];
     guide_files: SiteGuideFile[];
     selected_site_guide_file_ids: number[];
+};
+
+export type VoucherConfirmationSchedule = {
+    id: number;
+    scheduled_on: string;
+    time: string;
+    starts_at: string | null;
+    location: string;
+    general_contractor: string | null;
+    person_in_charge: string | null;
+    content: string;
+    voucher_checked: boolean;
+    voucher_checked_at: string | null;
+    voucher_checked_by: ConstructionUser | null;
+    voucher_note: string | null;
+    assigned_users: ConstructionUser[];
 };
 
 export type BusinessSchedule = {

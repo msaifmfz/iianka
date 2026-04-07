@@ -27,6 +27,9 @@ use Override;
     'person_in_charge',
     'content',
     'navigation_address',
+    'voucher_note',
+    'voucher_checked_at',
+    'voucher_checked_by_user_id',
 ])]
 class ConstructionSchedule extends Model
 {
@@ -49,6 +52,7 @@ class ConstructionSchedule extends Model
     {
         return [
             'scheduled_on' => 'date',
+            'voucher_checked_at' => 'datetime',
         ];
     }
 
@@ -58,6 +62,14 @@ class ConstructionSchedule extends Model
     public function site(): BelongsTo
     {
         return $this->belongsTo(ConstructionSite::class, 'construction_site_id');
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function voucherCheckedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'voucher_checked_by_user_id');
     }
 
     /**

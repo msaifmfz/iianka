@@ -36,7 +36,7 @@ class ConstructionScheduleController extends Controller
 
         if ($type !== 'business') {
             $constructionSchedules = ConstructionSchedule::query()
-                ->with(['assignedUsers:id,name,email', 'site.guideFiles', 'selectedGuideFiles', 'directGuideFiles'])
+                ->with(['assignedUsers:id,name,email', 'voucherCheckedBy:id,name,email', 'site.guideFiles', 'selectedGuideFiles', 'directGuideFiles'])
                 ->whereDate('scheduled_on', '>=', $startsOn->toDateString())
                 ->whereDate('scheduled_on', '<=', $endsOn->toDateString())
                 ->orderBy('scheduled_on')
@@ -127,7 +127,7 @@ class ConstructionScheduleController extends Controller
 
     public function show(ConstructionSchedule $constructionSchedule): Response
     {
-        $constructionSchedule->load(['assignedUsers:id,name,email', 'site.guideFiles', 'selectedGuideFiles', 'directGuideFiles']);
+        $constructionSchedule->load(['assignedUsers:id,name,email', 'voucherCheckedBy:id,name,email', 'site.guideFiles', 'selectedGuideFiles', 'directGuideFiles']);
 
         return Inertia::render('construction-schedules/show', [
             'schedule' => $this->schedulePayload(collect([$constructionSchedule]))->first(),
@@ -139,7 +139,7 @@ class ConstructionScheduleController extends Controller
     {
         abort_unless($request->user()?->is_admin, 403);
 
-        $constructionSchedule->load(['assignedUsers:id,name,email', 'site.guideFiles', 'selectedGuideFiles', 'directGuideFiles']);
+        $constructionSchedule->load(['assignedUsers:id,name,email', 'voucherCheckedBy:id,name,email', 'site.guideFiles', 'selectedGuideFiles', 'directGuideFiles']);
 
         return Inertia::render('construction-schedules/form', [
             'schedule' => $this->schedulePayload(collect([$constructionSchedule]))->first(),
@@ -413,6 +413,14 @@ class ConstructionScheduleController extends Controller
             'content' => $schedule->content,
             'navigation_address' => $schedule->navigation_address,
             'google_maps_url' => $schedule->googleMapsUrl(),
+            'voucher_checked' => $schedule->voucher_checked_at !== null,
+            'voucher_checked_at' => $schedule->voucher_checked_at?->toDateTimeString(),
+            'voucher_checked_by' => $schedule->voucherCheckedBy === null ? null : [
+                'id' => $schedule->voucherCheckedBy->id,
+                'name' => $schedule->voucherCheckedBy->name,
+                'email' => $schedule->voucherCheckedBy->email,
+            ],
+            'voucher_note' => $schedule->voucher_note,
             'site' => $schedule->site === null ? null : [
                 'id' => $schedule->site->id,
                 'name' => $schedule->site->name,

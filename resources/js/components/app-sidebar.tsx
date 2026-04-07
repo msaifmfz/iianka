@@ -2,11 +2,13 @@ import { Link } from '@inertiajs/react';
 import {
     BookOpen,
     CalendarDays,
+    ClipboardCheck,
     FileText,
     FolderGit2,
     LayoutGrid,
 } from 'lucide-react';
 import { index as scheduleIndex } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
+import { index as voucherIndex } from '@/actions/App/Http/Controllers/ConstructionScheduleVoucherController';
 import { index as siteIndex } from '@/actions/App/Http/Controllers/ConstructionSiteController';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
@@ -34,6 +36,11 @@ const mainNavItems: NavItem[] = [
         title: '予定表',
         href: scheduleIndex(),
         icon: CalendarDays,
+    },
+    {
+        title: '伝票確認',
+        href: voucherIndex(),
+        icon: ClipboardCheck,
     },
     {
         title: '現場案内図',
