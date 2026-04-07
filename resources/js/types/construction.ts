@@ -85,4 +85,53 @@ export type BusinessSchedule = {
     assigned_users: ConstructionUser[];
 };
 
-export type ScheduleEvent = ConstructionSchedule | BusinessSchedule;
+export type InternalNotice = {
+    id: number;
+    type: 'internal_notice';
+    scheduled_on: string;
+    time: string;
+    starts_at: string | null;
+    ends_at: string | null;
+    time_note: string | null;
+    title: string;
+    location: string | null;
+    content: string;
+    memo: string | null;
+    assigned_users: ConstructionUser[];
+};
+
+export type CleaningDutyRule = {
+    id: number;
+    weekday: number;
+    weekday_label: string;
+    label: string;
+    location: string | null;
+    notes: string | null;
+    is_active: boolean;
+    sort_order: number;
+    assigned_users: ConstructionUser[];
+};
+
+export type CleaningDutySchedule = {
+    id: number;
+    type: 'cleaning_duty';
+    scheduled_on: string;
+    time: string;
+    starts_at: null;
+    ends_at: null;
+    time_note: string;
+    title: string;
+    location: string | null;
+    content: string;
+    memo: string | null;
+    rule_id: number;
+    weekday: number;
+    weekday_label: string;
+    assigned_users: ConstructionUser[];
+};
+
+export type ScheduleEvent =
+    | ConstructionSchedule
+    | BusinessSchedule
+    | InternalNotice
+    | CleaningDutySchedule;

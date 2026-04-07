@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreConstructionScheduleRequest;
 use App\Http\Requests\UpdateConstructionScheduleRequest;
 use App\Models\BusinessSchedule;
+use App\Models\CleaningDutyRule;
 use App\Models\ConstructionSchedule;
 use App\Models\ConstructionSite;
 use App\Models\GeneralContractor;
+use App\Models\InternalNotice;
 use App\Models\SiteGuideFile;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -25,7 +27,7 @@ class ConstructionScheduleController extends Controller
         $range = in_array($request->query('range'), ['today', 'week', 'month'], true)
             ? $request->query('range')
             : 'today';
-        $type = in_array($request->query('type'), ['all', 'construction', 'business'], true)
+        $type = in_array($request->query('type'), ['all', 'construction', 'business', 'internal_notice', 'cleaning_duty'], true)
             ? $request->query('type')
             : 'all';
         $date = Carbon::parse($request->query('date', today()->toDateString()));
@@ -33,8 +35,10 @@ class ConstructionScheduleController extends Controller
 
         $constructionSchedules = collect();
         $businessSchedules = collect();
+        $internalNotices = collect();
+        $cleaningDutyOccurrences = collect();
 
-        if ($type !== 'business') {
+        if ($type === 'all' || $type === 'construction') {
             $constructionSchedules = ConstructionSchedule::query()
                 ->with(['assignedUsers:id,name,email', 'voucherCheckedBy:id,name,email', 'site.guideFiles', 'selectedGuideFiles', 'directGuideFiles'])
                 ->whereDate('scheduled_on', '>=', $startsOn->toDateString())
@@ -44,7 +48,7 @@ class ConstructionScheduleController extends Controller
                 ->get();
         }
 
-        if ($type !== 'construction') {
+        if ($type === 'all' || $type === 'business') {
             $businessSchedules = BusinessSchedule::query()
                 ->with('assignedUsers:id,name,email')
                 ->whereDate('scheduled_on', '>=', $startsOn->toDateString())
@@ -52,6 +56,20 @@ class ConstructionScheduleController extends Controller
                 ->orderBy('scheduled_on')
                 ->orderBy('starts_at')
                 ->get();
+        }
+
+        if ($type === 'all' || $type === 'internal_notice') {
+            $internalNotices = InternalNotice::query()
+                ->with('assignedUsers:id,name,email')
+                ->whereDate('scheduled_on', '>=', $startsOn->toDateString())
+                ->whereDate('scheduled_on', '<=', $endsOn->toDateString())
+                ->orderBy('scheduled_on')
+                ->orderBy('starts_at')
+                ->get();
+        }
+
+        if ($type === 'all' || $type === 'cleaning_duty') {
+            $cleaningDutyOccurrences = $this->cleaningDutyOccurrences($startsOn, $endsOn);
         }
 
         $monthStart = $date->copy()->startOfMonth();
@@ -78,6 +96,22 @@ class ConstructionScheduleController extends Controller
             fn (BusinessSchedule $schedule) => $schedule->assignedUsers->contains('id', $user->id)
         );
 
+        $myInternalNotices = $internalNotices->filter(
+            fn (InternalNotice $notice) => $notice->assignedUsers->contains('id', $user->id)
+        );
+
+        $teamInternalNotices = $internalNotices->reject(
+            fn (InternalNotice $notice) => $notice->assignedUsers->contains('id', $user->id)
+        );
+
+        $myCleaningDutyOccurrences = $cleaningDutyOccurrences->filter(
+            fn (array $occurrence): bool => $occurrence['assigned_users']->contains('id', $user->id)
+        );
+
+        $teamCleaningDutyOccurrences = $cleaningDutyOccurrences->reject(
+            fn (array $occurrence): bool => $occurrence['assigned_users']->contains('id', $user->id)
+        );
+
         return Inertia::render('construction-schedules/index', [
             'filters' => [
                 'range' => $range,
@@ -91,8 +125,8 @@ class ConstructionScheduleController extends Controller
                 'previous_date' => $this->previousScheduleDate($date, $type),
                 'next_date' => $this->nextScheduleDate($date, $type),
             ],
-            'mySchedules' => $this->combinedSchedulePayload($myConstructionSchedules, $myBusinessSchedules),
-            'teamSchedules' => $this->combinedSchedulePayload($teamConstructionSchedules, $teamBusinessSchedules),
+            'mySchedules' => $this->combinedSchedulePayload($myConstructionSchedules, $myBusinessSchedules, $myInternalNotices, $myCleaningDutyOccurrences),
+            'teamSchedules' => $this->combinedSchedulePayload($teamConstructionSchedules, $teamBusinessSchedules, $teamInternalNotices, $teamCleaningDutyOccurrences),
             'canManage' => $user->is_admin === true,
         ]);
     }
@@ -188,16 +222,26 @@ class ConstructionScheduleController extends Controller
     {
         $dates = collect();
 
-        if ($type !== 'business') {
+        if ($type === 'all' || $type === 'construction') {
             $dates->push(ConstructionSchedule::query()
                 ->whereDate('scheduled_on', '<', $date->toDateString())
                 ->max('scheduled_on'));
         }
 
-        if ($type !== 'construction') {
+        if ($type !== 'construction' && $type !== 'internal_notice' && $type !== 'cleaning_duty') {
             $dates->push(BusinessSchedule::query()
                 ->whereDate('scheduled_on', '<', $date->toDateString())
                 ->max('scheduled_on'));
+        }
+
+        if ($type === 'all' || $type === 'internal_notice') {
+            $dates->push(InternalNotice::query()
+                ->whereDate('scheduled_on', '<', $date->toDateString())
+                ->max('scheduled_on'));
+        }
+
+        if ($type === 'cleaning_duty') {
+            $dates->push($this->adjacentCleaningDutyDate($date, -1));
         }
 
         $scheduledOn = $dates->filter()->max();
@@ -209,16 +253,26 @@ class ConstructionScheduleController extends Controller
     {
         $dates = collect();
 
-        if ($type !== 'business') {
+        if ($type === 'all' || $type === 'construction') {
             $dates->push(ConstructionSchedule::query()
                 ->whereDate('scheduled_on', '>', $date->toDateString())
                 ->min('scheduled_on'));
         }
 
-        if ($type !== 'construction') {
+        if ($type !== 'construction' && $type !== 'internal_notice' && $type !== 'cleaning_duty') {
             $dates->push(BusinessSchedule::query()
                 ->whereDate('scheduled_on', '>', $date->toDateString())
                 ->min('scheduled_on'));
+        }
+
+        if ($type === 'all' || $type === 'internal_notice') {
+            $dates->push(InternalNotice::query()
+                ->whereDate('scheduled_on', '>', $date->toDateString())
+                ->min('scheduled_on'));
+        }
+
+        if ($type === 'cleaning_duty') {
+            $dates->push($this->adjacentCleaningDutyDate($date, 1));
         }
 
         $scheduledOn = $dates->filter()->min();
@@ -331,7 +385,7 @@ class ConstructionScheduleController extends Controller
     {
         $days = collect();
 
-        if ($type !== 'business') {
+        if ($type !== 'business' && $type !== 'internal_notice' && $type !== 'cleaning_duty') {
             ConstructionSchedule::query()
                 ->selectRaw('scheduled_on, count(*) as schedule_count')
                 ->whereDate('scheduled_on', '>=', $calendarStart->toDateString())
@@ -345,6 +399,8 @@ class ConstructionScheduleController extends Controller
                         'count' => 0,
                         'construction_count' => 0,
                         'business_count' => 0,
+                        'internal_notice_count' => 0,
+                        'cleaning_duty_count' => 0,
                     ]);
 
                     $day['count'] += (int) $schedule->schedule_count;
@@ -353,7 +409,7 @@ class ConstructionScheduleController extends Controller
                 });
         }
 
-        if ($type !== 'construction') {
+        if ($type !== 'construction' && $type !== 'internal_notice' && $type !== 'cleaning_duty') {
             BusinessSchedule::query()
                 ->selectRaw('scheduled_on, count(*) as schedule_count')
                 ->whereDate('scheduled_on', '>=', $calendarStart->toDateString())
@@ -367,6 +423,8 @@ class ConstructionScheduleController extends Controller
                         'count' => 0,
                         'construction_count' => 0,
                         'business_count' => 0,
+                        'internal_notice_count' => 0,
+                        'cleaning_duty_count' => 0,
                     ]);
 
                     $day['count'] += (int) $schedule->schedule_count;
@@ -375,13 +433,58 @@ class ConstructionScheduleController extends Controller
                 });
         }
 
+        if ($type === 'all' || $type === 'internal_notice') {
+            InternalNotice::query()
+                ->selectRaw('scheduled_on, count(*) as schedule_count')
+                ->whereDate('scheduled_on', '>=', $calendarStart->toDateString())
+                ->whereDate('scheduled_on', '<=', $calendarEnd->toDateString())
+                ->groupBy('scheduled_on')
+                ->get()
+                ->each(function (InternalNotice $notice) use ($days): void {
+                    $date = $notice->scheduled_on->toDateString();
+                    $day = $days->get($date, [
+                        'date' => $date,
+                        'count' => 0,
+                        'construction_count' => 0,
+                        'business_count' => 0,
+                        'internal_notice_count' => 0,
+                        'cleaning_duty_count' => 0,
+                    ]);
+
+                    $day['count'] += (int) $notice->schedule_count;
+                    $day['internal_notice_count'] += (int) $notice->schedule_count;
+                    $days->put($date, $day);
+                });
+        }
+
+        if ($type === 'all' || $type === 'cleaning_duty') {
+            $this->cleaningDutyOccurrences($calendarStart, $calendarEnd)
+                ->each(function (array $occurrence) use ($days): void {
+                    $date = $occurrence['scheduled_on'];
+                    $day = $days->get($date, [
+                        'date' => $date,
+                        'count' => 0,
+                        'construction_count' => 0,
+                        'business_count' => 0,
+                        'internal_notice_count' => 0,
+                        'cleaning_duty_count' => 0,
+                    ]);
+
+                    $day['count']++;
+                    $day['cleaning_duty_count']++;
+                    $days->put($date, $day);
+                });
+        }
+
         return $days->sortKeys()->values();
     }
 
-    private function combinedSchedulePayload(Collection $constructionSchedules, Collection $businessSchedules): Collection
+    private function combinedSchedulePayload(Collection $constructionSchedules, Collection $businessSchedules, Collection $internalNotices, Collection $cleaningDutyOccurrences): Collection
     {
         return $this->schedulePayload($constructionSchedules)
             ->merge($this->businessSchedulePayload($businessSchedules))
+            ->merge($this->internalNoticePayload($internalNotices))
+            ->merge($this->cleaningDutyPayload($cleaningDutyOccurrences))
             ->sortBy([
                 ['scheduled_on', 'asc'],
                 ['starts_at', 'asc'],
@@ -462,6 +565,123 @@ class ConstructionScheduleController extends Controller
                 'email' => $user->email,
             ])->values(),
         ])->values();
+    }
+
+    /**
+     * @param  Collection<int, InternalNotice>  $notices
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function internalNoticePayload(Collection $notices): Collection
+    {
+        return $notices->toBase()->map(fn (InternalNotice $notice): array => [
+            'id' => $notice->id,
+            'type' => 'internal_notice',
+            'scheduled_on' => $notice->scheduled_on->toDateString(),
+            'time' => $notice->formattedTime(),
+            'starts_at' => $notice->starts_at,
+            'ends_at' => $notice->ends_at,
+            'time_note' => $notice->time_note,
+            'title' => $notice->title,
+            'location' => $notice->location,
+            'content' => $notice->content,
+            'memo' => $notice->memo,
+            'assigned_users' => $notice->assignedUsers->map(fn (User $user): array => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ])->values(),
+        ])->values();
+    }
+
+    /**
+     * @param  Collection<int, array<string, mixed>>  $occurrences
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function cleaningDutyPayload(Collection $occurrences): Collection
+    {
+        return $occurrences->map(fn (array $occurrence): array => [
+            'id' => $occurrence['rule']->id,
+            'type' => 'cleaning_duty',
+            'scheduled_on' => $occurrence['scheduled_on'],
+            'time' => '終日',
+            'starts_at' => null,
+            'ends_at' => null,
+            'time_note' => '終日',
+            'title' => $occurrence['rule']->label,
+            'location' => $occurrence['rule']->location,
+            'content' => $occurrence['rule']->notes ?? $occurrence['rule']->weekdayLabel(),
+            'memo' => $occurrence['rule']->notes,
+            'rule_id' => $occurrence['rule']->id,
+            'weekday' => $occurrence['rule']->weekday,
+            'weekday_label' => $occurrence['rule']->weekdayLabel(),
+            'assigned_users' => $occurrence['assigned_users']->map(fn (User $user): array => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ])->values(),
+        ])->values();
+    }
+
+    /**
+     * @return Collection<int, array{scheduled_on: string, rule: CleaningDutyRule, assigned_users: Collection<int, User>}>
+     */
+    private function cleaningDutyOccurrences(Carbon $startsOn, Carbon $endsOn): Collection
+    {
+        $rules = CleaningDutyRule::query()
+            ->with('assignedUsers:id,name,email')
+            ->where('is_active', true)
+            ->orderBy('weekday')
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        if ($rules->isEmpty()) {
+            return collect();
+        }
+
+        $occurrences = collect();
+        $current = $startsOn->copy()->startOfDay();
+
+        while ($current->lte($endsOn)) {
+            foreach ($rules as $rule) {
+                if ($rule->weekday === $current->dayOfWeek) {
+                    $occurrences->push([
+                        'scheduled_on' => $current->toDateString(),
+                        'rule' => $rule,
+                        'assigned_users' => $rule->assignedUsers,
+                    ]);
+                }
+            }
+
+            $current->addDay();
+        }
+
+        return $occurrences;
+    }
+
+    private function adjacentCleaningDutyDate(Carbon $date, int $direction): ?string
+    {
+        $weekdays = CleaningDutyRule::query()
+            ->where('is_active', true)
+            ->pluck('weekday');
+
+        if ($weekdays->isEmpty()) {
+            return null;
+        }
+
+        $current = $date->copy();
+
+        for ($offset = 1; $offset <= 7; $offset++) {
+            $current = $direction > 0
+                ? $date->copy()->addDays($offset)
+                : $date->copy()->subDays($offset);
+
+            if ($weekdays->contains($current->dayOfWeek)) {
+                return $current->toDateString();
+            }
+        }
+
+        return null;
     }
 
     /**

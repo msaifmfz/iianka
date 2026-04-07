@@ -51,4 +51,20 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(BusinessSchedule::class)->withTimestamps();
     }
+
+    /**
+     * @return BelongsToMany<InternalNotice, $this>
+     */
+    public function internalNotices(): BelongsToMany
+    {
+        return $this->belongsToMany(InternalNotice::class)->withTimestamps();
+    }
+
+    /**
+     * @return BelongsToMany<CleaningDutyRule, $this>
+     */
+    public function cleaningDutyRules(): BelongsToMany
+    {
+        return $this->belongsToMany(CleaningDutyRule::class)->withTimestamps();
+    }
 }

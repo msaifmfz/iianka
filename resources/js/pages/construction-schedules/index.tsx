@@ -2,11 +2,13 @@ import { Head, Link } from '@inertiajs/react';
 import {
     BriefcaseBusiness,
     CalendarDays,
+    ClipboardList,
     ChevronDown,
     ChevronLeft,
     ChevronRight,
     FileText,
     Hammer,
+    Megaphone,
     MapPin,
     Pencil,
     Plus,
@@ -18,11 +20,20 @@ import {
     show as businessScheduleShow,
 } from '@/actions/App/Http/Controllers/BusinessScheduleController';
 import {
+    edit as cleaningDutyRuleEdit,
+    index as cleaningDutyRuleIndex,
+} from '@/actions/App/Http/Controllers/CleaningDutyRuleController';
+import {
     index as scheduleIndex,
     show as scheduleShow,
     create as scheduleCreate,
     edit as scheduleEdit,
 } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
+import {
+    create as internalNoticeCreate,
+    edit as internalNoticeEdit,
+    show as internalNoticeShow,
+} from '@/actions/App/Http/Controllers/InternalNoticeController';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { dashboard } from '@/routes';
@@ -33,11 +44,18 @@ type CalendarDay = {
     count: number;
     construction_count: number;
     business_count: number;
+    internal_notice_count: number;
+    cleaning_duty_count: number;
 };
 
 type Filters = {
     range: 'today' | 'week' | 'month';
-    type: 'all' | 'construction' | 'business';
+    type:
+        | 'all'
+        | 'construction'
+        | 'business'
+        | 'internal_notice'
+        | 'cleaning_duty';
     date: string;
     starts_on: string;
     ends_on: string;
@@ -119,6 +137,8 @@ type MonthDay = {
     count: number;
     constructionCount: number;
     businessCount: number;
+    internalNoticeCount: number;
+    cleaningDutyCount: number;
     isSelected: boolean;
     isToday: boolean;
     isCurrentMonth: boolean;
@@ -148,6 +168,8 @@ function monthDays(selectedDate: string, calendarDays: CalendarDay[]) {
             count: count?.count ?? 0,
             constructionCount: count?.construction_count ?? 0,
             businessCount: count?.business_count ?? 0,
+            internalNoticeCount: count?.internal_notice_count ?? 0,
+            cleaningDutyCount: count?.cleaning_duty_count ?? 0,
             isSelected: key === selectedDate,
             isToday: key === formatInputDate(new Date()),
             isCurrentMonth: current.getMonth() === date.getMonth(),
@@ -249,117 +271,174 @@ function ScheduleCard({
     const scheduleDetail =
         schedule.type === 'construction'
             ? scheduleShow(schedule.id)
-            : businessScheduleShow(schedule.id);
+            : schedule.type === 'business'
+              ? businessScheduleShow(schedule.id)
+              : schedule.type === 'internal_notice'
+                ? internalNoticeShow(schedule.id)
+                : null;
     const scheduleEditHref =
         schedule.type === 'construction'
             ? scheduleEdit(schedule.id)
-            : businessScheduleEdit(schedule.id);
-    const typeBadge =
-        schedule.type === 'construction'
-            ? 'bg-orange-100 text-orange-900 dark:bg-orange-950 dark:text-orange-200'
-            : 'bg-violet-100 text-violet-900 dark:bg-violet-950 dark:text-violet-200';
+            : schedule.type === 'business'
+              ? businessScheduleEdit(schedule.id)
+              : schedule.type === 'internal_notice'
+                ? internalNoticeEdit(schedule.id)
+                : cleaningDutyRuleEdit(schedule.rule_id);
+    const typeBadge = {
+        construction:
+            'bg-orange-100 text-orange-900 dark:bg-orange-950 dark:text-orange-200',
+        business:
+            'bg-violet-100 text-violet-900 dark:bg-violet-950 dark:text-violet-200',
+        internal_notice:
+            'bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-200',
+        cleaning_duty:
+            'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200',
+    }[schedule.type];
+    const title =
+        schedule.type === 'construction' || schedule.type === 'business'
+            ? schedule.location
+            : schedule.title;
+    const detailHint =
+        schedule.type === 'cleaning_duty' ? '固定当番' : '詳細を見る';
+    const typeLabel = {
+        construction: '工事',
+        business: '業務予定',
+        internal_notice: '業務連絡',
+        cleaning_duty: '掃除当番',
+    }[schedule.type];
+    const typeIcon = {
+        construction: Hammer,
+        business: BriefcaseBusiness,
+        internal_notice: Megaphone,
+        cleaning_duty: ClipboardList,
+    }[schedule.type];
+    const TypeIcon = typeIcon;
 
-    return (
-        <Card className="gap-0 overflow-hidden border-neutral-200 bg-white/95 py-0 shadow-sm transition hover:border-neutral-300 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-950/85 dark:hover:border-neutral-700">
-            <Link
-                href={scheduleDetail}
-                className="block rounded-xl transition hover:bg-neutral-50/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none dark:hover:bg-neutral-900/40"
-                aria-label={`${schedule.location}の予定詳細を見る`}
-            >
-                <CardHeader className="gap-3 p-4 md:p-6">
-                    <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                            <p className="text-sm text-muted-foreground">
-                                {formatDate(schedule.scheduled_on)}
-                            </p>
-                            <CardTitle className="mt-1 text-xl leading-tight">
-                                {schedule.location}
-                            </CardTitle>
-                            <p className="mt-2 text-xs font-medium text-sky-700 dark:text-sky-300">
-                                詳細を見る
-                            </p>
-                        </div>
-                        <div className="flex flex-wrap justify-end gap-2">
-                            <span
-                                className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${typeBadge}`}
-                            >
-                                {schedule.type === 'construction' ? (
-                                    <Hammer className="size-3.5" />
-                                ) : (
-                                    <BriefcaseBusiness className="size-3.5" />
-                                )}
-                                {schedule.type === 'construction'
-                                    ? '工事'
-                                    : '業務'}
-                            </span>
-                            {schedule.type === 'construction' && (
-                                <span
-                                    className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClasses[schedule.status]}`}
-                                >
-                                    {statusLabels[schedule.status]}
-                                </span>
-                            )}
-                        </div>
+    const cardBody = (
+        <>
+            <CardHeader className="gap-3 p-4 md:p-6">
+                <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                        <p className="text-sm text-muted-foreground">
+                            {formatDate(schedule.scheduled_on)}
+                        </p>
+                        <CardTitle className="mt-1 text-xl leading-tight">
+                            {title}
+                        </CardTitle>
+                        <p className="mt-2 text-xs font-medium text-sky-700 dark:text-sky-300">
+                            {detailHint}
+                        </p>
                     </div>
-                    <div className="flex flex-wrap gap-2 text-sm text-neutral-700 dark:text-neutral-300">
-                        <span className="rounded-full bg-neutral-100 px-3 py-1 dark:bg-neutral-900">
-                            {schedule.time}
+                    <div className="flex flex-wrap justify-end gap-2">
+                        <span
+                            className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${typeBadge}`}
+                        >
+                            <TypeIcon className="size-3.5" />
+                            {typeLabel}
                         </span>
-                        {schedule.general_contractor && (
+                        {schedule.type === 'construction' && (
+                            <span
+                                className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClasses[schedule.status]}`}
+                            >
+                                {statusLabels[schedule.status]}
+                            </span>
+                        )}
+                    </div>
+                </div>
+                <div className="flex flex-wrap gap-2 text-sm text-neutral-700 dark:text-neutral-300">
+                    <span className="rounded-full bg-neutral-100 px-3 py-1 dark:bg-neutral-900">
+                        {schedule.time}
+                    </span>
+                    {schedule.type === 'business' &&
+                        schedule.general_contractor && (
                             <span className="rounded-full bg-neutral-100 px-3 py-1 dark:bg-neutral-900">
                                 {schedule.general_contractor}
                             </span>
                         )}
-                        {schedule.person_in_charge && (
+                    {schedule.type === 'business' &&
+                        schedule.person_in_charge && (
                             <span className="rounded-full bg-neutral-100 px-3 py-1 dark:bg-neutral-900">
                                 担当: {schedule.person_in_charge}
                             </span>
                         )}
-                    </div>
-                </CardHeader>
-                <CardContent className="space-y-4 p-4 pt-0 md:p-6 md:pt-0">
-                    <div className="grid gap-2 text-sm md:grid-cols-2 md:gap-3">
-                        {schedule.type === 'construction' && (
-                            <div className="rounded-xl bg-neutral-50 p-3 dark:bg-neutral-900">
-                                <p className="text-muted-foreground">
-                                    集合場所
-                                </p>
-                                <p className="mt-1 font-medium">
-                                    {schedule.meeting_place}
-                                </p>
-                            </div>
+                    {(schedule.type === 'internal_notice' ||
+                        schedule.type === 'cleaning_duty') &&
+                        schedule.location && (
+                            <span className="rounded-full bg-neutral-100 px-3 py-1 dark:bg-neutral-900">
+                                {schedule.location}
+                            </span>
                         )}
+                    {schedule.type === 'cleaning_duty' && (
+                        <span className="rounded-full bg-neutral-100 px-3 py-1 dark:bg-neutral-900">
+                            {schedule.weekday_label}
+                        </span>
+                    )}
+                </div>
+            </CardHeader>
+            <CardContent className="space-y-4 p-4 pt-0 md:p-6 md:pt-0">
+                <div className="grid gap-2 text-sm md:grid-cols-2 md:gap-3">
+                    {schedule.type === 'construction' && (
+                        <div className="rounded-xl bg-neutral-50 p-3 dark:bg-neutral-900">
+                            <p className="text-muted-foreground">集合場所</p>
+                            <p className="mt-1 font-medium">
+                                {schedule.meeting_place}
+                            </p>
+                        </div>
+                    )}
+                    {(schedule.type === 'construction' ||
+                        schedule.type === 'business') && (
                         <div className="rounded-xl bg-neutral-50 p-3 dark:bg-neutral-900">
                             <p className="text-muted-foreground">人員</p>
                             <p className="mt-1 font-medium">
                                 {schedule.personnel || '未設定'}
                             </p>
                         </div>
-                    </div>
-                    <p className="line-clamp-3 text-sm leading-6 md:line-clamp-none">
-                        {schedule.content}
-                    </p>
-                    {schedule.type === 'business' && schedule.memo && (
-                        <p className="line-clamp-2 rounded-xl bg-violet-50 p-3 text-sm leading-6 text-violet-950 dark:bg-violet-950/30 dark:text-violet-100">
+                    )}
+                </div>
+                <p className="line-clamp-3 text-sm leading-6 md:line-clamp-none">
+                    {schedule.content}
+                </p>
+                {(schedule.type === 'business' ||
+                    schedule.type === 'internal_notice' ||
+                    schedule.type === 'cleaning_duty') &&
+                    schedule.memo && (
+                        <p className="line-clamp-2 rounded-xl bg-neutral-50 p-3 text-sm leading-6 text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100">
                             {schedule.memo}
                         </p>
                     )}
-                    {schedule.assigned_users.length > 0 && (
-                        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                            <Users className="size-4" />
-                            {schedule.assigned_users
-                                .map((user) => user.name)
-                                .join('、')}
-                        </div>
-                    )}
-                </CardContent>
-            </Link>
+                {schedule.assigned_users.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                        <Users className="size-4" />
+                        {schedule.assigned_users
+                            .map((user) => user.name)
+                            .join('、')}
+                    </div>
+                )}
+            </CardContent>
+        </>
+    );
+
+    return (
+        <Card className="gap-0 overflow-hidden border-neutral-200 bg-white/95 py-0 shadow-sm transition hover:border-neutral-300 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-950/85 dark:hover:border-neutral-700">
+            {scheduleDetail === null ? (
+                <div>{cardBody}</div>
+            ) : (
+                <Link
+                    href={scheduleDetail}
+                    className="block rounded-xl transition hover:bg-neutral-50/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none dark:hover:bg-neutral-900/40"
+                    aria-label={`${title}の予定詳細を見る`}
+                >
+                    {cardBody}
+                </Link>
+            )}
             <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
                 <div
                     className={
                         schedule.type === 'construction'
                             ? 'grid gap-2 sm:grid-cols-3'
-                            : 'grid gap-2 sm:grid-cols-2'
+                            : scheduleDetail === null
+                              ? 'grid gap-2'
+                              : 'grid gap-2 sm:grid-cols-2'
                     }
                 >
                     {schedule.type === 'construction' && (
@@ -374,18 +453,20 @@ function ScheduleCard({
                             </a>
                         </Button>
                     )}
-                    <Button
-                        asChild
-                        variant="outline"
-                        className="min-h-11 justify-center sm:justify-start"
-                    >
-                        <Link href={scheduleDetail}>
-                            <FileText className="size-4" />
-                            {schedule.type === 'construction'
-                                ? `詳細・案内図 (${schedule.guide_files.length})`
-                                : '詳細'}
-                        </Link>
-                    </Button>
+                    {scheduleDetail !== null && (
+                        <Button
+                            asChild
+                            variant="outline"
+                            className="min-h-11 justify-center sm:justify-start"
+                        >
+                            <Link href={scheduleDetail}>
+                                <FileText className="size-4" />
+                                {schedule.type === 'construction'
+                                    ? `詳細・案内図 (${schedule.guide_files.length})`
+                                    : '詳細'}
+                            </Link>
+                        </Button>
+                    )}
                     {canManage && (
                         <Button
                             asChild
@@ -431,7 +512,7 @@ function ScheduleSection({
                 <div className="space-y-3">
                     {schedules.map((schedule) => (
                         <ScheduleCard
-                            key={`${schedule.type}-${schedule.id}`}
+                            key={`${schedule.type}-${schedule.id}-${schedule.scheduled_on}`}
                             schedule={schedule}
                             canManage={canManage}
                         />
@@ -565,7 +646,27 @@ export default function ConstructionSchedulesIndex({
                                     >
                                         <Link href={businessScheduleCreate()}>
                                             <BriefcaseBusiness className="size-4" />
-                                            新規業務予定
+                                            新規業務予定（外部）
+                                        </Link>
+                                    </Button>
+                                    <Button
+                                        asChild
+                                        variant="outline"
+                                        className="w-full"
+                                    >
+                                        <Link href={internalNoticeCreate()}>
+                                            <Megaphone className="size-4" />
+                                            新規業務連絡
+                                        </Link>
+                                    </Button>
+                                    <Button
+                                        asChild
+                                        variant="outline"
+                                        className="w-full"
+                                    >
+                                        <Link href={cleaningDutyRuleIndex()}>
+                                            <ClipboardList className="size-4" />
+                                            掃除当番設定
                                         </Link>
                                     </Button>
                                 </div>
@@ -583,8 +684,18 @@ export default function ConstructionSchedulesIndex({
                                         filters={filters}
                                     />
                                     <TypeLink
-                                        label="業務"
+                                        label="業務予定"
                                         type="business"
+                                        filters={filters}
+                                    />
+                                    <TypeLink
+                                        label="業務連絡"
+                                        type="internal_notice"
+                                        filters={filters}
+                                    />
+                                    <TypeLink
+                                        label="掃除当番"
+                                        type="cleaning_duty"
                                         filters={filters}
                                     />
                                 </div>
@@ -595,7 +706,15 @@ export default function ConstructionSchedulesIndex({
                                     </span>
                                     <span className="inline-flex items-center gap-1">
                                         <span className="size-2 rounded-full bg-violet-500" />
-                                        業務
+                                        業務予定
+                                    </span>
+                                    <span className="inline-flex items-center gap-1">
+                                        <span className="size-2 rounded-full bg-sky-500" />
+                                        業務連絡
+                                    </span>
+                                    <span className="inline-flex items-center gap-1">
+                                        <span className="size-2 rounded-full bg-emerald-500" />
+                                        掃除当番
                                     </span>
                                 </div>
                                 <div className="mt-5 flex items-center justify-between gap-3">
@@ -790,13 +909,65 @@ export default function ConstructionSchedulesIndex({
                                                     {day.count}
                                                 </span>
                                             )}
-                                            {day.constructionCount > 0 &&
+                                            {[
+                                                day.constructionCount > 0 && (
+                                                    <span
+                                                        key="construction"
+                                                        className="size-1.5 rounded-full bg-orange-500"
+                                                    />
+                                                ),
                                                 day.businessCount > 0 && (
-                                                    <span className="absolute bottom-1 left-1/2 flex -translate-x-1/2 gap-0.5">
-                                                        <span className="size-1.5 rounded-full bg-orange-500" />
-                                                        <span className="size-1.5 rounded-full bg-violet-500" />
-                                                    </span>
-                                                )}
+                                                    <span
+                                                        key="business"
+                                                        className="size-1.5 rounded-full bg-violet-500"
+                                                    />
+                                                ),
+                                                day.internalNoticeCount > 0 && (
+                                                    <span
+                                                        key="internal_notice"
+                                                        className="size-1.5 rounded-full bg-sky-500"
+                                                    />
+                                                ),
+                                                day.cleaningDutyCount > 0 && (
+                                                    <span
+                                                        key="cleaning_duty"
+                                                        className="size-1.5 rounded-full bg-emerald-500"
+                                                    />
+                                                ),
+                                            ].filter(Boolean).length > 1 && (
+                                                <span className="absolute bottom-1 left-1/2 flex -translate-x-1/2 gap-0.5">
+                                                    {[
+                                                        day.constructionCount >
+                                                            0 && (
+                                                            <span
+                                                                key="construction"
+                                                                className="size-1.5 rounded-full bg-orange-500"
+                                                            />
+                                                        ),
+                                                        day.businessCount >
+                                                            0 && (
+                                                            <span
+                                                                key="business"
+                                                                className="size-1.5 rounded-full bg-violet-500"
+                                                            />
+                                                        ),
+                                                        day.internalNoticeCount >
+                                                            0 && (
+                                                            <span
+                                                                key="internal_notice"
+                                                                className="size-1.5 rounded-full bg-sky-500"
+                                                            />
+                                                        ),
+                                                        day.cleaningDutyCount >
+                                                            0 && (
+                                                            <span
+                                                                key="cleaning_duty"
+                                                                className="size-1.5 rounded-full bg-emerald-500"
+                                                            />
+                                                        ),
+                                                    ]}
+                                                </span>
+                                            )}
                                         </Link>
                                     ))}
                                 </div>

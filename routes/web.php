@@ -1,9 +1,11 @@
 <?php
 
 use App\Http\Controllers\BusinessScheduleController;
+use App\Http\Controllers\CleaningDutyRuleController;
 use App\Http\Controllers\ConstructionScheduleController;
 use App\Http\Controllers\ConstructionScheduleVoucherController;
 use App\Http\Controllers\ConstructionSiteController;
+use App\Http\Controllers\InternalNoticeController;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
@@ -19,6 +21,8 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
         ->name('construction-schedules.voucher-confirmation.update');
     Route::resource('construction-schedules', ConstructionScheduleController::class);
     Route::resource('business-schedules', BusinessScheduleController::class);
+    Route::resource('internal-notices', InternalNoticeController::class);
+    Route::resource('cleaning-duty-rules', CleaningDutyRuleController::class);
     Route::resource('construction-sites', ConstructionSiteController::class);
 });
 
