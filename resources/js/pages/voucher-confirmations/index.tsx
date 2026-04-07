@@ -141,9 +141,9 @@ function VoucherScheduleCard({
     canManage: boolean;
 }) {
     const { data, setData, patch, processing, errors } = useForm<VoucherForm>({
-            voucher_checked: schedule.voucher_checked,
-            voucher_note: schedule.voucher_note ?? '',
-        });
+        voucher_checked: schedule.voucher_checked,
+        voucher_note: schedule.voucher_note ?? '',
+    });
     const checkedAt = formatDateTime(schedule.voucher_checked_at);
 
     function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -158,12 +158,14 @@ function VoucherScheduleCard({
         <Card className="overflow-hidden">
             <CardHeader className="gap-4 md:flex-row md:items-start md:justify-between">
                 <div className="min-w-0 space-y-2">
+                    <StatusBadge schedule={schedule} />
                     <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                         <span>{formatDate(schedule.scheduled_on)}</span>
                         <span>{schedule.time}</span>
-                        <StatusBadge schedule={schedule} />
                     </div>
-                    <CardTitle className="text-xl">{schedule.location}</CardTitle>
+                    <CardTitle className="text-xl">
+                        {schedule.location}
+                    </CardTitle>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
                         {schedule.general_contractor && (
                             <span>ゼネコン: {schedule.general_contractor}</span>
@@ -188,9 +190,11 @@ function VoucherScheduleCard({
                 )}
             </CardHeader>
             <CardContent className="space-y-4">
-                <p className="rounded-2xl border bg-neutral-50 p-3 text-sm leading-6 whitespace-pre-line dark:border-neutral-800 dark:bg-neutral-900/60">
-                    {schedule.content}
-                </p>
+                {schedule.content && (
+                    <p className="rounded-2xl border bg-neutral-50 p-3 text-sm leading-6 whitespace-pre-line dark:border-neutral-800 dark:bg-neutral-900/60">
+                        {schedule.content}
+                    </p>
+                )}
 
                 <form onSubmit={submit} className="grid gap-4">
                     <label className="flex items-center gap-3 rounded-2xl border p-4 text-sm font-medium dark:border-neutral-800">
@@ -305,16 +309,16 @@ export default function VoucherConfirmationsIndex({
 
                     <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-neutral-200 pt-4 dark:border-neutral-800">
                         <div className="flex flex-wrap gap-2">
-                            {(Object.keys(checkedLabels) as CheckedFilter[]).map(
-                                (checked) => (
-                                    <FilterLink
-                                        key={checked}
-                                        label={checkedLabels[checked]}
-                                        checked={checked}
-                                        filters={filters}
-                                    />
-                                ),
-                            )}
+                            {(
+                                Object.keys(checkedLabels) as CheckedFilter[]
+                            ).map((checked) => (
+                                <FilterLink
+                                    key={checked}
+                                    label={checkedLabels[checked]}
+                                    checked={checked}
+                                    filters={filters}
+                                />
+                            ))}
                         </div>
                         <div className="flex items-center gap-2">
                             <Button

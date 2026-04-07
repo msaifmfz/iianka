@@ -96,8 +96,12 @@ class ConstructionSchedule extends Model
         return $this->hasMany(SiteGuideFile::class);
     }
 
-    public function googleMapsUrl(): string
+    public function googleMapsUrl(): ?string
     {
+        if ($this->navigation_address === null || $this->navigation_address === '') {
+            return null;
+        }
+
         return 'https://www.google.com/maps/search/?api=1&query='.rawurlencode($this->navigation_address);
     }
 

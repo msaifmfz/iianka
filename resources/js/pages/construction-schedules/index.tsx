@@ -319,10 +319,20 @@ function ScheduleCard({
             <CardHeader className="gap-3 p-4 md:p-6">
                 <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                        <p className="text-sm text-muted-foreground">
+                        {schedule.assigned_users.length > 0 && (
+                            <div className="text-md mb-1 flex flex-wrap items-center gap-2 rounded-2xl font-semibold text-amber-900 dark:text-amber-100">
+                                <Users className="size-4" />
+                                <span className="font-medium">
+                                    {schedule.assigned_users
+                                        .map((user) => user.name)
+                                        .join('、')}
+                                </span>
+                            </div>
+                        )}
+                        <p className="text-md text-muted-foreground">
                             {formatDate(schedule.scheduled_on)}
                         </p>
-                        <CardTitle className="mt-1 text-xl leading-tight">
+                        <CardTitle className="text-md mt-1 leading-tight">
                             {title}
                         </CardTitle>
                         <p className="mt-2 text-xs font-medium text-sky-700 dark:text-sky-300">
@@ -381,7 +391,7 @@ function ScheduleCard({
                         <div className="rounded-xl bg-neutral-50 p-3 dark:bg-neutral-900">
                             <p className="text-muted-foreground">集合場所</p>
                             <p className="mt-1 font-medium">
-                                {schedule.meeting_place}
+                                {schedule.meeting_place || '未設定'}
                             </p>
                         </div>
                     )}
@@ -395,9 +405,11 @@ function ScheduleCard({
                         </div>
                     )}
                 </div>
-                <p className="line-clamp-3 text-sm leading-6 md:line-clamp-none">
-                    {schedule.content}
-                </p>
+                {schedule.content && (
+                    <p className="line-clamp-3 text-sm leading-6 md:line-clamp-none">
+                        {schedule.content}
+                    </p>
+                )}
                 {(schedule.type === 'business' ||
                     schedule.type === 'internal_notice' ||
                     schedule.type === 'cleaning_duty') &&
@@ -406,14 +418,6 @@ function ScheduleCard({
                             {schedule.memo}
                         </p>
                     )}
-                {schedule.assigned_users.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                        <Users className="size-4" />
-                        {schedule.assigned_users
-                            .map((user) => user.name)
-                            .join('、')}
-                    </div>
-                )}
             </CardContent>
         </>
     );
@@ -432,27 +436,20 @@ function ScheduleCard({
                 </Link>
             )}
             <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
-                <div
-                    className={
-                        schedule.type === 'construction'
-                            ? 'grid gap-2 sm:grid-cols-3'
-                            : scheduleDetail === null
-                              ? 'grid gap-2'
-                              : 'grid gap-2 sm:grid-cols-2'
-                    }
-                >
-                    {schedule.type === 'construction' && (
-                        <Button asChild className="min-h-11 justify-center">
-                            <a
-                                href={schedule.google_maps_url}
-                                target="_blank"
-                                rel="noreferrer"
-                            >
-                                <MapPin className="size-4" />
-                                ナビ
-                            </a>
-                        </Button>
-                    )}
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {schedule.type === 'construction' &&
+                        schedule.google_maps_url && (
+                            <Button asChild className="min-h-11 justify-center">
+                                <a
+                                    href={schedule.google_maps_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    <MapPin className="size-4" />
+                                    ナビ
+                                </a>
+                            </Button>
+                        )}
                     {scheduleDetail !== null && (
                         <Button
                             asChild

@@ -114,7 +114,7 @@ export default function ConstructionScheduleShow({
                                 内容
                             </p>
                             <p className="mt-2 leading-7 whitespace-pre-line">
-                                {schedule.content}
+                                {schedule.content || '未設定'}
                             </p>
                         </div>
 
@@ -127,21 +127,23 @@ export default function ConstructionScheduleShow({
                             </div>
                         )}
 
-                        <div className="grid gap-2 sm:grid-cols-2">
-                            <Button
-                                asChild
-                                className="min-h-11 justify-center sm:justify-start"
-                            >
-                                <a
-                                    href={schedule.google_maps_url}
-                                    target="_blank"
-                                    rel="noreferrer"
+                        {schedule.google_maps_url && (
+                            <div className="grid gap-2 sm:grid-cols-2">
+                                <Button
+                                    asChild
+                                    className="min-h-11 justify-center sm:justify-start"
                                 >
-                                    <MapPin className="size-4" />
-                                    Google Mapで開く
-                                </a>
-                            </Button>
-                        </div>
+                                    <a
+                                        href={schedule.google_maps_url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                    >
+                                        <MapPin className="size-4" />
+                                        Google Mapで開く
+                                    </a>
+                                </Button>
+                            </div>
+                        )}
 
                         <section id="guide-files" className="space-y-3">
                             <h2 className="font-semibold">現場案内図</h2>
@@ -177,16 +179,23 @@ export default function ConstructionScheduleShow({
 
             <div className="fixed right-0 bottom-0 left-0 z-20 border-t border-neutral-200 bg-white/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-2xl backdrop-blur md:hidden dark:border-neutral-800 dark:bg-neutral-950/95">
                 <div className="grid grid-cols-2 gap-2">
-                    <Button asChild className="min-h-11">
-                        <a
-                            href={schedule.google_maps_url}
-                            target="_blank"
-                            rel="noreferrer"
-                        >
+                    {schedule.google_maps_url ? (
+                        <Button asChild className="min-h-11">
+                            <a
+                                href={schedule.google_maps_url}
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                <MapPin className="size-4" />
+                                ナビ
+                            </a>
+                        </Button>
+                    ) : (
+                        <Button className="min-h-11" disabled>
                             <MapPin className="size-4" />
-                            ナビ
-                        </a>
-                    </Button>
+                            ナビなし
+                        </Button>
+                    )}
                     {schedule.guide_files.length === 0 ? (
                         <Button variant="outline" className="min-h-11" disabled>
                             <FileText className="size-4" />

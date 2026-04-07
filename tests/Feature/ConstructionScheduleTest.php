@@ -312,6 +312,80 @@ test('blank general contractor names are not remembered', function (): void {
     expect(GeneralContractor::query()->count())->toBe(0);
 });
 
+test('admins can create construction schedules without optional details', function (): void {
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)
+        ->post(route('construction-schedules.store'), [
+            'scheduled_on' => today()->toDateString(),
+            'status' => ConstructionSchedule::STATUS_SCHEDULED,
+            'location' => '東京現場',
+        ])
+        ->assertRedirect();
+
+    $schedule = ConstructionSchedule::query()->where('location', '東京現場')->firstOrFail();
+
+    expect($schedule->meeting_place)->toBeNull()
+        ->and($schedule->content)->toBeNull()
+        ->and($schedule->navigation_address)->toBeNull();
+});
+
+test('construction schedule times cannot overlap selected users existing schedules', function (): void {
+    $admin = User::factory()->admin()->create();
+    $worker = User::factory()->create();
+    $scheduledOn = today()->toDateString();
+
+    $existingSchedule = ConstructionSchedule::factory()->create([
+        'scheduled_on' => $scheduledOn,
+        'starts_at' => '09:00',
+        'ends_at' => '11:00',
+        'location' => '既存予定',
+    ]);
+    $existingSchedule->assignedUsers()->attach($worker);
+
+    $this->actingAs($admin)
+        ->from(route('construction-schedules.create'))
+        ->post(route('construction-schedules.store'), [
+            'scheduled_on' => $scheduledOn,
+            'starts_at' => '10:30',
+            'ends_at' => '12:00',
+            'status' => ConstructionSchedule::STATUS_SCHEDULED,
+            'location' => '重複予定',
+            'assigned_user_ids' => [$worker->id],
+        ])
+        ->assertRedirect(route('construction-schedules.create'))
+        ->assertSessionHasErrors('starts_at');
+
+    expect(ConstructionSchedule::query()->where('location', '重複予定')->exists())->toBeFalse();
+});
+
+test('construction schedule times can start when selected users previous schedules end', function (): void {
+    $admin = User::factory()->admin()->create();
+    $worker = User::factory()->create();
+    $scheduledOn = today()->toDateString();
+
+    $existingSchedule = ConstructionSchedule::factory()->create([
+        'scheduled_on' => $scheduledOn,
+        'starts_at' => '09:00',
+        'ends_at' => '11:00',
+        'location' => '午前予定',
+    ]);
+    $existingSchedule->assignedUsers()->attach($worker);
+
+    $this->actingAs($admin)
+        ->post(route('construction-schedules.store'), [
+            'scheduled_on' => $scheduledOn,
+            'starts_at' => '11:00',
+            'ends_at' => '12:00',
+            'status' => ConstructionSchedule::STATUS_SCHEDULED,
+            'location' => '連続予定',
+            'assigned_user_ids' => [$worker->id],
+        ])
+        ->assertRedirect();
+
+    expect(ConstructionSchedule::query()->where('location', '連続予定')->exists())->toBeTrue();
+});
+
 test('admins can create business schedules with assigned users', function (): void {
     $admin = User::factory()->admin()->create();
     $worker = User::factory()->create();

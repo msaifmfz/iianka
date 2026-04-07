@@ -137,7 +137,7 @@ class ConstructionScheduleController extends Controller
 
         return Inertia::render('construction-schedules/form', [
             'schedule' => null,
-            ...$this->formOptions(),
+            ...$this->formOptions(null),
         ]);
     }
 
@@ -177,7 +177,7 @@ class ConstructionScheduleController extends Controller
 
         return Inertia::render('construction-schedules/form', [
             'schedule' => $this->schedulePayload(collect([$constructionSchedule]))->first(),
-            ...$this->formOptions(),
+            ...$this->formOptions($constructionSchedule),
         ]);
     }
 
@@ -228,7 +228,7 @@ class ConstructionScheduleController extends Controller
                 ->max('scheduled_on'));
         }
 
-        if ($type !== 'construction' && $type !== 'internal_notice' && $type !== 'cleaning_duty') {
+        if (! in_array($type, ['construction', 'internal_notice', 'cleaning_duty'], true)) {
             $dates->push(BusinessSchedule::query()
                 ->whereDate('scheduled_on', '<', $date->toDateString())
                 ->max('scheduled_on'));
@@ -259,7 +259,7 @@ class ConstructionScheduleController extends Controller
                 ->min('scheduled_on'));
         }
 
-        if ($type !== 'construction' && $type !== 'internal_notice' && $type !== 'cleaning_duty') {
+        if (! in_array($type, ['construction', 'internal_notice', 'cleaning_duty'], true)) {
             $dates->push(BusinessSchedule::query()
                 ->whereDate('scheduled_on', '>', $date->toDateString())
                 ->min('scheduled_on'));
@@ -324,7 +324,7 @@ class ConstructionScheduleController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function formOptions(): array
+    private function formOptions(?ConstructionSchedule $ignoredSchedule): array
     {
         return [
             'users' => User::query()->orderBy('name')->get(['id', 'name', 'email']),
@@ -339,7 +339,79 @@ class ConstructionScheduleController extends Controller
                     'guide_files' => $this->guideFilePayload($site->guideFiles),
                 ]),
             'generalContractorOptions' => $this->generalContractorOptions(),
+            'scheduleAvailability' => $this->scheduleAvailability($ignoredSchedule),
         ];
+    }
+
+    /**
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function scheduleAvailability(?ConstructionSchedule $ignoredSchedule): Collection
+    {
+        $constructionSchedules = ConstructionSchedule::query()
+            ->with('assignedUsers:id,name,email')
+            ->when($ignoredSchedule instanceof ConstructionSchedule, fn ($query) => $query->whereKeyNot($ignoredSchedule->id))
+            ->whereNotNull('starts_at')
+            ->whereNotNull('ends_at')
+            ->whereHas('assignedUsers')
+            ->get()
+            ->map(fn (ConstructionSchedule $schedule): array => [
+                'id' => $schedule->id,
+                'type' => 'construction',
+                'title' => $schedule->location,
+                'scheduled_on' => $schedule->scheduled_on->toDateString(),
+                'starts_at' => $schedule->starts_at,
+                'ends_at' => $schedule->ends_at,
+                'time' => $schedule->formattedTime(),
+                'user_ids' => $schedule->assignedUsers->pluck('id')->values(),
+                'user_names' => $schedule->assignedUsers->pluck('name')->values(),
+            ]);
+
+        $businessSchedules = BusinessSchedule::query()
+            ->with('assignedUsers:id,name,email')
+            ->whereNotNull('starts_at')
+            ->whereNotNull('ends_at')
+            ->whereHas('assignedUsers')
+            ->get()
+            ->map(fn (BusinessSchedule $schedule): array => [
+                'id' => $schedule->id,
+                'type' => 'business',
+                'title' => $schedule->location,
+                'scheduled_on' => $schedule->scheduled_on->toDateString(),
+                'starts_at' => $schedule->starts_at,
+                'ends_at' => $schedule->ends_at,
+                'time' => $schedule->formattedTime(),
+                'user_ids' => $schedule->assignedUsers->pluck('id')->values(),
+                'user_names' => $schedule->assignedUsers->pluck('name')->values(),
+            ]);
+
+        $internalNotices = InternalNotice::query()
+            ->with('assignedUsers:id,name,email')
+            ->whereNotNull('starts_at')
+            ->whereNotNull('ends_at')
+            ->whereHas('assignedUsers')
+            ->get()
+            ->map(fn (InternalNotice $notice): array => [
+                'id' => $notice->id,
+                'type' => 'internal_notice',
+                'title' => $notice->title,
+                'scheduled_on' => $notice->scheduled_on->toDateString(),
+                'starts_at' => $notice->starts_at,
+                'ends_at' => $notice->ends_at,
+                'time' => $notice->formattedTime(),
+                'user_ids' => $notice->assignedUsers->pluck('id')->values(),
+                'user_names' => $notice->assignedUsers->pluck('name')->values(),
+            ]);
+
+        return $constructionSchedules
+            ->merge($businessSchedules)
+            ->merge($internalNotices)
+            ->sortBy([
+                ['scheduled_on', 'asc'],
+                ['starts_at', 'asc'],
+                ['title', 'asc'],
+            ])
+            ->values();
     }
 
     /**
@@ -385,7 +457,7 @@ class ConstructionScheduleController extends Controller
     {
         $days = collect();
 
-        if ($type !== 'business' && $type !== 'internal_notice' && $type !== 'cleaning_duty') {
+        if (! in_array($type, ['business', 'internal_notice', 'cleaning_duty'], true)) {
             ConstructionSchedule::query()
                 ->selectRaw('scheduled_on, count(*) as schedule_count')
                 ->whereDate('scheduled_on', '>=', $calendarStart->toDateString())
@@ -409,7 +481,7 @@ class ConstructionScheduleController extends Controller
                 });
         }
 
-        if ($type !== 'construction' && $type !== 'internal_notice' && $type !== 'cleaning_duty') {
+        if (! in_array($type, ['construction', 'internal_notice', 'cleaning_duty'], true)) {
             BusinessSchedule::query()
                 ->selectRaw('scheduled_on, count(*) as schedule_count')
                 ->whereDate('scheduled_on', '>=', $calendarStart->toDateString())

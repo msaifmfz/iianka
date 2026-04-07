@@ -34,14 +34,14 @@ export type ConstructionSchedule = {
     ends_at: string | null;
     time_note: string | null;
     status: ConstructionScheduleStatus;
-    meeting_place: string;
+    meeting_place: string | null;
     personnel: string | null;
     location: string;
     general_contractor: string | null;
     person_in_charge: string | null;
-    content: string;
-    navigation_address: string;
-    google_maps_url: string;
+    content: string | null;
+    navigation_address: string | null;
+    google_maps_url: string | null;
     voucher_checked: boolean;
     voucher_checked_at: string | null;
     voucher_checked_by: ConstructionUser | null;
@@ -60,7 +60,7 @@ export type VoucherConfirmationSchedule = {
     location: string;
     general_contractor: string | null;
     person_in_charge: string | null;
-    content: string;
+    content: string | null;
     voucher_checked: boolean;
     voucher_checked_at: string | null;
     voucher_checked_by: ConstructionUser | null;
@@ -135,3 +135,15 @@ export type ScheduleEvent =
     | BusinessSchedule
     | InternalNotice
     | CleaningDutySchedule;
+
+export type ScheduleAvailability = {
+    id: number;
+    type: 'construction' | 'business' | 'internal_notice';
+    title: string;
+    scheduled_on: string;
+    starts_at: string;
+    ends_at: string;
+    time: string;
+    user_ids: number[];
+    user_names: string[];
+};

@@ -1,5 +1,12 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, ExternalLink, FileText, UploadCloud } from 'lucide-react';
+import {
+    AlertTriangle,
+    ArrowLeft,
+    CheckCircle2,
+    ExternalLink,
+    FileText,
+    UploadCloud,
+} from 'lucide-react';
 import {
     store as scheduleStore,
     update as scheduleUpdate,
@@ -14,6 +21,7 @@ import type {
     ConstructionScheduleStatus,
     ConstructionSite,
     ConstructionUser,
+    ScheduleAvailability,
     SiteGuideFile,
 } from '@/types';
 
@@ -22,6 +30,7 @@ type Props = {
     users: ConstructionUser[];
     sites: ConstructionSite[];
     generalContractorOptions: string[];
+    scheduleAvailability: ScheduleAvailability[];
 };
 
 type ScheduleForm = {
@@ -52,6 +61,15 @@ const statuses: { value: ConstructionScheduleStatus; label: string }[] = [
 ];
 
 const timeNotePresets = ['本日中'];
+const preferredTimeSlots = [
+    ['08:00', '10:00'],
+    ['10:00', '12:00'],
+    ['13:00', '15:00'],
+    ['15:00', '17:00'],
+    ['08:00', '12:00'],
+    ['13:00', '17:00'],
+    ['08:00', '17:00'],
+] as const;
 
 function Field({
     label,
@@ -89,11 +107,73 @@ function guideFileTypeLabel(file: SiteGuideFile) {
     return 'ファイル';
 }
 
+function timeToMinutes(time: string) {
+    const [hours, minutes] = time.slice(0, 5).split(':').map(Number);
+
+    return hours * 60 + minutes;
+}
+
+function timesOverlap(
+    startsAt: string,
+    endsAt: string,
+    existingStartsAt: string,
+    existingEndsAt: string,
+) {
+    return (
+        timeToMinutes(startsAt) < timeToMinutes(existingEndsAt) &&
+        timeToMinutes(endsAt) > timeToMinutes(existingStartsAt)
+    );
+}
+
+function conflictsWithSchedules(
+    startsAt: string,
+    endsAt: string,
+    schedules: ScheduleAvailability[],
+) {
+    if (
+        !startsAt ||
+        !endsAt ||
+        timeToMinutes(startsAt) >= timeToMinutes(endsAt)
+    ) {
+        return false;
+    }
+
+    return schedules.some((schedule) =>
+        timesOverlap(startsAt, endsAt, schedule.starts_at, schedule.ends_at),
+    );
+}
+
+function matchingBusySchedules(
+    schedules: ScheduleAvailability[],
+    scheduledOn: string,
+    assignedUserIds: number[],
+) {
+    if (assignedUserIds.length === 0) {
+        return [];
+    }
+
+    return schedules.filter(
+        (schedule) =>
+            schedule.scheduled_on === scheduledOn &&
+            schedule.user_ids.some((userId) =>
+                assignedUserIds.includes(userId),
+            ),
+    );
+}
+
+function availableTimeSlots(schedules: ScheduleAvailability[]) {
+    return preferredTimeSlots.filter(
+        ([startsAt, endsAt]) =>
+            !conflictsWithSchedules(startsAt, endsAt, schedules),
+    );
+}
+
 export default function ConstructionScheduleForm({
     schedule,
     users,
     sites,
     generalContractorOptions,
+    scheduleAvailability,
 }: Props) {
     const { data, setData, post, processing, progress, errors } =
         useForm<ScheduleForm>({
@@ -121,6 +201,17 @@ export default function ConstructionScheduleForm({
     const selectedSite = sites.find(
         (site) => site.id === data.construction_site_id,
     );
+    const busySchedules = matchingBusySchedules(
+        scheduleAvailability,
+        data.scheduled_on,
+        data.assigned_user_ids,
+    );
+    const hasTimeConflict = conflictsWithSchedules(
+        data.starts_at,
+        data.ends_at,
+        busySchedules,
+    );
+    const suggestedTimeSlots = availableTimeSlots(busySchedules);
 
     function submit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -152,6 +243,17 @@ export default function ConstructionScheduleForm({
     function setEndTime(endsAt: string) {
         setData((values) => ({
             ...values,
+            ends_at: endsAt,
+            time_note: timeNotePresets.includes(values.time_note)
+                ? ''
+                : values.time_note,
+        }));
+    }
+
+    function setTimeRange(startsAt: string, endsAt: string) {
+        setData((values) => ({
+            ...values,
+            starts_at: startsAt,
             ends_at: endsAt,
             time_note: timeNotePresets.includes(values.time_note)
                 ? ''
@@ -194,6 +296,60 @@ export default function ConstructionScheduleForm({
                                 }
                             />
                         </Field>
+                        <div className="rounded-2xl border p-4 md:col-span-3 dark:border-neutral-800">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                    <h2 className="font-semibold">
+                                        担当ユーザー
+                                    </h2>
+                                    <p className="mt-1 text-xs text-muted-foreground">
+                                        選択した担当ユーザーの予定をもとに空き時間を表示します。
+                                    </p>
+                                </div>
+                                {data.assigned_user_ids.length > 0 && (
+                                    <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900 dark:bg-amber-950 dark:text-amber-100">
+                                        {data.assigned_user_ids.length}名選択中
+                                    </span>
+                                )}
+                            </div>
+                            <div className="mt-3 grid gap-2 sm:grid-cols-2 md:grid-cols-3">
+                                {users.map((user) => (
+                                    <label
+                                        key={user.id}
+                                        className={cn(
+                                            'flex items-center gap-2 rounded-xl border p-3 text-sm transition',
+                                            data.assigned_user_ids.includes(
+                                                user.id,
+                                            )
+                                                ? 'border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100'
+                                                : 'border-neutral-200 hover:bg-muted/50 dark:border-neutral-800',
+                                        )}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={data.assigned_user_ids.includes(
+                                                user.id,
+                                            )}
+                                            onChange={() =>
+                                                setData(
+                                                    'assigned_user_ids',
+                                                    toggleNumber(
+                                                        data.assigned_user_ids,
+                                                        user.id,
+                                                    ),
+                                                )
+                                            }
+                                        />
+                                        {user.name}
+                                    </label>
+                                ))}
+                            </div>
+                            {errors.assigned_user_ids && (
+                                <p className="mt-2 text-xs text-destructive">
+                                    {errors.assigned_user_ids}
+                                </p>
+                            )}
+                        </div>
                         <Field label="開始時間" error={errors.starts_at}>
                             <Input
                                 type="time"
@@ -212,6 +368,99 @@ export default function ConstructionScheduleForm({
                                 }
                             />
                         </Field>
+                        <div className="rounded-2xl border bg-neutral-50 p-4 md:col-span-3 dark:border-neutral-800 dark:bg-neutral-900/50">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                    <h2 className="font-semibold">
+                                        時間の空き状況
+                                    </h2>
+                                    <p className="mt-1 text-xs text-muted-foreground">
+                                        {data.assigned_user_ids.length === 0
+                                            ? '担当ユーザーを選択すると、その日の重複予定を確認できます。'
+                                            : `${data.scheduled_on} の選択ユーザーの予定を表示しています。`}
+                                    </p>
+                                </div>
+                                {data.assigned_user_ids.length > 0 &&
+                                    (hasTimeConflict ? (
+                                        <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-800 dark:bg-rose-950 dark:text-rose-100">
+                                            <AlertTriangle className="size-3.5" />
+                                            重複あり
+                                        </span>
+                                    ) : (
+                                        data.starts_at &&
+                                        data.ends_at && (
+                                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-100">
+                                                <CheckCircle2 className="size-3.5" />
+                                                登録可能
+                                            </span>
+                                        )
+                                    ))}
+                            </div>
+
+                            {busySchedules.length > 0 ? (
+                                <div className="mt-4 grid gap-2 md:grid-cols-2">
+                                    {busySchedules.map((busySchedule) => (
+                                        <div
+                                            key={`${busySchedule.type}-${busySchedule.id}`}
+                                            className="rounded-xl bg-white p-3 text-sm ring-1 ring-neutral-200 dark:bg-neutral-950 dark:ring-neutral-800"
+                                        >
+                                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                                <span className="font-semibold">
+                                                    {busySchedule.time}
+                                                </span>
+                                                <span className="text-xs text-muted-foreground">
+                                                    {busySchedule.user_names.join(
+                                                        '、',
+                                                    )}
+                                                </span>
+                                            </div>
+                                            <p className="mt-1 text-muted-foreground">
+                                                {busySchedule.title}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                data.assigned_user_ids.length > 0 && (
+                                    <p className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
+                                        この日の選択ユーザーには時間指定の予定がありません。
+                                    </p>
+                                )
+                            )}
+
+                            {data.assigned_user_ids.length > 0 && (
+                                <div className="mt-4">
+                                    <p className="text-xs font-semibold text-muted-foreground">
+                                        空き時間クイック選択
+                                    </p>
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                        {suggestedTimeSlots.length > 0 ? (
+                                            suggestedTimeSlots.map(
+                                                ([startsAt, endsAt]) => (
+                                                    <button
+                                                        key={`${startsAt}-${endsAt}`}
+                                                        type="button"
+                                                        className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold ring-1 ring-neutral-200 transition hover:bg-amber-50 hover:text-amber-900 dark:bg-neutral-950 dark:ring-neutral-800 dark:hover:bg-amber-950/40 dark:hover:text-amber-100"
+                                                        onClick={() =>
+                                                            setTimeRange(
+                                                                startsAt,
+                                                                endsAt,
+                                                            )
+                                                        }
+                                                    >
+                                                        {startsAt} - {endsAt}
+                                                    </button>
+                                                ),
+                                            )
+                                        ) : (
+                                            <span className="text-sm text-muted-foreground">
+                                                推奨枠はすべて既存予定と重なっています。予定一覧を見ながら手入力してください。
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                         <Field label="時間メモ" error={errors.time_note}>
                             <Input
                                 value={data.time_note}
@@ -277,7 +526,10 @@ export default function ConstructionScheduleForm({
                                 }
                             />
                         </Field>
-                        <Field label="集合場所" error={errors.meeting_place}>
+                        <Field
+                            label="集合場所（任意）"
+                            error={errors.meeting_place}
+                        >
                             <Input
                                 value={data.meeting_place}
                                 onChange={(event) =>
@@ -322,7 +574,7 @@ export default function ConstructionScheduleForm({
                             />
                         </Field>
                         <Field
-                            label="ナビ（Google Map用住所）"
+                            label="ナビ（Google Map用住所・任意）"
                             error={errors.navigation_address}
                         >
                             <Input
@@ -363,7 +615,7 @@ export default function ConstructionScheduleForm({
                         </Field>
                     </section>
 
-                    <Field label="内容" error={errors.content}>
+                    <Field label="内容（任意）" error={errors.content}>
                         <textarea
                             className="min-h-32 rounded-md border bg-transparent px-3 py-2 text-sm"
                             value={data.content}
@@ -373,41 +625,7 @@ export default function ConstructionScheduleForm({
                         />
                     </Field>
 
-                    <section className="grid gap-4 md:grid-cols-2">
-                        <div className="rounded-2xl border p-4 dark:border-neutral-800">
-                            <h2 className="font-semibold">担当ユーザー</h2>
-                            <div className="mt-3 grid gap-2">
-                                {users.map((user) => (
-                                    <label
-                                        key={user.id}
-                                        className="flex items-center gap-2 text-sm"
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            checked={data.assigned_user_ids.includes(
-                                                user.id,
-                                            )}
-                                            onChange={() =>
-                                                setData(
-                                                    'assigned_user_ids',
-                                                    toggleNumber(
-                                                        data.assigned_user_ids,
-                                                        user.id,
-                                                    ),
-                                                )
-                                            }
-                                        />
-                                        {user.name}
-                                    </label>
-                                ))}
-                            </div>
-                            {errors.assigned_user_ids && (
-                                <p className="mt-2 text-xs text-destructive">
-                                    {errors.assigned_user_ids}
-                                </p>
-                            )}
-                        </div>
-
+                    <section className="grid gap-4">
                         <div className="rounded-2xl border p-4 dark:border-neutral-800">
                             <h2 className="font-semibold">現場案内図</h2>
                             <div className="mt-3 grid gap-2">
@@ -519,8 +737,16 @@ export default function ConstructionScheduleForm({
                         />
                     )}
 
-                    <div className="flex justify-end">
-                        <Button type="submit" disabled={processing}>
+                    <div className="flex flex-wrap items-center justify-end gap-3">
+                        {hasTimeConflict && (
+                            <p className="text-sm font-medium text-destructive">
+                                担当ユーザーの既存予定と重複しています。
+                            </p>
+                        )}
+                        <Button
+                            type="submit"
+                            disabled={processing || hasTimeConflict}
+                        >
                             {processing ? '保存中...' : '保存'}
                         </Button>
                     </div>
