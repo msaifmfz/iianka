@@ -636,7 +636,7 @@ export default function ConstructionSchedulesIndex({
                                     <Button asChild className="w-full">
                                         <Link href={scheduleCreate()}>
                                             <Plus className="size-4" />
-                                            新規工事予定
+                                            施工予定
                                         </Link>
                                     </Button>
                                     <Button
@@ -646,7 +646,7 @@ export default function ConstructionSchedulesIndex({
                                     >
                                         <Link href={businessScheduleCreate()}>
                                             <BriefcaseBusiness className="size-4" />
-                                            新規業務予定（外部）
+                                            業務予定
                                         </Link>
                                     </Button>
                                     <Button
@@ -656,7 +656,7 @@ export default function ConstructionSchedulesIndex({
                                     >
                                         <Link href={internalNoticeCreate()}>
                                             <Megaphone className="size-4" />
-                                            新規業務連絡
+                                            業務連絡
                                         </Link>
                                     </Button>
                                     <Button

@@ -202,7 +202,7 @@ function VoucherScheduleCard({
                             }
                         />
                         <span>
-                            伝票を確認済みにする
+                            確認済み
                             {!canManage && (
                                 <span className="ml-2 text-xs font-normal text-muted-foreground">
                                     管理者のみ編集できます
