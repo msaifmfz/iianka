@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('business_schedules', function (Blueprint $table) {
+        Schema::create('business_schedules', function (Blueprint $table): void {
             $table->id();
             $table->date('scheduled_on')->index();
             $table->time('starts_at')->nullable();

@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('construction_schedule_site_guide_file', function (Blueprint $table) {
+        Schema::create('construction_schedule_site_guide_file', function (Blueprint $table): void {
             $table->foreignId('construction_schedule_id')->constrained()->cascadeOnDelete();
             $table->foreignId('site_guide_file_id')->constrained()->cascadeOnDelete();
             $table->timestamps();

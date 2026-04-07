@@ -10,7 +10,7 @@ Route::inertia('/', 'welcome', [
     'canRegister' => Features::enabled(Features::registration()),
 ])->name('home');
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::redirect('dashboard', 'construction-schedules')->name('dashboard');
     Route::resource('construction-schedules', ConstructionScheduleController::class);
     Route::resource('business-schedules', BusinessScheduleController::class);

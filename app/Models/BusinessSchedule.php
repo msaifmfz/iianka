@@ -3,33 +3,34 @@
 namespace App\Models;
 
 use Database\Factories\BusinessScheduleFactory;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Carbon;
+use Override;
 
+#[Fillable([
+    'scheduled_on',
+    'starts_at',
+    'ends_at',
+    'time_note',
+    'personnel',
+    'location',
+    'general_contractor',
+    'person_in_charge',
+    'content',
+    'memo',
+])]
 class BusinessSchedule extends Model
 {
     /** @use HasFactory<BusinessScheduleFactory> */
     use HasFactory;
 
-    protected $fillable = [
-        'scheduled_on',
-        'starts_at',
-        'ends_at',
-        'time_note',
-        'personnel',
-        'location',
-        'general_contractor',
-        'person_in_charge',
-        'content',
-        'memo',
-    ];
-
     /**
      * @return array<string, string>
      */
-    #[\Override]
+    #[Override]
     protected function casts(): array
     {
         return [

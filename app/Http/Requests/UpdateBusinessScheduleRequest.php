@@ -1,13 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Override;
 
 class UpdateBusinessScheduleRequest extends FormRequest
 {
-    #[\Override]
+    #[Override]
     protected function prepareForValidation(): void
     {
         if ($this->has('general_contractor')) {

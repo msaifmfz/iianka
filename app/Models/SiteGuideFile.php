@@ -3,25 +3,25 @@
 namespace App\Models;
 
 use Database\Factories\SiteGuideFileFactory;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
 
+#[Fillable([
+    'construction_site_id',
+    'construction_schedule_id',
+    'name',
+    'disk',
+    'path',
+    'mime_type',
+    'size',
+])]
 class SiteGuideFile extends Model
 {
     /** @use HasFactory<SiteGuideFileFactory> */
     use HasFactory;
-
-    protected $fillable = [
-        'construction_site_id',
-        'construction_schedule_id',
-        'name',
-        'disk',
-        'path',
-        'mime_type',
-        'size',
-    ];
 
     /**
      * @return BelongsTo<ConstructionSite, $this>

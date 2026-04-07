@@ -278,7 +278,7 @@ class ConstructionScheduleController extends Controller
                 ->with('guideFiles')
                 ->orderBy('name')
                 ->get()
-                ->map(fn (ConstructionSite $site) => [
+                ->map(fn (ConstructionSite $site): array => [
                     'id' => $site->id,
                     'name' => $site->name,
                     'address' => $site->address,
@@ -396,7 +396,7 @@ class ConstructionScheduleController extends Controller
      */
     private function schedulePayload(Collection $schedules): Collection
     {
-        return $schedules->toBase()->map(fn (ConstructionSchedule $schedule) => [
+        return $schedules->toBase()->map(fn (ConstructionSchedule $schedule): array => [
             'id' => $schedule->id,
             'type' => 'construction',
             'scheduled_on' => $schedule->scheduled_on->toDateString(),
@@ -418,7 +418,7 @@ class ConstructionScheduleController extends Controller
                 'name' => $schedule->site->name,
                 'address' => $schedule->site->address,
             ],
-            'assigned_users' => $schedule->assignedUsers->map(fn (User $user) => [
+            'assigned_users' => $schedule->assignedUsers->map(fn (User $user): array => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
@@ -434,7 +434,7 @@ class ConstructionScheduleController extends Controller
      */
     private function businessSchedulePayload(Collection $schedules): Collection
     {
-        return $schedules->toBase()->map(fn (BusinessSchedule $schedule) => [
+        return $schedules->toBase()->map(fn (BusinessSchedule $schedule): array => [
             'id' => $schedule->id,
             'type' => 'business',
             'scheduled_on' => $schedule->scheduled_on->toDateString(),
@@ -448,7 +448,7 @@ class ConstructionScheduleController extends Controller
             'person_in_charge' => $schedule->person_in_charge,
             'content' => $schedule->content,
             'memo' => $schedule->memo,
-            'assigned_users' => $schedule->assignedUsers->map(fn (User $user) => [
+            'assigned_users' => $schedule->assignedUsers->map(fn (User $user): array => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
@@ -462,7 +462,7 @@ class ConstructionScheduleController extends Controller
      */
     private function guideFilePayload(Collection $files): Collection
     {
-        return $files->map(fn (SiteGuideFile $file) => [
+        return $files->map(fn (SiteGuideFile $file): array => [
             'id' => $file->id,
             'name' => $file->name,
             'url' => $file->url(),

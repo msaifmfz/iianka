@@ -173,7 +173,7 @@ class BusinessScheduleController extends Controller
      */
     private function schedulePayload(Collection $schedules): Collection
     {
-        return $schedules->map(fn (BusinessSchedule $schedule) => [
+        return $schedules->map(fn (BusinessSchedule $schedule): array => [
             'id' => $schedule->id,
             'type' => 'business',
             'scheduled_on' => $schedule->scheduled_on->toDateString(),
@@ -187,7 +187,7 @@ class BusinessScheduleController extends Controller
             'person_in_charge' => $schedule->person_in_charge,
             'content' => $schedule->content,
             'memo' => $schedule->memo,
-            'assigned_users' => $schedule->assignedUsers->map(fn (User $user) => [
+            'assigned_users' => $schedule->assignedUsers->map(fn (User $user): array => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,

@@ -37,7 +37,7 @@ class ConstructionScheduleFactory extends Factory
 
     public function scheduledToday(): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn (array $attributes): array => [
             'scheduled_on' => today()->toDateString(),
         ]);
     }

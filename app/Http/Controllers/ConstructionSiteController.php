@@ -21,7 +21,7 @@ class ConstructionSiteController extends Controller
             ->with('guideFiles')
             ->orderBy('name')
             ->get()
-            ->map(fn (ConstructionSite $site) => [
+            ->map(fn (ConstructionSite $site): array => [
                 'id' => $site->id,
                 'name' => $site->name,
                 'address' => $site->address,
@@ -130,7 +130,7 @@ class ConstructionSiteController extends Controller
      */
     private function guideFilePayload(Collection $files): Collection
     {
-        return $files->map(fn (SiteGuideFile $file) => [
+        return $files->map(fn (SiteGuideFile $file): array => [
             'id' => $file->id,
             'name' => $file->name,
             'url' => $file->url(),

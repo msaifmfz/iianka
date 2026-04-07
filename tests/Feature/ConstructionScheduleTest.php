@@ -11,7 +11,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 
-test('users can see their own and others schedules for today', function () {
+test('users can see their own and others schedules for today', function (): void {
     $user = User::factory()->create();
     $otherUser = User::factory()->create();
 
@@ -28,20 +28,20 @@ test('users can see their own and others schedules for today', function () {
     $this->actingAs($user)
         ->get(route('construction-schedules.index'))
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
+        ->assertInertia(fn (Assert $page): Assert => $page
             ->component('construction-schedules/index')
-            ->has('mySchedules', 1, fn (Assert $page) => $page
+            ->has('mySchedules', 1, fn (Assert $page): Assert => $page
                 ->where('location', '銀座ビル改修')
                 ->etc()
             )
-            ->has('teamSchedules', 1, fn (Assert $page) => $page
+            ->has('teamSchedules', 1, fn (Assert $page): Assert => $page
                 ->where('location', '渋谷駅前工事')
                 ->etc()
             )
         );
 });
 
-test('users can browse schedules in the requested month', function () {
+test('users can browse schedules in the requested month', function (): void {
     $user = User::factory()->create();
     $currentMonthSchedule = ConstructionSchedule::factory()
         ->scheduledToday()
@@ -62,18 +62,18 @@ test('users can browse schedules in the requested month', function () {
             'date' => $nextMonthDate,
         ]))
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
+        ->assertInertia(fn (Assert $page): Assert => $page
             ->component('construction-schedules/index')
             ->where('filters.range', 'month')
             ->where('filters.date', $nextMonthDate)
-            ->has('mySchedules', 1, fn (Assert $page) => $page
+            ->has('mySchedules', 1, fn (Assert $page): Assert => $page
                 ->where('location', '翌月の現場')
                 ->etc()
             )
         );
 });
 
-test('calendar includes adjacent month offset days and non empty day navigation', function () {
+test('calendar includes adjacent month offset days and non empty day navigation', function (): void {
     $user = User::factory()->create();
     $previousDate = '2026-04-30';
     $selectedDate = '2026-05-04';
@@ -99,19 +99,19 @@ test('calendar includes adjacent month offset days and non empty day navigation'
             'date' => $selectedDate,
         ]))
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
+        ->assertInertia(fn (Assert $page): Assert => $page
             ->component('construction-schedules/index')
             ->where('scheduleNavigation.previous_date', $previousDate)
             ->where('scheduleNavigation.next_date', $nextDate)
-            ->where('calendarDays', fn ($calendarDays) => collect($calendarDays)->contains(
-                fn (array $day) => $day['date'] === $previousDate && $day['count'] === 1
+            ->where('calendarDays', fn ($calendarDays): bool => collect($calendarDays)->contains(
+                fn (array $day): bool => $day['date'] === $previousDate && $day['count'] === 1
             ) && collect($calendarDays)->contains(
-                fn (array $day) => $day['date'] === $nextDate && $day['count'] === 1
+                fn (array $day): bool => $day['date'] === $nextDate && $day['count'] === 1
             ))
         );
 });
 
-test('calendar includes construction and business schedules together', function () {
+test('calendar includes construction and business schedules together', function (): void {
     $user = User::factory()->create();
     $date = '2026-05-04';
 
@@ -135,17 +135,17 @@ test('calendar includes construction and business schedules together', function 
             'date' => $date,
         ]))
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
+        ->assertInertia(fn (Assert $page): Assert => $page
             ->component('construction-schedules/index')
             ->where('filters.type', 'all')
             ->has('mySchedules', 2)
-            ->where('mySchedules', fn ($schedules) => collect($schedules)->contains(
-                fn (array $schedule) => $schedule['type'] === 'construction' && $schedule['location'] === '選択中の工事'
+            ->where('mySchedules', fn ($schedules): bool => collect($schedules)->contains(
+                fn (array $schedule): bool => $schedule['type'] === 'construction' && $schedule['location'] === '選択中の工事'
             ) && collect($schedules)->contains(
-                fn (array $schedule) => $schedule['type'] === 'business' && $schedule['location'] === '安全協議会'
+                fn (array $schedule): bool => $schedule['type'] === 'business' && $schedule['location'] === '安全協議会'
             ))
             ->where('calendarDays', fn ($calendarDays) => collect($calendarDays)->contains(
-                fn (array $day) => $day['date'] === $date
+                fn (array $day): bool => $day['date'] === $date
                     && $day['count'] === 2
                     && $day['construction_count'] === 1
                     && $day['business_count'] === 1
@@ -153,7 +153,7 @@ test('calendar includes construction and business schedules together', function 
         );
 });
 
-test('calendar can filter to business schedules', function () {
+test('calendar can filter to business schedules', function (): void {
     $user = User::factory()->create();
     $date = '2026-05-04';
 
@@ -177,16 +177,16 @@ test('calendar can filter to business schedules', function () {
             'type' => 'business',
         ]))
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
+        ->assertInertia(fn (Assert $page): Assert => $page
             ->component('construction-schedules/index')
             ->where('filters.type', 'business')
-            ->has('mySchedules', 1, fn (Assert $page) => $page
+            ->has('mySchedules', 1, fn (Assert $page): Assert => $page
                 ->where('type', 'business')
                 ->where('location', '定時総会')
                 ->etc()
             )
             ->where('calendarDays', fn ($calendarDays) => collect($calendarDays)->contains(
-                fn (array $day) => $day['date'] === $date
+                fn (array $day): bool => $day['date'] === $date
                     && $day['count'] === 1
                     && $day['construction_count'] === 0
                     && $day['business_count'] === 1
@@ -194,7 +194,7 @@ test('calendar can filter to business schedules', function () {
         );
 });
 
-test('users can open a day with only business schedules', function () {
+test('users can open a day with only business schedules', function (): void {
     $user = User::factory()->create();
     $date = '2026-05-04';
 
@@ -212,10 +212,10 @@ test('users can open a day with only business schedules', function () {
             'type' => 'all',
         ]))
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
+        ->assertInertia(fn (Assert $page): Assert => $page
             ->component('construction-schedules/index')
             ->where('filters.type', 'all')
-            ->has('mySchedules', 1, fn (Assert $page) => $page
+            ->has('mySchedules', 1, fn (Assert $page): Assert => $page
                 ->where('type', 'business')
                 ->where('location', '定時総会')
                 ->etc()
@@ -223,7 +223,7 @@ test('users can open a day with only business schedules', function () {
         );
 });
 
-test('database seeder creates demo schedules across adjacent months', function () {
+test('database seeder creates demo schedules across adjacent months', function (): void {
     $this->seed(DatabaseSeeder::class);
 
     expect(User::query()->where('email', 'admin@example.com')->where('is_admin', true)->exists())->toBeTrue()
@@ -233,7 +233,7 @@ test('database seeder creates demo schedules across adjacent months', function (
         ->and(BusinessSchedule::query()->whereDate('scheduled_on', today()->addDays(2)->toDateString())->exists())->toBeTrue();
 });
 
-test('admins can create schedules with assigned users and guide files', function () {
+test('admins can create schedules with assigned users and guide files', function (): void {
     Storage::fake('public');
 
     $admin = User::factory()->admin()->create();
@@ -277,7 +277,7 @@ test('admins can create schedules with assigned users and guide files', function
     Storage::disk('public')->assertExists($schedule->directGuideFiles->first()->path);
 });
 
-test('schedule form includes remembered general contractor options', function () {
+test('schedule form includes remembered general contractor options', function (): void {
     $admin = User::factory()->admin()->create();
 
     GeneralContractor::factory()->create(['name' => '大成建設']);
@@ -286,15 +286,15 @@ test('schedule form includes remembered general contractor options', function ()
     $this->actingAs($admin)
         ->get(route('construction-schedules.create'))
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
+        ->assertInertia(fn (Assert $page): Assert => $page
             ->component('construction-schedules/form')
-            ->where('generalContractorOptions', fn ($options) => collect($options)->contains('大成建設')
+            ->where('generalContractorOptions', fn ($options): bool => collect($options)->contains('大成建設')
                 && collect($options)->contains('清水建設'))
             ->etc()
         );
 });
 
-test('blank general contractor names are not remembered', function () {
+test('blank general contractor names are not remembered', function (): void {
     $admin = User::factory()->admin()->create();
 
     $this->actingAs($admin)
@@ -312,7 +312,7 @@ test('blank general contractor names are not remembered', function () {
     expect(GeneralContractor::query()->count())->toBe(0);
 });
 
-test('admins can create business schedules with assigned users', function () {
+test('admins can create business schedules with assigned users', function (): void {
     $admin = User::factory()->admin()->create();
     $worker = User::factory()->create();
 
@@ -342,7 +342,7 @@ test('admins can create business schedules with assigned users', function () {
     expect(GeneralContractor::query()->where('name', '山田建設')->exists())->toBeTrue();
 });
 
-test('schedule time note supports same day preset', function () {
+test('schedule time note supports same day preset', function (): void {
     $schedule = ConstructionSchedule::factory()->make([
         'starts_at' => '08:00',
         'ends_at' => '17:00',
@@ -352,7 +352,7 @@ test('schedule time note supports same day preset', function () {
     expect($schedule->formattedTime())->toBe('本日中');
 });
 
-test('non admins cannot create schedules', function () {
+test('non admins cannot create schedules', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)
@@ -367,7 +367,7 @@ test('non admins cannot create schedules', function () {
         ->assertForbidden();
 });
 
-test('google maps url encodes japanese addresses', function () {
+test('google maps url encodes japanese addresses', function (): void {
     $schedule = ConstructionSchedule::factory()->make([
         'navigation_address' => '東京都港区芝公園4丁目2-8',
     ]);
@@ -377,7 +377,7 @@ test('google maps url encodes japanese addresses', function () {
         ->toContain(rawurlencode('東京都港区芝公園4丁目2-8'));
 });
 
-test('schedule guide uploads must be pdfs or images', function () {
+test('schedule guide uploads must be pdfs or images', function (): void {
     Storage::fake('public');
 
     $admin = User::factory()->admin()->create();

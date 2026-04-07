@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\ConstructionScheduleFactory;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +11,23 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Override;
 
+#[Fillable([
+    'construction_site_id',
+    'scheduled_on',
+    'starts_at',
+    'ends_at',
+    'time_note',
+    'status',
+    'meeting_place',
+    'personnel',
+    'location',
+    'general_contractor',
+    'person_in_charge',
+    'content',
+    'navigation_address',
+])]
 class ConstructionSchedule extends Model
 {
     /** @use HasFactory<ConstructionScheduleFactory> */
@@ -24,26 +41,10 @@ class ConstructionSchedule extends Model
 
     public const STATUS_CANCELED = 'canceled';
 
-    protected $fillable = [
-        'construction_site_id',
-        'scheduled_on',
-        'starts_at',
-        'ends_at',
-        'time_note',
-        'status',
-        'meeting_place',
-        'personnel',
-        'location',
-        'general_contractor',
-        'person_in_charge',
-        'content',
-        'navigation_address',
-    ];
-
     /**
      * @return array<string, string>
      */
-    #[\Override]
+    #[Override]
     protected function casts(): array
     {
         return [

@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('construction_schedules', function (Blueprint $table) {
+        Schema::create('construction_schedules', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('construction_site_id')->nullable()->constrained()->nullOnDelete();
             $table->date('scheduled_on')->index();
