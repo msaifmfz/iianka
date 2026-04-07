@@ -21,6 +21,7 @@ class ConstructionScheduleFactory extends Factory
         return [
             'construction_site_id' => ConstructionSite::factory(),
             'scheduled_on' => fake()->dateTimeBetween('-1 week', '+1 month')->format('Y-m-d'),
+            'schedule_number' => null,
             'starts_at' => '08:00',
             'ends_at' => '17:00',
             'time_note' => null,

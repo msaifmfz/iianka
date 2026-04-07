@@ -104,6 +104,7 @@ class BusinessScheduleController extends Controller
         return collect($validated)
             ->only([
                 'scheduled_on',
+                'schedule_number',
                 'starts_at',
                 'ends_at',
                 'time_note',
@@ -177,6 +178,7 @@ class BusinessScheduleController extends Controller
             'id' => $schedule->id,
             'type' => 'business',
             'scheduled_on' => $schedule->scheduled_on->toDateString(),
+            'schedule_number' => $schedule->schedule_number,
             'time' => $schedule->formattedTime(),
             'starts_at' => $schedule->starts_at,
             'ends_at' => $schedule->ends_at,

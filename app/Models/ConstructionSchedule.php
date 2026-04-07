@@ -16,6 +16,7 @@ use Override;
 #[Fillable([
     'construction_site_id',
     'scheduled_on',
+    'schedule_number',
     'starts_at',
     'ends_at',
     'time_note',

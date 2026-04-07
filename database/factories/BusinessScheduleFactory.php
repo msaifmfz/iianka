@@ -19,6 +19,7 @@ class BusinessScheduleFactory extends Factory
     {
         return [
             'scheduled_on' => fake()->dateTimeBetween('-1 week', '+1 month')->format('Y-m-d'),
+            'schedule_number' => null,
             'starts_at' => '10:00',
             'ends_at' => '11:00',
             'time_note' => null,

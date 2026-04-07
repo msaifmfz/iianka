@@ -34,10 +34,102 @@ test('users can see their own and others schedules for today', function (): void
                 ->where('location', '銀座ビル改修')
                 ->etc()
             )
-            ->has('teamSchedules', 1, fn (Assert $page): Assert => $page
-                ->where('location', '渋谷駅前工事')
-                ->etc()
-            )
+            ->has('teamSchedules', 2)
+            ->where('teamSchedules', fn ($schedules): bool => collect($schedules)->contains(
+                fn (array $schedule): bool => $schedule['location'] === '銀座ビル改修'
+            ) && collect($schedules)->contains(
+                fn (array $schedule): bool => $schedule['location'] === '渋谷駅前工事'
+            ))
+        );
+});
+
+test('schedules are ordered by number before time', function (): void {
+    $user = User::factory()->create();
+    $date = '2026-05-04';
+
+    $thirdSchedule = ConstructionSchedule::factory()->create([
+        'scheduled_on' => $date,
+        'schedule_number' => 3,
+        'starts_at' => '08:00',
+        'location' => '3番の工事',
+    ]);
+    $firstSchedule = BusinessSchedule::factory()->create([
+        'scheduled_on' => $date,
+        'schedule_number' => 1,
+        'starts_at' => '17:00',
+        'location' => '1番の業務',
+    ]);
+    $secondSchedule = ConstructionSchedule::factory()->create([
+        'scheduled_on' => $date,
+        'schedule_number' => 2,
+        'starts_at' => '09:00',
+        'location' => '2番の工事',
+    ]);
+
+    $thirdSchedule->assignedUsers()->attach($user);
+    $firstSchedule->assignedUsers()->attach($user);
+    $secondSchedule->assignedUsers()->attach($user);
+
+    $this->actingAs($user)
+        ->get(route('construction-schedules.index', [
+            'range' => 'today',
+            'date' => $date,
+        ]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->where('mySchedules.0.location', '1番の業務')
+            ->where('mySchedules.1.location', '2番の工事')
+            ->where('mySchedules.2.location', '3番の工事')
+            ->where('teamSchedules.0.schedule_number', 1)
+            ->where('teamSchedules.1.schedule_number', 2)
+            ->where('teamSchedules.2.schedule_number', 3)
+        );
+});
+
+test('admin can filter calendar schedules by multiple users', function (): void {
+    $admin = User::factory()->admin()->create();
+    $firstWorker = User::factory()->create(['name' => '一番作業員']);
+    $secondWorker = User::factory()->create(['name' => '二番作業員']);
+    $hiddenWorker = User::factory()->create(['name' => '非表示作業員']);
+    $date = '2026-05-04';
+
+    $firstSchedule = ConstructionSchedule::factory()->create([
+        'scheduled_on' => $date,
+        'schedule_number' => 2,
+        'location' => '一番作業員の工事',
+    ]);
+    $firstSchedule->assignedUsers()->attach($firstWorker);
+
+    $secondSchedule = BusinessSchedule::factory()->create([
+        'scheduled_on' => $date,
+        'schedule_number' => 1,
+        'location' => '二番作業員の業務',
+    ]);
+    $secondSchedule->assignedUsers()->attach($secondWorker);
+
+    $hiddenSchedule = ConstructionSchedule::factory()->create([
+        'scheduled_on' => $date,
+        'schedule_number' => 3,
+        'location' => '非表示の工事',
+    ]);
+    $hiddenSchedule->assignedUsers()->attach($hiddenWorker);
+
+    $this->actingAs($admin)
+        ->get(route('construction-schedules.index', [
+            'range' => 'today',
+            'date' => $date,
+            'user_ids' => [$firstWorker->id, $secondWorker->id],
+        ]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->where('filters.user_ids', [$firstWorker->id, $secondWorker->id])
+            ->has('userOptions', 4)
+            ->has('selectedUserSchedules', 2)
+            ->where('selectedUserSchedules.0.location', '二番作業員の業務')
+            ->where('selectedUserSchedules.1.location', '一番作業員の工事')
+            ->where('selectedUserSchedules', fn ($schedules): bool => ! collect($schedules)->contains(
+                fn (array $schedule): bool => $schedule['location'] === '非表示の工事'
+            ))
         );
 });
 
@@ -248,6 +340,7 @@ test('admins can create schedules with assigned users and guide files', function
         ->post(route('construction-schedules.store'), [
             'construction_site_id' => $site->id,
             'scheduled_on' => today()->toDateString(),
+            'schedule_number' => 7,
             'starts_at' => '08:00',
             'ends_at' => '17:00',
             'time_note' => null,
@@ -270,6 +363,7 @@ test('admins can create schedules with assigned users and guide files', function
     $schedule = ConstructionSchedule::query()->where('location', '東京タワー改修')->firstOrFail();
 
     expect($schedule->assignedUsers()->whereKey($worker)->exists())->toBeTrue();
+    expect($schedule->schedule_number)->toBe(7);
     expect($schedule->selectedGuideFiles()->whereKey($siteGuide)->exists())->toBeTrue();
     expect($schedule->directGuideFiles)->toHaveCount(1);
     expect(GeneralContractor::query()->where('name', '山田建設')->exists())->toBeTrue();
@@ -393,6 +487,7 @@ test('admins can create business schedules with assigned users', function (): vo
     $this->actingAs($admin)
         ->post(route('business-schedules.store'), [
             'scheduled_on' => today()->toDateString(),
+            'schedule_number' => 4,
             'starts_at' => '10:00',
             'ends_at' => '11:30',
             'time_note' => null,
@@ -413,7 +508,32 @@ test('admins can create business schedules with assigned users', function (): vo
     $schedule = BusinessSchedule::query()->where('location', '本社会議室')->firstOrFail();
 
     expect($schedule->assignedUsers()->whereKey($worker)->exists())->toBeTrue();
+    expect($schedule->schedule_number)->toBe(4);
     expect(GeneralContractor::query()->where('name', '山田建設')->exists())->toBeTrue();
+});
+
+test('schedule numbers cannot overlap on the same day across construction and business schedules', function (): void {
+    $admin = User::factory()->admin()->create();
+    $scheduledOn = today()->toDateString();
+
+    ConstructionSchedule::factory()->create([
+        'scheduled_on' => $scheduledOn,
+        'schedule_number' => 5,
+        'location' => '既存番号の工事',
+    ]);
+
+    $this->actingAs($admin)
+        ->from(route('business-schedules.create'))
+        ->post(route('business-schedules.store'), [
+            'scheduled_on' => $scheduledOn,
+            'schedule_number' => 5,
+            'location' => '重複番号の業務',
+            'content' => '安全協議会',
+        ])
+        ->assertRedirect(route('business-schedules.create'))
+        ->assertSessionHasErrors('schedule_number');
+
+    expect(BusinessSchedule::query()->where('location', '重複番号の業務')->exists())->toBeFalse();
 });
 
 test('schedule time note supports same day preset', function (): void {

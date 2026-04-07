@@ -37,6 +37,7 @@ type ScheduleForm = {
     _method: 'put' | '';
     construction_site_id: number | null;
     scheduled_on: string;
+    schedule_number: string;
     starts_at: string;
     ends_at: string;
     time_note: string;
@@ -181,6 +182,7 @@ export default function ConstructionScheduleForm({
             construction_site_id: schedule?.site?.id ?? null,
             scheduled_on:
                 schedule?.scheduled_on ?? new Date().toISOString().slice(0, 10),
+            schedule_number: schedule?.schedule_number?.toString() ?? '',
             starts_at: schedule?.starts_at?.slice(0, 5) ?? '',
             ends_at: schedule?.ends_at?.slice(0, 5) ?? '',
             time_note: schedule?.time_note ?? '',
@@ -294,6 +296,20 @@ export default function ConstructionScheduleForm({
                                 onChange={(event) =>
                                     setData('scheduled_on', event.target.value)
                                 }
+                            />
+                        </Field>
+                        <Field label="番号" error={errors.schedule_number}>
+                            <Input
+                                type="number"
+                                min="1"
+                                value={data.schedule_number}
+                                onChange={(event) =>
+                                    setData(
+                                        'schedule_number',
+                                        event.target.value,
+                                    )
+                                }
+                                placeholder="例: 1"
                             />
                         </Field>
                         <div className="rounded-2xl border p-4 md:col-span-3 dark:border-neutral-800">

@@ -4,15 +4,20 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ValidatesScheduleNumber;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
 
 class UpdateBusinessScheduleRequest extends FormRequest
 {
+    use ValidatesScheduleNumber;
+
     #[Override]
     protected function prepareForValidation(): void
     {
+        $this->prepareScheduleNumberForValidation();
+
         if ($this->has('general_contractor')) {
             $generalContractor = trim((string) $this->input('general_contractor'));
 
@@ -39,6 +44,7 @@ class UpdateBusinessScheduleRequest extends FormRequest
     {
         return [
             'scheduled_on' => ['required', 'date'],
+            'schedule_number' => ['nullable', 'integer', 'min:1'],
             'starts_at' => ['nullable', 'date_format:H:i'],
             'ends_at' => ['nullable', 'date_format:H:i', 'after_or_equal:starts_at'],
             'time_note' => ['nullable', 'string', 'max:255'],
@@ -51,5 +57,13 @@ class UpdateBusinessScheduleRequest extends FormRequest
             'assigned_user_ids' => ['nullable', 'array'],
             'assigned_user_ids.*' => ['integer', 'exists:users,id'],
         ];
+    }
+
+    /**
+     * @return array<int, callable>
+     */
+    public function after(): array
+    {
+        return $this->scheduleNumberAfterValidation();
     }
 }

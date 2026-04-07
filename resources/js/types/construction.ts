@@ -29,6 +29,7 @@ export type ConstructionSchedule = {
     id: number;
     type: 'construction';
     scheduled_on: string;
+    schedule_number: number | null;
     time: string;
     starts_at: string | null;
     ends_at: string | null;
@@ -72,6 +73,7 @@ export type BusinessSchedule = {
     id: number;
     type: 'business';
     scheduled_on: string;
+    schedule_number: number | null;
     time: string;
     starts_at: string | null;
     ends_at: string | null;

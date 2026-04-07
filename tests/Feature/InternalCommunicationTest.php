@@ -66,7 +66,11 @@ test('calendar includes internal notices in personal schedules and filters', fun
                 ->where('title', '健康診断')
                 ->etc()
             )
-            ->has('teamSchedules', 0)
+            ->has('teamSchedules', 1, fn (Assert $page): Assert => $page
+                ->where('type', 'internal_notice')
+                ->where('title', '健康診断')
+                ->etc()
+            )
             ->where('calendarDays', fn ($calendarDays): bool => collect($calendarDays)->contains(
                 fn (array $day): bool => $day['date'] === $date
                     && $day['count'] === 1

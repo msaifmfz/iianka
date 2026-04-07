@@ -8,6 +8,7 @@ import {
     ChevronRight,
     FileText,
     Hammer,
+    Hash,
     Megaphone,
     MapPin,
     Pencil,
@@ -37,7 +38,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { dashboard } from '@/routes';
-import type { ConstructionSchedule, ScheduleEvent } from '@/types';
+import type {
+    ConstructionSchedule,
+    ConstructionUser,
+    ScheduleEvent,
+} from '@/types';
 
 type CalendarDay = {
     date: string;
@@ -59,6 +64,7 @@ type Filters = {
     date: string;
     starts_on: string;
     ends_on: string;
+    user_ids: number[];
 };
 
 type ScheduleNavigation = {
@@ -72,6 +78,8 @@ type Props = {
     scheduleNavigation: ScheduleNavigation;
     mySchedules: ScheduleEvent[];
     teamSchedules: ScheduleEvent[];
+    selectedUserSchedules: ScheduleEvent[];
+    userOptions: ConstructionUser[];
     canManage: boolean;
 };
 
@@ -208,6 +216,7 @@ function scheduleQuery(filters: Filters, query: Partial<Filters>) {
         range: query.range ?? filters.range,
         date: query.date ?? filters.date,
         type: query.type ?? filters.type,
+        user_ids: query.user_ids ?? filters.user_ids,
     };
 }
 
@@ -258,6 +267,70 @@ function TypeLink({
         >
             {label}
         </Link>
+    );
+}
+
+function UserFilterPanel({
+    users,
+    filters,
+}: {
+    users: ConstructionUser[];
+    filters: Filters;
+}) {
+    if (users.length === 0) {
+        return null;
+    }
+
+    function toggleUser(userId: number) {
+        return filters.user_ids.includes(userId)
+            ? filters.user_ids.filter(
+                  (selectedUserId) => selectedUserId !== userId,
+              )
+            : [...filters.user_ids, userId];
+    }
+
+    return (
+        <div className="mt-5 border-t border-neutral-200 pt-4 dark:border-neutral-800">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                    <h2 className="text-sm font-semibold">ユーザー別予定</h2>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                        管理者は複数ユーザーの予定をまとめて表示できます。
+                    </p>
+                </div>
+                {filters.user_ids.length > 0 && (
+                    <Link
+                        href={scheduleIndex({
+                            query: scheduleQuery(filters, { user_ids: [] }),
+                        })}
+                        className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-semibold transition hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+                        preserveScroll
+                    >
+                        解除
+                    </Link>
+                )}
+            </div>
+            <div className="mt-3 grid gap-2">
+                {users.map((user) => {
+                    const selected = filters.user_ids.includes(user.id);
+
+                    return (
+                        <Link
+                            key={user.id}
+                            href={scheduleIndex({
+                                query: scheduleQuery(filters, {
+                                    user_ids: toggleUser(user.id),
+                                }),
+                            })}
+                            className={`rounded-xl border px-3 py-2 text-sm transition ${selected ? 'border-amber-300 bg-amber-50 font-semibold text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100' : 'border-neutral-200 hover:bg-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-900'}`}
+                            preserveScroll
+                        >
+                            {user.name}
+                        </Link>
+                    );
+                })}
+            </div>
+        </div>
     );
 }
 
@@ -313,31 +386,45 @@ function ScheduleCard({
         cleaning_duty: ClipboardList,
     }[schedule.type];
     const TypeIcon = typeIcon;
+    const scheduleNumber =
+        schedule.type === 'construction' || schedule.type === 'business'
+            ? schedule.schedule_number
+            : null;
 
     const cardBody = (
         <>
             <CardHeader className="gap-3 p-4 md:p-6">
                 <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                        {schedule.assigned_users.length > 0 && (
-                            <div className="text-md mb-1 flex flex-wrap items-center gap-2 rounded-2xl font-semibold text-amber-900 dark:text-amber-100">
-                                <Users className="size-4" />
-                                <span className="font-medium">
-                                    {schedule.assigned_users
-                                        .map((user) => user.name)
-                                        .join('、')}
+                    <div className="flex min-w-0 items-start gap-3">
+                        {scheduleNumber !== null && (
+                            <div className="flex size-14 shrink-0 flex-col items-center justify-center rounded-2xl bg-amber-500 text-white shadow-sm ring-4 ring-amber-100 dark:ring-amber-950">
+                                <Hash className="size-4" />
+                                <span className="text-xl leading-none font-black">
+                                    {scheduleNumber}
                                 </span>
                             </div>
                         )}
-                        <p className="text-md text-muted-foreground">
-                            {formatDate(schedule.scheduled_on)}
-                        </p>
-                        <CardTitle className="text-md mt-1 leading-tight">
-                            {title}
-                        </CardTitle>
-                        <p className="mt-2 text-xs font-medium text-sky-700 dark:text-sky-300">
-                            {detailHint}
-                        </p>
+                        <div className="min-w-0">
+                            {schedule.assigned_users.length > 0 && (
+                                <div className="text-md mb-1 flex flex-wrap items-center gap-2 rounded-2xl font-semibold text-amber-900 dark:text-amber-100">
+                                    <Users className="size-4" />
+                                    <span className="font-medium">
+                                        {schedule.assigned_users
+                                            .map((user) => user.name)
+                                            .join('、')}
+                                    </span>
+                                </div>
+                            )}
+                            <p className="text-md text-muted-foreground">
+                                {formatDate(schedule.scheduled_on)}
+                            </p>
+                            <CardTitle className="text-md mt-1 leading-tight">
+                                {title}
+                            </CardTitle>
+                            <p className="mt-2 text-xs font-medium text-sky-700 dark:text-sky-300">
+                                {detailHint}
+                            </p>
+                        </div>
                     </div>
                     <div className="flex flex-wrap justify-end gap-2">
                         <span
@@ -526,6 +613,8 @@ export default function ConstructionSchedulesIndex({
     scheduleNavigation,
     mySchedules,
     teamSchedules,
+    selectedUserSchedules,
+    userOptions,
     canManage,
 }: Props) {
     const days = monthDays(filters.date, calendarDays);
@@ -541,6 +630,7 @@ export default function ConstructionSchedulesIndex({
         year: 'numeric',
         month: 'long',
     }).format(new Date(`${filters.date}T00:00:00`));
+    const hasSelectedUserFilter = canManage && filters.user_ids.length > 0;
 
     return (
         <>
@@ -714,6 +804,12 @@ export default function ConstructionSchedulesIndex({
                                         掃除当番
                                     </span>
                                 </div>
+                                {canManage && (
+                                    <UserFilterPanel
+                                        users={userOptions}
+                                        filters={filters}
+                                    />
+                                )}
                                 <div className="mt-5 flex items-center justify-between gap-3">
                                     <Button
                                         asChild
@@ -775,6 +871,8 @@ export default function ConstructionSchedulesIndex({
                                                                         range: 'month',
                                                                         date: item.date,
                                                                         type: filters.type,
+                                                                        user_ids:
+                                                                            filters.user_ids,
                                                                     },
                                                                 },
                                                             )}
@@ -798,6 +896,8 @@ export default function ConstructionSchedulesIndex({
                                                                             year,
                                                                         ),
                                                                         type: filters.type,
+                                                                        user_ids:
+                                                                            filters.user_ids,
                                                                     },
                                                                 },
                                                             )}
@@ -827,6 +927,8 @@ export default function ConstructionSchedulesIndex({
                                                     query: {
                                                         range: 'today',
                                                         type: filters.type,
+                                                        user_ids:
+                                                            filters.user_ids,
                                                     },
                                                 })}
                                                 preserveScroll
@@ -993,18 +1095,29 @@ export default function ConstructionSchedulesIndex({
                                 className="flex-1 text-center"
                             />
                         </div>
-                        <ScheduleSection
-                            title="自分の予定"
-                            empty="この期間に割り当てられた予定はありません。"
-                            schedules={mySchedules}
-                            canManage={canManage}
-                        />
-                        <ScheduleSection
-                            title="全員の予定"
-                            empty="この期間の他メンバーの予定はありません。"
-                            schedules={teamSchedules}
-                            canManage={canManage}
-                        />
+                        {hasSelectedUserFilter ? (
+                            <ScheduleSection
+                                title="選択ユーザーの予定"
+                                empty="この期間に選択ユーザーの予定はありません。"
+                                schedules={selectedUserSchedules}
+                                canManage={canManage}
+                            />
+                        ) : (
+                            <>
+                                <ScheduleSection
+                                    title="自分の予定"
+                                    empty="この期間に割り当てられた予定はありません。"
+                                    schedules={mySchedules}
+                                    canManage={canManage}
+                                />
+                                <ScheduleSection
+                                    title="全員の予定"
+                                    empty="この期間の予定はありません。"
+                                    schedules={teamSchedules}
+                                    canManage={canManage}
+                                />
+                            </>
+                        )}
                     </main>
                 </div>
             </div>

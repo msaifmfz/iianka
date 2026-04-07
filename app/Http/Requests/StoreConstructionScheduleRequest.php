@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ValidatesConstructionScheduleTiming;
+use App\Http\Requests\Concerns\ValidatesScheduleNumber;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -14,11 +15,13 @@ use Override;
 class StoreConstructionScheduleRequest extends FormRequest
 {
     use ValidatesConstructionScheduleTiming;
+    use ValidatesScheduleNumber;
 
     #[Override]
     protected function prepareForValidation(): void
     {
         $this->prepareConstructionScheduleFieldsForValidation();
+        $this->prepareScheduleNumberForValidation();
     }
 
     /**
@@ -39,6 +42,7 @@ class StoreConstructionScheduleRequest extends FormRequest
         return [
             'construction_site_id' => ['nullable', 'integer', 'exists:construction_sites,id'],
             'scheduled_on' => ['required', 'date'],
+            'schedule_number' => ['nullable', 'integer', 'min:1'],
             'starts_at' => ['nullable', 'date_format:H:i'],
             'ends_at' => ['nullable', 'date_format:H:i', 'after:starts_at'],
             'time_note' => ['nullable', 'string', 'max:255'],
@@ -66,6 +70,9 @@ class StoreConstructionScheduleRequest extends FormRequest
      */
     public function after(): array
     {
-        return $this->constructionScheduleTimingAfterValidation();
+        return [
+            ...$this->constructionScheduleTimingAfterValidation(),
+            ...$this->scheduleNumberAfterValidation(),
+        ];
     }
 }

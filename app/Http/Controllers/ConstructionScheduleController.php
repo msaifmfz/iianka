@@ -80,36 +80,31 @@ class ConstructionScheduleController extends Controller
         $calendarDays = $this->calendarDays($calendarStart, $calendarEnd, $type);
 
         $user = $request->user();
+        $selectedUserIds = $this->selectedUserIds($request, $user);
         $myConstructionSchedules = $constructionSchedules->filter(
             fn (ConstructionSchedule $schedule) => $schedule->assignedUsers->contains('id', $user->id)
         );
 
-        $teamConstructionSchedules = $constructionSchedules->reject(
-            fn (ConstructionSchedule $schedule) => $schedule->assignedUsers->contains('id', $user->id)
-        );
+        $selectedUserConstructionSchedules = $this->filterSchedulesByAssignedUsers($constructionSchedules, $selectedUserIds);
 
         $myBusinessSchedules = $businessSchedules->filter(
             fn (BusinessSchedule $schedule) => $schedule->assignedUsers->contains('id', $user->id)
         );
 
-        $teamBusinessSchedules = $businessSchedules->reject(
-            fn (BusinessSchedule $schedule) => $schedule->assignedUsers->contains('id', $user->id)
-        );
+        $selectedUserBusinessSchedules = $this->filterSchedulesByAssignedUsers($businessSchedules, $selectedUserIds);
 
         $myInternalNotices = $internalNotices->filter(
             fn (InternalNotice $notice) => $notice->assignedUsers->contains('id', $user->id)
         );
 
-        $teamInternalNotices = $internalNotices->reject(
-            fn (InternalNotice $notice) => $notice->assignedUsers->contains('id', $user->id)
-        );
+        $selectedUserInternalNotices = $this->filterSchedulesByAssignedUsers($internalNotices, $selectedUserIds);
 
         $myCleaningDutyOccurrences = $cleaningDutyOccurrences->filter(
             fn (array $occurrence): bool => $occurrence['assigned_users']->contains('id', $user->id)
         );
 
-        $teamCleaningDutyOccurrences = $cleaningDutyOccurrences->reject(
-            fn (array $occurrence): bool => $occurrence['assigned_users']->contains('id', $user->id)
+        $selectedUserCleaningDutyOccurrences = $cleaningDutyOccurrences->filter(
+            fn (array $occurrence): bool => $occurrence['assigned_users']->pluck('id')->intersect($selectedUserIds)->isNotEmpty()
         );
 
         return Inertia::render('construction-schedules/index', [
@@ -119,6 +114,7 @@ class ConstructionScheduleController extends Controller
                 'date' => $date->toDateString(),
                 'starts_on' => $startsOn->toDateString(),
                 'ends_on' => $endsOn->toDateString(),
+                'user_ids' => $selectedUserIds->values(),
             ],
             'calendarDays' => $calendarDays,
             'scheduleNavigation' => [
@@ -126,7 +122,9 @@ class ConstructionScheduleController extends Controller
                 'next_date' => $this->nextScheduleDate($date, $type),
             ],
             'mySchedules' => $this->combinedSchedulePayload($myConstructionSchedules, $myBusinessSchedules, $myInternalNotices, $myCleaningDutyOccurrences),
-            'teamSchedules' => $this->combinedSchedulePayload($teamConstructionSchedules, $teamBusinessSchedules, $teamInternalNotices, $teamCleaningDutyOccurrences),
+            'teamSchedules' => $this->combinedSchedulePayload($constructionSchedules, $businessSchedules, $internalNotices, $cleaningDutyOccurrences),
+            'selectedUserSchedules' => $this->combinedSchedulePayload($selectedUserConstructionSchedules, $selectedUserBusinessSchedules, $selectedUserInternalNotices, $selectedUserCleaningDutyOccurrences),
+            'userOptions' => $user->is_admin === true ? User::query()->orderBy('name')->get(['id', 'name', 'email']) : [],
             'canManage' => $user->is_admin === true,
         ]);
     }
@@ -204,6 +202,40 @@ class ConstructionScheduleController extends Controller
         return redirect()
             ->route('construction-schedules.index')
             ->with('status', '予定を削除しました。');
+    }
+
+    /**
+     * @return Collection<int, int>
+     */
+    private function selectedUserIds(Request $request, User $user): Collection
+    {
+        if ($user->is_admin !== true) {
+            return collect();
+        }
+
+        return collect($request->query('user_ids', []))
+            ->filter(fn (mixed $userId): bool => is_numeric($userId))
+            ->map(fn (mixed $userId): int => (int) $userId)
+            ->unique()
+            ->values();
+    }
+
+    /**
+     * @template TSchedule of object
+     *
+     * @param  Collection<int, TSchedule>  $schedules
+     * @param  Collection<int, int>  $userIds
+     * @return Collection<int, TSchedule>
+     */
+    private function filterSchedulesByAssignedUsers(Collection $schedules, Collection $userIds): Collection
+    {
+        if ($userIds->isEmpty()) {
+            return collect();
+        }
+
+        return $schedules->filter(
+            fn (object $schedule): bool => $schedule->assignedUsers->pluck('id')->intersect($userIds)->isNotEmpty()
+        );
     }
 
     /**
@@ -290,6 +322,7 @@ class ConstructionScheduleController extends Controller
             ->only([
                 'construction_site_id',
                 'scheduled_on',
+                'schedule_number',
                 'starts_at',
                 'ends_at',
                 'time_note',
@@ -557,11 +590,13 @@ class ConstructionScheduleController extends Controller
             ->merge($this->businessSchedulePayload($businessSchedules))
             ->merge($this->internalNoticePayload($internalNotices))
             ->merge($this->cleaningDutyPayload($cleaningDutyOccurrences))
-            ->sortBy([
-                ['scheduled_on', 'asc'],
-                ['starts_at', 'asc'],
-                ['type', 'asc'],
-            ])
+            ->sortBy(fn (array $schedule): string => sprintf(
+                '%s|%010d|%s|%s',
+                $schedule['scheduled_on'],
+                $schedule['schedule_number'] ?? PHP_INT_MAX,
+                $schedule['starts_at'] ?? '99:99:99',
+                $schedule['type']
+            ))
             ->values();
     }
 
@@ -575,6 +610,7 @@ class ConstructionScheduleController extends Controller
             'id' => $schedule->id,
             'type' => 'construction',
             'scheduled_on' => $schedule->scheduled_on->toDateString(),
+            'schedule_number' => $schedule->schedule_number,
             'time' => $schedule->formattedTime(),
             'starts_at' => $schedule->starts_at,
             'ends_at' => $schedule->ends_at,
@@ -621,6 +657,7 @@ class ConstructionScheduleController extends Controller
             'id' => $schedule->id,
             'type' => 'business',
             'scheduled_on' => $schedule->scheduled_on->toDateString(),
+            'schedule_number' => $schedule->schedule_number,
             'time' => $schedule->formattedTime(),
             'starts_at' => $schedule->starts_at,
             'ends_at' => $schedule->ends_at,
