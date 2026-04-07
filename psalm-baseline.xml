@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<files psalm-version="6.16.1@f1f5de594dc76faf8784e02d3dc4716c91c6f6ac">
+  <file src="app/Http/Controllers/ConstructionScheduleController.php">
+    <InvalidTemplateParam>
+      <code><![CDATA[ConstructionSchedule::query()
+            ->selectRaw('scheduled_on, count(*) as schedule_count')
+            ->whereDate('scheduled_on', '>=', $monthStart->toDateString())
+            ->whereDate('scheduled_on', '<=', $monthEnd->toDateString())
+            ->groupBy('scheduled_on')
+            ->orderBy('scheduled_on')
+            ->get()
+            ->map(fn (ConstructionSchedule $schedule) => [
+                'date' => $schedule->scheduled_on->toDateString(),
+                'count' => (int) $schedule->schedule_count,
+            ])]]></code>
+      <code><![CDATA[ConstructionSite::query()
+                ->with('guideFiles')
+                ->orderBy('name')
+                ->get()
+                ->map(fn (ConstructionSite $site) => [
+                    'id' => $site->id,
+                    'name' => $site->name,
+                    'address' => $site->address,
+                    'guide_files' => $this->guideFilePayload($site->guideFiles),
+                ])]]></code>
+    </InvalidTemplateParam>
+  </file>
+  <file src="app/Http/Controllers/ConstructionSiteController.php">
+    <InvalidTemplateParam>
+      <code><![CDATA[ConstructionSite::query()
+            ->with('guideFiles')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (ConstructionSite $site) => [
+                'id' => $site->id,
+                'name' => $site->name,
+                'address' => $site->address,
+                'notes' => $site->notes,
+                'guide_files' => $this->guideFilePayload($site->guideFiles),
+            ])]]></code>
+    </InvalidTemplateParam>
+  </file>
+  <file src="app/Models/ConstructionSchedule.php">
+    <UndefinedThisPropertyFetch>
+      <code><![CDATA[$this->directGuideFiles]]></code>
+      <code><![CDATA[$this->ends_at]]></code>
+      <code><![CDATA[$this->navigation_address]]></code>
+      <code><![CDATA[$this->selectedGuideFiles]]></code>
+      <code><![CDATA[$this->starts_at]]></code>
+      <code><![CDATA[$this->time_note]]></code>
+    </UndefinedThisPropertyFetch>
+  </file>
+  <file src="app/Models/SiteGuideFile.php">
+    <UndefinedThisPropertyFetch>
+      <code><![CDATA[$this->disk]]></code>
+      <code><![CDATA[$this->path]]></code>
+    </UndefinedThisPropertyFetch>
+  </file>
+  <file src="routes/console.php">
+    <InvalidScope>
+      <code><![CDATA[$this]]></code>
+    </InvalidScope>
+  </file>
+</files>
