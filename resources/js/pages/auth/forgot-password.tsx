@@ -1,4 +1,3 @@
-// Components
 import { Form, Head } from '@inertiajs/react';
 import { LoaderCircle } from 'lucide-react';
 import InputError from '@/components/input-error';
@@ -12,7 +11,7 @@ import { email } from '@/routes/password';
 export default function ForgotPassword({ status }: { status?: string }) {
     return (
         <>
-            <Head title="Forgot password" />
+            <Head title="パスワードをお忘れですか" />
 
             {status && (
                 <div className="mb-4 text-center text-sm font-medium text-green-600">
@@ -25,7 +24,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
                     {({ processing, errors }) => (
                         <>
                             <div className="grid gap-2">
-                                <Label htmlFor="email">Email address</Label>
+                                <Label htmlFor="email">メールアドレス</Label>
                                 <Input
                                     id="email"
                                     type="email"
@@ -47,7 +46,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
                                     {processing && (
                                         <LoaderCircle className="h-4 w-4 animate-spin" />
                                     )}
-                                    Email password reset link
+                                    パスワード再設定リンクをメールで送信
                                 </Button>
                             </div>
                         </>
@@ -55,8 +54,8 @@ export default function ForgotPassword({ status }: { status?: string }) {
                 </Form>
 
                 <div className="space-x-1 text-center text-sm text-muted-foreground">
-                    <span>Or, return to</span>
-                    <TextLink href={login()}>log in</TextLink>
+                    <span>または、</span>
+                    <TextLink href={login()}>ログインに戻る</TextLink>
                 </div>
             </div>
         </>
@@ -64,6 +63,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
 }
 
 ForgotPassword.layout = {
-    title: 'Forgot password',
-    description: 'Enter your email to receive a password reset link',
+    title: 'パスワードをお忘れですか',
+    description:
+        'パスワード再設定リンクを受け取るメールアドレスを入力してください',
 };

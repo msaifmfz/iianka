@@ -775,7 +775,7 @@ export default function ConstructionScheduleForm({
 ConstructionScheduleForm.layout = {
     breadcrumbs: [
         {
-            title: 'Dashboard',
+            title: 'メニュー',
             href: dashboard(),
         },
         {

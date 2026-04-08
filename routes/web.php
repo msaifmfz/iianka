@@ -1,20 +1,41 @@
 <?php
 
+use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\BusinessScheduleController;
 use App\Http\Controllers\CleaningDutyRuleController;
 use App\Http\Controllers\ConstructionScheduleController;
 use App\Http\Controllers\ConstructionScheduleVoucherController;
 use App\Http\Controllers\ConstructionSiteController;
 use App\Http\Controllers\InternalNoticeController;
+use App\Http\Controllers\Settings\SecurityController;
+use App\Http\Controllers\WebAuthn\WebAuthnLoginController;
+use App\Http\Controllers\WebAuthn\WebAuthnRegisterController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use Laravel\Fortify\Features;
 
-Route::inertia('/', 'welcome', [
-    'canRegister' => Features::enabled(Features::registration()),
-])->name('home');
+Route::get('/', function (Request $request) {
+    return $request->user()
+        ? redirect()->route('dashboard')
+        : redirect()->route('login');
+})->name('home');
+
+Route::middleware(['auth', 'verified', 'password.confirm'])->group(function (): void {
+    Route::post('webauthn/register/options', [WebAuthnRegisterController::class, 'createChallenge'])
+        ->name('webauthn.register.challenge');
+    Route::post('webauthn/register', [WebAuthnRegisterController::class, 'register'])
+        ->name('webauthn.register');
+});
+
+Route::post('webauthn/login/options', [WebAuthnLoginController::class, 'createChallenge'])
+    ->name('webauthn.login.challenge');
+Route::post('webauthn/login', [WebAuthnLoginController::class, 'login'])
+    ->name('webauthn.login');
 
 Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::redirect('dashboard', 'construction-schedules')->name('dashboard');
+    Route::delete('settings/passkeys/{passkey}', [SecurityController::class, 'destroyPasskey'])
+        ->middleware('password.confirm')
+        ->name('passkeys.destroy');
     Route::get('voucher-confirmations', [ConstructionScheduleVoucherController::class, 'index'])
         ->name('voucher-confirmations.index');
     Route::patch('construction-schedules/{construction_schedule}/voucher-confirmation', [ConstructionScheduleVoucherController::class, 'update'])
@@ -24,6 +45,9 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::resource('internal-notices', InternalNoticeController::class);
     Route::resource('cleaning-duty-rules', CleaningDutyRuleController::class);
     Route::resource('construction-sites', ConstructionSiteController::class);
+    Route::prefix('admin')->name('admin.')->group(function (): void {
+        Route::resource('users', AdminUserController::class)->except('show');
+    });
 });
 
 require __DIR__.'/settings.php';

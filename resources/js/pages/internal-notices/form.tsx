@@ -236,7 +236,7 @@ export default function InternalNoticeForm({ notice, users }: Props) {
 InternalNoticeForm.layout = {
     breadcrumbs: [
         {
-            title: 'Dashboard',
+            title: 'メニュー',
             href: dashboard(),
         },
         {

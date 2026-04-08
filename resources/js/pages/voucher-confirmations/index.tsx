@@ -390,7 +390,7 @@ export default function VoucherConfirmationsIndex({
 VoucherConfirmationsIndex.layout = {
     breadcrumbs: [
         {
-            title: 'Dashboard',
+            title: 'メニュー',
             href: dashboard(),
         },
         {

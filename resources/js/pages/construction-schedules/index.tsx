@@ -53,14 +53,17 @@ type CalendarDay = {
     cleaning_duty_count: number;
 };
 
+type ScheduleType =
+    | 'construction'
+    | 'business'
+    | 'internal_notice'
+    | 'cleaning_duty';
+
+type ScheduleTypeFilter = 'all' | ScheduleType;
+
 type Filters = {
     range: 'today' | 'week' | 'month';
-    type:
-        | 'all'
-        | 'construction'
-        | 'business'
-        | 'internal_notice'
-        | 'cleaning_duty';
+    type: ScheduleType[];
     date: string;
     starts_on: string;
     ends_on: string;
@@ -99,6 +102,13 @@ const statusClasses: Record<ConstructionSchedule['status'], string> = {
     canceled: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200',
 };
 
+const scheduleTypes: ScheduleType[] = [
+    'construction',
+    'business',
+    'internal_notice',
+    'cleaning_duty',
+];
+
 function formatDate(date: string) {
     return new Intl.DateTimeFormat('ja-JP', {
         month: 'long',
@@ -117,6 +127,25 @@ function adjacentMonthDate(selectedDate: string, offset: number) {
     return formatInputDate(
         new Date(date.getFullYear(), date.getMonth() + offset, 1),
     );
+}
+
+function allScheduleTypesSelected(types: ScheduleType[]) {
+    return scheduleTypes.every((type) => types.includes(type));
+}
+
+function toggleScheduleType(
+    selectedTypes: ScheduleType[],
+    type: ScheduleTypeFilter,
+) {
+    if (type === 'all') {
+        return scheduleTypes;
+    }
+
+    const nextTypes = selectedTypes.includes(type)
+        ? selectedTypes.filter((selectedType) => selectedType !== type)
+        : [...selectedTypes, type];
+
+    return nextTypes.length > 0 ? nextTypes : [type];
 }
 
 function adjacentYearDate(selectedDate: string, offset: number) {
@@ -220,6 +249,13 @@ function scheduleQuery(filters: Filters, query: Partial<Filters>) {
     };
 }
 
+function filterSchedulesByType(
+    schedules: ScheduleEvent[],
+    selectedTypes: ScheduleType[],
+) {
+    return schedules.filter((schedule) => selectedTypes.includes(schedule.type));
+}
+
 function RangeLink({
     label,
     range,
@@ -252,15 +288,20 @@ function TypeLink({
     filters,
 }: {
     label: string;
-    type: Filters['type'];
+    type: ScheduleTypeFilter;
     filters: Filters;
 }) {
-    const active = filters.type === type;
+    const active =
+        type === 'all'
+            ? allScheduleTypesSelected(filters.type)
+            : filters.type.includes(type);
 
     return (
         <Link
             href={scheduleIndex({
-                query: scheduleQuery(filters, { type }),
+                query: scheduleQuery(filters, {
+                    type: toggleScheduleType(filters.type, type),
+                }),
             })}
             className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${active ? 'bg-amber-500 text-white' : 'bg-white/80 text-neutral-700 ring-1 ring-neutral-200 hover:bg-neutral-100 dark:bg-neutral-900 dark:text-neutral-200 dark:ring-neutral-800'}`}
             preserveScroll
@@ -388,7 +429,7 @@ function ScheduleCard({
     const TypeIcon = typeIcon;
     const scheduleNumber =
         schedule.type === 'construction' || schedule.type === 'business'
-            ? schedule.schedule_number
+            ? schedule.schedule_number ?? '?'
             : null;
 
     const cardBody = (
@@ -631,6 +672,15 @@ export default function ConstructionSchedulesIndex({
         month: 'long',
     }).format(new Date(`${filters.date}T00:00:00`));
     const hasSelectedUserFilter = canManage && filters.user_ids.length > 0;
+    const filteredMySchedules = filterSchedulesByType(mySchedules, filters.type);
+    const filteredTeamSchedules = filterSchedulesByType(
+        teamSchedules,
+        filters.type,
+    );
+    const filteredSelectedUserSchedules = filterSchedulesByType(
+        selectedUserSchedules,
+        filters.type,
+    );
 
     return (
         <>
@@ -1099,7 +1149,7 @@ export default function ConstructionSchedulesIndex({
                             <ScheduleSection
                                 title="選択ユーザーの予定"
                                 empty="この期間に選択ユーザーの予定はありません。"
-                                schedules={selectedUserSchedules}
+                                schedules={filteredSelectedUserSchedules}
                                 canManage={canManage}
                             />
                         ) : (
@@ -1107,13 +1157,13 @@ export default function ConstructionSchedulesIndex({
                                 <ScheduleSection
                                     title="自分の予定"
                                     empty="この期間に割り当てられた予定はありません。"
-                                    schedules={mySchedules}
+                                    schedules={filteredMySchedules}
                                     canManage={canManage}
                                 />
                                 <ScheduleSection
                                     title="全員の予定"
                                     empty="この期間の予定はありません。"
-                                    schedules={teamSchedules}
+                                    schedules={filteredTeamSchedules}
                                     canManage={canManage}
                                 />
                             </>
@@ -1128,7 +1178,7 @@ export default function ConstructionSchedulesIndex({
 ConstructionSchedulesIndex.layout = {
     breadcrumbs: [
         {
-            title: 'Dashboard',
+            title: 'メニュー',
             href: dashboard(),
         },
         {

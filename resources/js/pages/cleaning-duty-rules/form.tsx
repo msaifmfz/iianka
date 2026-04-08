@@ -245,7 +245,7 @@ export default function CleaningDutyRuleForm({
 CleaningDutyRuleForm.layout = {
     breadcrumbs: [
         {
-            title: 'Dashboard',
+            title: 'メニュー',
             href: dashboard(),
         },
         {

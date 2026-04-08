@@ -9,17 +9,17 @@ import { store } from '@/routes/password/confirm';
 export default function ConfirmPassword() {
     return (
         <>
-            <Head title="Confirm password" />
+            <Head title="パスワードの確認" />
 
             <Form {...store.form()} resetOnSuccess={['password']}>
                 {({ processing, errors }) => (
                     <div className="space-y-6">
                         <div className="grid gap-2">
-                            <Label htmlFor="password">Password</Label>
+                            <Label htmlFor="password">パスワード</Label>
                             <PasswordInput
                                 id="password"
                                 name="password"
-                                placeholder="Password"
+                                placeholder="パスワード"
                                 autoComplete="current-password"
                                 autoFocus
                             />
@@ -34,7 +34,7 @@ export default function ConfirmPassword() {
                                 data-test="confirm-password-button"
                             >
                                 {processing && <Spinner />}
-                                Confirm password
+                                パスワードを確認
                             </Button>
                         </div>
                     </div>
@@ -45,7 +45,7 @@ export default function ConfirmPassword() {
 }
 
 ConfirmPassword.layout = {
-    title: 'Confirm your password',
+    title: 'パスワードを確認してください',
     description:
-        'This is a secure area of the application. Please confirm your password before continuing.',
+        'ここはアプリケーションの安全なエリアです。続行する前にパスワードを確認してください。',
 };

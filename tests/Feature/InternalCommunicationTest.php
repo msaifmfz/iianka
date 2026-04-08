@@ -60,7 +60,7 @@ test('calendar includes internal notices in personal schedules and filters', fun
         ->assertOk()
         ->assertInertia(fn (Assert $page): Assert => $page
             ->component('construction-schedules/index')
-            ->where('filters.type', 'internal_notice')
+            ->where('filters.type', ['internal_notice'])
             ->has('mySchedules', 1, fn (Assert $page): Assert => $page
                 ->where('type', 'internal_notice')
                 ->where('title', '健康診断')
@@ -102,7 +102,7 @@ test('cleaning duty rules render virtual calendar events without generated sched
         ->assertOk()
         ->assertInertia(fn (Assert $page): Assert => $page
             ->component('construction-schedules/index')
-            ->where('filters.type', 'cleaning_duty')
+            ->where('filters.type', ['cleaning_duty'])
             ->has('mySchedules', 1, fn (Assert $page): Assert => $page
                 ->where('type', 'cleaning_duty')
                 ->where('title', '掃除当番')

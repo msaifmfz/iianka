@@ -117,7 +117,7 @@ export default function BusinessScheduleShow({ schedule, canManage }: Props) {
 BusinessScheduleShow.layout = {
     breadcrumbs: [
         {
-            title: 'Dashboard',
+            title: 'メニュー',
             href: dashboard(),
         },
         {

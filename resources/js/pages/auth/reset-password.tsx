@@ -15,7 +15,7 @@ type Props = {
 export default function ResetPassword({ token, email }: Props) {
     return (
         <>
-            <Head title="Reset password" />
+            <Head title="パスワードを再設定" />
 
             <Form
                 {...update.form()}
@@ -25,7 +25,7 @@ export default function ResetPassword({ token, email }: Props) {
                 {({ processing, errors }) => (
                     <div className="grid gap-6">
                         <div className="grid gap-2">
-                            <Label htmlFor="email">Email</Label>
+                            <Label htmlFor="email">メールアドレス</Label>
                             <Input
                                 id="email"
                                 type="email"
@@ -42,28 +42,28 @@ export default function ResetPassword({ token, email }: Props) {
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="password">Password</Label>
+                            <Label htmlFor="password">パスワード</Label>
                             <PasswordInput
                                 id="password"
                                 name="password"
                                 autoComplete="new-password"
                                 className="mt-1 block w-full"
                                 autoFocus
-                                placeholder="Password"
+                                placeholder="パスワード"
                             />
                             <InputError message={errors.password} />
                         </div>
 
                         <div className="grid gap-2">
                             <Label htmlFor="password_confirmation">
-                                Confirm password
+                                パスワードの確認
                             </Label>
                             <PasswordInput
                                 id="password_confirmation"
                                 name="password_confirmation"
                                 autoComplete="new-password"
                                 className="mt-1 block w-full"
-                                placeholder="Confirm password"
+                                placeholder="パスワードの確認"
                             />
                             <InputError
                                 message={errors.password_confirmation}
@@ -78,7 +78,7 @@ export default function ResetPassword({ token, email }: Props) {
                             data-test="reset-password-button"
                         >
                             {processing && <Spinner />}
-                            Reset password
+                            パスワードを再設定
                         </Button>
                     </div>
                 )}
@@ -88,6 +88,6 @@ export default function ResetPassword({ token, email }: Props) {
 }
 
 ResetPassword.layout = {
-    title: 'Reset password',
-    description: 'Please enter your new password below',
+    title: 'パスワードを再設定',
+    description: '新しいパスワードを入力してください',
 };

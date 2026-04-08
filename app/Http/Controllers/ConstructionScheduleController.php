@@ -22,14 +22,22 @@ use Inertia\Response;
 
 class ConstructionScheduleController extends Controller
 {
+    /**
+     * @var array<int, string>
+     */
+    private const array SCHEDULE_TYPES = ['construction', 'business', 'internal_notice', 'cleaning_duty'];
+
+    /**
+     * @var array<int, string>
+     */
+    private const array DEFAULT_SCHEDULE_TYPES = ['construction', 'business'];
+
     public function index(Request $request): Response
     {
         $range = in_array($request->query('range'), ['today', 'week', 'month'], true)
             ? $request->query('range')
             : 'today';
-        $type = in_array($request->query('type'), ['all', 'construction', 'business', 'internal_notice', 'cleaning_duty'], true)
-            ? $request->query('type')
-            : 'all';
+        $types = $this->selectedScheduleTypes($request);
         $date = Carbon::parse($request->query('date', today()->toDateString()));
         [$startsOn, $endsOn] = $this->rangeBounds($range, $date);
 
@@ -38,7 +46,7 @@ class ConstructionScheduleController extends Controller
         $internalNotices = collect();
         $cleaningDutyOccurrences = collect();
 
-        if ($type === 'all' || $type === 'construction') {
+        if ($types->contains('construction')) {
             $constructionSchedules = ConstructionSchedule::query()
                 ->with(['assignedUsers:id,name,email', 'voucherCheckedBy:id,name,email', 'site.guideFiles', 'selectedGuideFiles', 'directGuideFiles'])
                 ->whereDate('scheduled_on', '>=', $startsOn->toDateString())
@@ -48,7 +56,7 @@ class ConstructionScheduleController extends Controller
                 ->get();
         }
 
-        if ($type === 'all' || $type === 'business') {
+        if ($types->contains('business')) {
             $businessSchedules = BusinessSchedule::query()
                 ->with('assignedUsers:id,name,email')
                 ->whereDate('scheduled_on', '>=', $startsOn->toDateString())
@@ -58,7 +66,7 @@ class ConstructionScheduleController extends Controller
                 ->get();
         }
 
-        if ($type === 'all' || $type === 'internal_notice') {
+        if ($types->contains('internal_notice')) {
             $internalNotices = InternalNotice::query()
                 ->with('assignedUsers:id,name,email')
                 ->whereDate('scheduled_on', '>=', $startsOn->toDateString())
@@ -68,7 +76,7 @@ class ConstructionScheduleController extends Controller
                 ->get();
         }
 
-        if ($type === 'all' || $type === 'cleaning_duty') {
+        if ($types->contains('cleaning_duty')) {
             $cleaningDutyOccurrences = $this->cleaningDutyOccurrences($startsOn, $endsOn);
         }
 
@@ -77,7 +85,7 @@ class ConstructionScheduleController extends Controller
         $calendarStart = $monthStart->copy()->subDays($monthStart->dayOfWeek);
         $calendarEnd = $monthEnd->copy()->addDays(6 - $monthEnd->dayOfWeek);
 
-        $calendarDays = $this->calendarDays($calendarStart, $calendarEnd, $type);
+        $calendarDays = $this->calendarDays($calendarStart, $calendarEnd, $types);
 
         $user = $request->user();
         $selectedUserIds = $this->selectedUserIds($request, $user);
@@ -110,7 +118,7 @@ class ConstructionScheduleController extends Controller
         return Inertia::render('construction-schedules/index', [
             'filters' => [
                 'range' => $range,
-                'type' => $type,
+                'type' => $types->values(),
                 'date' => $date->toDateString(),
                 'starts_on' => $startsOn->toDateString(),
                 'ends_on' => $endsOn->toDateString(),
@@ -118,8 +126,8 @@ class ConstructionScheduleController extends Controller
             ],
             'calendarDays' => $calendarDays,
             'scheduleNavigation' => [
-                'previous_date' => $this->previousScheduleDate($date, $type),
-                'next_date' => $this->nextScheduleDate($date, $type),
+                'previous_date' => $this->previousScheduleDate($date, $types),
+                'next_date' => $this->nextScheduleDate($date, $types),
             ],
             'mySchedules' => $this->combinedSchedulePayload($myConstructionSchedules, $myBusinessSchedules, $myInternalNotices, $myCleaningDutyOccurrences),
             'teamSchedules' => $this->combinedSchedulePayload($constructionSchedules, $businessSchedules, $internalNotices, $cleaningDutyOccurrences),
@@ -221,6 +229,26 @@ class ConstructionScheduleController extends Controller
     }
 
     /**
+     * @return Collection<int, string>
+     */
+    private function selectedScheduleTypes(Request $request): Collection
+    {
+        $type = $request->query('type');
+
+        if ($type === 'all') {
+            return collect(self::SCHEDULE_TYPES);
+        }
+
+        $types = collect(is_array($type) ? $type : [$type])
+            ->filter(fn (mixed $type): bool => is_string($type))
+            ->filter(fn (string $type): bool => in_array($type, self::SCHEDULE_TYPES, true))
+            ->unique()
+            ->values();
+
+        return $types->isEmpty() ? collect(self::DEFAULT_SCHEDULE_TYPES) : $types;
+    }
+
+    /**
      * @template TSchedule of object
      *
      * @param  Collection<int, TSchedule>  $schedules
@@ -250,29 +278,32 @@ class ConstructionScheduleController extends Controller
         };
     }
 
-    private function previousScheduleDate(Carbon $date, string $type): ?string
+    /**
+     * @param  Collection<int, string>  $types
+     */
+    private function previousScheduleDate(Carbon $date, Collection $types): ?string
     {
         $dates = collect();
 
-        if ($type === 'all' || $type === 'construction') {
+        if ($types->contains('construction')) {
             $dates->push(ConstructionSchedule::query()
                 ->whereDate('scheduled_on', '<', $date->toDateString())
                 ->max('scheduled_on'));
         }
 
-        if (! in_array($type, ['construction', 'internal_notice', 'cleaning_duty'], true)) {
+        if ($types->contains('business')) {
             $dates->push(BusinessSchedule::query()
                 ->whereDate('scheduled_on', '<', $date->toDateString())
                 ->max('scheduled_on'));
         }
 
-        if ($type === 'all' || $type === 'internal_notice') {
+        if ($types->contains('internal_notice')) {
             $dates->push(InternalNotice::query()
                 ->whereDate('scheduled_on', '<', $date->toDateString())
                 ->max('scheduled_on'));
         }
 
-        if ($type === 'cleaning_duty') {
+        if ($types->contains('cleaning_duty')) {
             $dates->push($this->adjacentCleaningDutyDate($date, -1));
         }
 
@@ -281,29 +312,32 @@ class ConstructionScheduleController extends Controller
         return $scheduledOn === null ? null : Carbon::parse($scheduledOn)->toDateString();
     }
 
-    private function nextScheduleDate(Carbon $date, string $type): ?string
+    /**
+     * @param  Collection<int, string>  $types
+     */
+    private function nextScheduleDate(Carbon $date, Collection $types): ?string
     {
         $dates = collect();
 
-        if ($type === 'all' || $type === 'construction') {
+        if ($types->contains('construction')) {
             $dates->push(ConstructionSchedule::query()
                 ->whereDate('scheduled_on', '>', $date->toDateString())
                 ->min('scheduled_on'));
         }
 
-        if (! in_array($type, ['construction', 'internal_notice', 'cleaning_duty'], true)) {
+        if ($types->contains('business')) {
             $dates->push(BusinessSchedule::query()
                 ->whereDate('scheduled_on', '>', $date->toDateString())
                 ->min('scheduled_on'));
         }
 
-        if ($type === 'all' || $type === 'internal_notice') {
+        if ($types->contains('internal_notice')) {
             $dates->push(InternalNotice::query()
                 ->whereDate('scheduled_on', '>', $date->toDateString())
                 ->min('scheduled_on'));
         }
 
-        if ($type === 'cleaning_duty') {
+        if ($types->contains('cleaning_duty')) {
             $dates->push($this->adjacentCleaningDutyDate($date, 1));
         }
 
@@ -486,11 +520,14 @@ class ConstructionScheduleController extends Controller
         ]);
     }
 
-    private function calendarDays(Carbon $calendarStart, Carbon $calendarEnd, string $type): Collection
+    /**
+     * @param  Collection<int, string>  $types
+     */
+    private function calendarDays(Carbon $calendarStart, Carbon $calendarEnd, Collection $types): Collection
     {
         $days = collect();
 
-        if (! in_array($type, ['business', 'internal_notice', 'cleaning_duty'], true)) {
+        if ($types->contains('construction')) {
             ConstructionSchedule::query()
                 ->selectRaw('scheduled_on, count(*) as schedule_count')
                 ->whereDate('scheduled_on', '>=', $calendarStart->toDateString())
@@ -514,7 +551,7 @@ class ConstructionScheduleController extends Controller
                 });
         }
 
-        if (! in_array($type, ['construction', 'internal_notice', 'cleaning_duty'], true)) {
+        if ($types->contains('business')) {
             BusinessSchedule::query()
                 ->selectRaw('scheduled_on, count(*) as schedule_count')
                 ->whereDate('scheduled_on', '>=', $calendarStart->toDateString())
@@ -538,7 +575,7 @@ class ConstructionScheduleController extends Controller
                 });
         }
 
-        if ($type === 'all' || $type === 'internal_notice') {
+        if ($types->contains('internal_notice')) {
             InternalNotice::query()
                 ->selectRaw('scheduled_on, count(*) as schedule_count')
                 ->whereDate('scheduled_on', '>=', $calendarStart->toDateString())
@@ -562,7 +599,7 @@ class ConstructionScheduleController extends Controller
                 });
         }
 
-        if ($type === 'all' || $type === 'cleaning_duty') {
+        if ($types->contains('cleaning_duty')) {
             $this->cleaningDutyOccurrences($calendarStart, $calendarEnd)
                 ->each(function (array $occurrence) use ($days): void {
                     $date = $occurrence['scheduled_on'];

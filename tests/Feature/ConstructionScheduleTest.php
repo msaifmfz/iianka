@@ -4,6 +4,7 @@ use App\Models\BusinessSchedule;
 use App\Models\ConstructionSchedule;
 use App\Models\ConstructionSite;
 use App\Models\GeneralContractor;
+use App\Models\InternalNotice;
 use App\Models\SiteGuideFile;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
@@ -221,6 +222,12 @@ test('calendar includes construction and business schedules together', function 
     ]);
     $businessSchedule->assignedUsers()->attach($user);
 
+    $internalNotice = InternalNotice::factory()->create([
+        'scheduled_on' => $date,
+        'title' => '未選択の業務連絡',
+    ]);
+    $internalNotice->assignedUsers()->attach($user);
+
     $this->actingAs($user)
         ->get(route('construction-schedules.index', [
             'range' => 'today',
@@ -229,12 +236,14 @@ test('calendar includes construction and business schedules together', function 
         ->assertOk()
         ->assertInertia(fn (Assert $page): Assert => $page
             ->component('construction-schedules/index')
-            ->where('filters.type', 'all')
+            ->where('filters.type', ['construction', 'business'])
             ->has('mySchedules', 2)
             ->where('mySchedules', fn ($schedules): bool => collect($schedules)->contains(
                 fn (array $schedule): bool => $schedule['type'] === 'construction' && $schedule['location'] === '選択中の工事'
             ) && collect($schedules)->contains(
                 fn (array $schedule): bool => $schedule['type'] === 'business' && $schedule['location'] === '安全協議会'
+            ) && collect($schedules)->doesntContain(
+                fn (array $schedule): bool => $schedule['type'] === 'internal_notice'
             ))
             ->where('calendarDays', fn ($calendarDays) => collect($calendarDays)->contains(
                 fn (array $day): bool => $day['date'] === $date
@@ -271,7 +280,7 @@ test('calendar can filter to business schedules', function (): void {
         ->assertOk()
         ->assertInertia(fn (Assert $page): Assert => $page
             ->component('construction-schedules/index')
-            ->where('filters.type', 'business')
+            ->where('filters.type', ['business'])
             ->has('mySchedules', 1, fn (Assert $page): Assert => $page
                 ->where('type', 'business')
                 ->where('location', '定時総会')
@@ -306,7 +315,7 @@ test('users can open a day with only business schedules', function (): void {
         ->assertOk()
         ->assertInertia(fn (Assert $page): Assert => $page
             ->component('construction-schedules/index')
-            ->where('filters.type', 'all')
+            ->where('filters.type', ['construction', 'business', 'internal_notice', 'cleaning_duty'])
             ->has('mySchedules', 1, fn (Assert $page): Assert => $page
                 ->where('type', 'business')
                 ->where('location', '定時総会')

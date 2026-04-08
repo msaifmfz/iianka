@@ -89,7 +89,7 @@ export default function ConstructionSiteShow({ site, canManage }: Props) {
 ConstructionSiteShow.layout = {
     breadcrumbs: [
         {
-            title: 'Dashboard',
+            title: 'メニュー',
             href: dashboard(),
         },
         {

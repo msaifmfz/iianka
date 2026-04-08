@@ -168,7 +168,7 @@ export default function ConstructionSiteForm({ site }: Props) {
 ConstructionSiteForm.layout = {
     breadcrumbs: [
         {
-            title: 'Dashboard',
+            title: 'メニュー',
             href: dashboard(),
         },
         {

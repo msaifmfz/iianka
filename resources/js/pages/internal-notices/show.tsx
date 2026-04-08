@@ -109,7 +109,7 @@ export default function InternalNoticeShow({ notice, canManage }: Props) {
 InternalNoticeShow.layout = {
     breadcrumbs: [
         {
-            title: 'Dashboard',
+            title: 'メニュー',
             href: dashboard(),
         },
         {

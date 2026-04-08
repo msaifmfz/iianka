@@ -117,7 +117,7 @@ export default function CleaningDutyRuleIndex({ rules }: Props) {
 CleaningDutyRuleIndex.layout = {
     breadcrumbs: [
         {
-            title: 'Dashboard',
+            title: 'メニュー',
             href: dashboard(),
         },
         {

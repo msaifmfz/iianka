@@ -97,7 +97,7 @@ export default function ConstructionSitesIndex({ sites, canManage }: Props) {
 ConstructionSitesIndex.layout = {
     breadcrumbs: [
         {
-            title: 'Dashboard',
+            title: 'メニュー',
             href: dashboard(),
         },
         {

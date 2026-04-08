@@ -238,7 +238,7 @@ export default function ConstructionScheduleShow({
 ConstructionScheduleShow.layout = {
     breadcrumbs: [
         {
-            title: 'Dashboard',
+            title: 'メニュー',
             href: dashboard(),
         },
         {
