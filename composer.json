@@ -19,6 +19,8 @@
     "require-dev": {
         "driftingly/rector-laravel": "^2.2",
         "fakerphp/faker": "^1.24",
+        "laravel-lang/lang": "^15.29",
+        "laravel-lang/publisher": "^16.8",
         "laravel/boost": "^2.0",
         "laravel/pail": "^1.2.5",
         "laravel/pint": "^1.27",

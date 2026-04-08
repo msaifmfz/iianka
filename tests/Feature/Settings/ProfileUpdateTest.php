@@ -50,6 +50,25 @@ test('email verification status is unchanged when the email address is unchanged
     expect($user->refresh()->email_verified_at)->not->toBeNull();
 });
 
+test('profile validation attributes are displayed in japanese', function (): void {
+    $user = User::factory()->create();
+
+    $response = $this
+        ->actingAs($user)
+        ->from(route('profile.edit'))
+        ->patch(route('profile.update'), [
+            'name' => '',
+            'email' => 'invalid-email',
+        ]);
+
+    $response
+        ->assertSessionHasErrors([
+            'name' => '名前は必須項目です。',
+            'email' => 'メールアドレスは、有効なメールアドレス形式で指定してください。',
+        ])
+        ->assertRedirect(route('profile.edit'));
+});
+
 test('user can delete their account', function (): void {
     $user = User::factory()->create();
 
