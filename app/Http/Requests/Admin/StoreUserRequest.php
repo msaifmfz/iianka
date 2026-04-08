@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Admin;
 
 use App\Concerns\PasswordValidationRules;
@@ -27,7 +29,7 @@ class StoreUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            ...$this->profileRules(),
+            ...$this->accountRules(),
             'password' => $this->passwordRules(),
             'is_admin' => ['required', 'boolean'],
         ];

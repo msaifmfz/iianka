@@ -20,13 +20,14 @@ class CreateNewUser implements CreatesNewUsers
     public function create(array $input): User
     {
         Validator::make($input, [
-            ...$this->profileRules(),
+            ...$this->accountRules(),
             'password' => $this->passwordRules(),
         ])->validate();
 
         return User::create([
             'name' => $input['name'],
-            'email' => $input['email'],
+            'login_id' => $input['login_id'],
+            'email' => $input['email'] ?: null,
             'password' => $input['password'],
         ]);
     }

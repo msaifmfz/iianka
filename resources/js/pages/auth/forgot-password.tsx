@@ -23,6 +23,10 @@ export default function ForgotPassword({ status }: { status?: string }) {
                 <Form {...email.form()}>
                     {({ processing, errors }) => (
                         <>
+                            <p className="text-sm text-muted-foreground">
+                                メールアドレス未登録のアカウントは、管理者にパスワード再設定を依頼してください。
+                            </p>
+
                             <div className="grid gap-2">
                                 <Label htmlFor="email">メールアドレス</Label>
                                 <Input
@@ -65,5 +69,5 @@ export default function ForgotPassword({ status }: { status?: string }) {
 ForgotPassword.layout = {
     title: 'パスワードをお忘れですか',
     description:
-        'パスワード再設定リンクを受け取るメールアドレスを入力してください',
+        'メール登録済みのアカウントは再設定リンクを受け取れます。未登録の場合は管理者へ連絡してください。',
 };

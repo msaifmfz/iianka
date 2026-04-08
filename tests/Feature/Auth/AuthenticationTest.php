@@ -20,7 +20,7 @@ test('users can authenticate using the login screen', function (): void {
     $user = User::factory()->create();
 
     $response = $this->post(route('login.store'), [
-        'email' => $user->email,
+        'login_id' => $user->login_id,
         'password' => 'password',
     ]);
 
@@ -45,7 +45,7 @@ test('users with two factor enabled are redirected to two factor challenge', fun
     ])->save();
 
     $response = $this->post(route('login'), [
-        'email' => $user->email,
+        'login_id' => $user->login_id,
         'password' => 'password',
     ]);
 
@@ -58,7 +58,7 @@ test('users can not authenticate with invalid password', function (): void {
     $user = User::factory()->create();
 
     $this->post(route('login.store'), [
-        'email' => $user->email,
+        'login_id' => $user->login_id,
         'password' => 'wrong-password',
     ]);
 
@@ -74,13 +74,26 @@ test('users can logout', function (): void {
     $response->assertRedirect(route('home'));
 });
 
+test('users cannot authenticate with email instead of login id', function (): void {
+    $user = User::factory()->create();
+
+    $this->from(route('login.store'))
+        ->post(route('login.store'), [
+            'email' => $user->email,
+            'password' => 'password',
+        ])
+        ->assertSessionHasErrors('login_id');
+
+    $this->assertGuest();
+});
+
 test('users are rate limited', function (): void {
     $user = User::factory()->create();
 
-    RateLimiter::increment(md5('login'.implode('|', [$user->email, '127.0.0.1'])), amount: 5);
+    RateLimiter::increment(md5('login'.$user->login_id.'|127.0.0.1'), amount: 5);
 
     $response = $this->post(route('login.store'), [
-        'email' => $user->email,
+        'login_id' => $user->login_id,
         'password' => 'wrong-password',
     ]);
 

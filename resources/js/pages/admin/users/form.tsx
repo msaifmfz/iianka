@@ -13,7 +13,8 @@ import { dashboard } from '@/routes';
 type ManagedUser = {
     id: number;
     name: string;
-    email: string;
+    login_id: string;
+    email: string | null;
     is_admin: boolean;
     is_current_user: boolean;
 };
@@ -25,6 +26,7 @@ type Props = {
 type UserForm = {
     _method: 'put' | '';
     name: string;
+    login_id: string;
     email: string;
     password: string;
     password_confirmation: string;
@@ -53,6 +55,7 @@ export default function AdminUserForm({ managedUser }: Props) {
     const { data, setData, post, processing, errors } = useForm<UserForm>({
         _method: managedUser ? 'put' : '',
         name: managedUser?.name ?? '',
+        login_id: managedUser?.login_id ?? '',
         email: managedUser?.email ?? '',
         password: '',
         password_confirmation: '',
@@ -62,9 +65,7 @@ export default function AdminUserForm({ managedUser }: Props) {
     function submit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
 
-        post(
-            managedUser ? userUpdate.url(managedUser.id) : userStore.url(),
-        );
+        post(managedUser ? userUpdate.url(managedUser.id) : userStore.url());
     }
 
     return (
@@ -103,6 +104,19 @@ export default function AdminUserForm({ managedUser }: Props) {
                                     autoComplete="name"
                                 />
                             </Field>
+                            <Field label="ログインID" error={errors.login_id}>
+                                <Input
+                                    value={data.login_id}
+                                    onChange={(event) =>
+                                        setData(
+                                            'login_id',
+                                            event.target.value.toLowerCase(),
+                                        )
+                                    }
+                                    autoComplete="username"
+                                    placeholder="例）0001"
+                                />
+                            </Field>
                             <Field label="メールアドレス" error={errors.email}>
                                 <Input
                                     type="email"
@@ -111,6 +125,7 @@ export default function AdminUserForm({ managedUser }: Props) {
                                         setData('email', event.target.value)
                                     }
                                     autoComplete="email"
+                                    placeholder="未設定でも可"
                                 />
                             </Field>
                             <div className="grid gap-4 sm:grid-cols-2">
@@ -224,9 +239,7 @@ export default function AdminUserForm({ managedUser }: Props) {
                                     variant="outline"
                                     className="w-full"
                                 >
-                                    <Link href={userIndex()}>
-                                        キャンセル
-                                    </Link>
+                                    <Link href={userIndex()}>キャンセル</Link>
                                 </Button>
                             </CardContent>
                         </Card>

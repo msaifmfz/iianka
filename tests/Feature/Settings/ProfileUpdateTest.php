@@ -33,6 +33,25 @@ test('profile information can be updated', function (): void {
     expect($user->email_verified_at)->toBeNull();
 });
 
+test('profile information can be updated without an email address', function (): void {
+    $user = User::factory()->create()->refresh();
+
+    $response = $this
+        ->actingAs($user)
+        ->patch(route('profile.update'), [
+            'name' => '現場 太郎',
+            'email' => '',
+        ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('profile.edit'));
+
+    expect($user->refresh()->name)->toBe('現場 太郎')
+        ->and($user->email)->toBeNull()
+        ->and($user->email_verified_at)->toBeNull();
+});
+
 test('email verification status is unchanged when the email address is unchanged', function (): void {
     $user = User::factory()->create();
 

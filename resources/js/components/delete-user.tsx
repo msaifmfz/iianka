@@ -44,9 +44,7 @@ export default function DeleteUser() {
                         </Button>
                     </DialogTrigger>
                     <DialogContent>
-                        <DialogTitle>
-                            アカウントを削除しますか？
-                        </DialogTitle>
+                        <DialogTitle>アカウントを削除しますか？</DialogTitle>
                         <DialogDescription>
                             アカウント削除したらデータが消えます。
                             パスワードを入力してください。

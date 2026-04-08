@@ -12,7 +12,7 @@ test('password login still works with webauthn provider fallback', function (): 
     $user = User::factory()->create();
 
     $response = $this->post(route('login.store'), [
-        'email' => $user->email,
+        'login_id' => $user->login_id,
         'password' => 'password',
     ]);
 

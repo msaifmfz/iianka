@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
         $testUser = User::query()->firstOrNew(['email' => 'test@example.com']);
         $testUser->forceFill([
             'name' => 'Test User',
+            'login_id' => 'worker-0001',
             'password' => 'password',
             'email_verified_at' => now(),
             'is_admin' => false,
@@ -28,6 +29,7 @@ class DatabaseSeeder extends Seeder
         $admin = User::query()->firstOrNew(['email' => 'admin@example.com']);
         $admin->forceFill([
             'name' => 'Admin User',
+            'login_id' => 'admin-0001',
             'password' => 'password',
             'email_verified_at' => now(),
             'is_admin' => true,

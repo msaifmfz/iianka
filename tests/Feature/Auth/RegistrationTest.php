@@ -15,6 +15,7 @@ test('registration screen can be rendered', function (): void {
 test('new users can register', function (): void {
     $response = $this->post(route('register.store'), [
         'name' => 'Test User',
+        'login_id' => 'test-user',
         'email' => 'test@example.com',
         'password' => 'password',
         'password_confirmation' => 'password',

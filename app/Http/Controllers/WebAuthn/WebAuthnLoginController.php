@@ -21,8 +21,6 @@ class WebAuthnLoginController extends Controller
      */
     public function createChallenge(AssertionRequest $request): Responsable
     {
-        $request->validate(['email' => ['sometimes', 'email', 'string']]);
-
         return $request->secureLogin()->toVerify(null);
     }
 
@@ -36,7 +34,7 @@ class WebAuthnLoginController extends Controller
         return $user instanceof WebAuthnAuthenticatable
             ? response()->json(['redirect' => route('dashboard', absolute: false)])
             : response()->json([
-                'message' => 'このパスキーではログインできませんでした。別のパスキーを使うか、メールアドレスとパスワードでログインしてください。',
+                'message' => 'このパスキーではログインできませんでした。別のパスキーを使うか、ログインIDとパスワードでログインしてください。',
             ], 422);
     }
 }

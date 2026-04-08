@@ -26,6 +26,7 @@ class UserFactory extends Factory
     {
         return [
             'name' => fake()->name(),
+            'login_id' => fake()->unique()->bothify('worker-####'),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
@@ -53,6 +54,17 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes): array => [
             'is_admin' => true,
+        ]);
+    }
+
+    /**
+     * Indicate that the model has no email address on file.
+     */
+    public function withoutEmail(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'email' => null,
+            'email_verified_at' => null,
         ]);
     }
 

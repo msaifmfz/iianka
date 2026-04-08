@@ -23,7 +23,8 @@ import { dashboard } from '@/routes';
 type ManagedUser = {
     id: number;
     name: string;
-    email: string;
+    login_id: string;
+    email: string | null;
     email_verified_at: string | null;
     two_factor_confirmed_at: string | null;
     is_admin: boolean;
@@ -132,7 +133,12 @@ function UserIdentity({ user }: { user: ManagedUser }) {
                         <Badge variant="secondary">自分</Badge>
                     )}
                 </div>
-                <p className="truncate text-muted-foreground">{user.email}</p>
+                <p className="truncate text-sm text-muted-foreground">
+                    {user.login_id}
+                </p>
+                <p className="truncate text-muted-foreground">
+                    {user.email ?? 'メール未登録'}
+                </p>
             </div>
         </div>
     );
@@ -149,9 +155,21 @@ function UserRoleBadge({ user }: { user: ManagedUser }) {
 function UserSecurityBadges({ user }: { user: ManagedUser }) {
     return (
         <div className="flex flex-wrap gap-2">
-            <Badge variant={user.email_verified_at ? 'secondary' : 'outline'}>
+            <Badge
+                variant={
+                    user.email === null
+                        ? 'outline'
+                        : user.email_verified_at
+                          ? 'secondary'
+                          : 'outline'
+                }
+            >
                 <BadgeCheck className="size-3" />
-                {user.email_verified_at ? 'メール認証済み' : '未認証'}
+                {user.email === null
+                    ? 'メール未登録'
+                    : user.email_verified_at
+                      ? 'メール認証済み'
+                      : '未認証'}
             </Badge>
             <Badge
                 variant={user.two_factor_confirmed_at ? 'secondary' : 'outline'}
@@ -242,7 +260,7 @@ export default function AdminUsersIndex({ users, filters }: Props) {
                             <div>
                                 <CardTitle>アカウント一覧</CardTitle>
                                 <p className="mt-1 text-sm text-muted-foreground">
-                                    権限、メール認証、セキュリティ状態を確認できます。
+                                    ログインID、権限、メール状態、セキュリティ状態を確認できます。
                                 </p>
                             </div>
                             <form
@@ -256,7 +274,7 @@ export default function AdminUsersIndex({ users, filters }: Props) {
                                         onChange={(event) =>
                                             setSearch(event.target.value)
                                         }
-                                        placeholder="名前またはメールで検索"
+                                        placeholder="名前・ログインID・メールで検索"
                                         className="pl-9"
                                     />
                                 </div>

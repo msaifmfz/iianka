@@ -10,12 +10,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 use Laragear\WebAuthn\Contracts\WebAuthnAuthenticatable;
 use Laragear\WebAuthn\WebAuthnAuthentication;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Override;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'login_id', 'email', 'password'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements WebAuthnAuthenticatable
 {
@@ -36,6 +37,16 @@ class User extends Authenticatable implements WebAuthnAuthenticatable
             'is_admin' => 'boolean',
             'two_factor_confirmed_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Normalize login IDs for case-insensitive authentication.
+     */
+    protected function setLoginIdAttribute(?string $value): void
+    {
+        $this->attributes['login_id'] = filled($value)
+            ? Str::lower(trim($value))
+            : null;
     }
 
     /**

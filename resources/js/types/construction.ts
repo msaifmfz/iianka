@@ -1,7 +1,7 @@
 export type ConstructionUser = {
     id: number;
     name: string;
-    email: string;
+    email: string | null;
 };
 
 export type SiteGuideFile = {

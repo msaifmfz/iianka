@@ -253,7 +253,9 @@ function filterSchedulesByType(
     schedules: ScheduleEvent[],
     selectedTypes: ScheduleType[],
 ) {
-    return schedules.filter((schedule) => selectedTypes.includes(schedule.type));
+    return schedules.filter((schedule) =>
+        selectedTypes.includes(schedule.type),
+    );
 }
 
 function RangeLink({
@@ -429,7 +431,7 @@ function ScheduleCard({
     const TypeIcon = typeIcon;
     const scheduleNumber =
         schedule.type === 'construction' || schedule.type === 'business'
-            ? schedule.schedule_number ?? '?'
+            ? (schedule.schedule_number ?? '?')
             : null;
 
     const cardBody = (
@@ -672,7 +674,10 @@ export default function ConstructionSchedulesIndex({
         month: 'long',
     }).format(new Date(`${filters.date}T00:00:00`));
     const hasSelectedUserFilter = canManage && filters.user_ids.length > 0;
-    const filteredMySchedules = filterSchedulesByType(mySchedules, filters.type);
+    const filteredMySchedules = filterSchedulesByType(
+        mySchedules,
+        filters.type,
+    );
     const filteredTeamSchedules = filterSchedulesByType(
         teamSchedules,
         filters.type,

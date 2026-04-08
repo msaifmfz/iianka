@@ -86,18 +86,18 @@ export default function Login({ status }: Props) {
                     <>
                         <div className="grid gap-6">
                             <div className="grid gap-2">
-                                <Label htmlFor="email">メールアドレス</Label>
+                                <Label htmlFor="login_id">ログインID</Label>
                                 <Input
-                                    id="email"
-                                    type="email"
-                                    name="email"
+                                    id="login_id"
+                                    type="text"
+                                    name="login_id"
                                     required
                                     autoFocus
                                     tabIndex={1}
                                     autoComplete="username webauthn"
-                                    placeholder="email@example.com"
+                                    placeholder="例）0001"
                                 />
-                                <InputError message={errors.email} />
+                                <InputError message={errors.login_id} />
                             </div>
 
                             <div className="grid gap-2">
@@ -181,7 +181,7 @@ export default function Login({ status }: Props) {
 
                             {passkeySupported === false && (
                                 <p className="text-center text-xs text-muted-foreground">
-                                    このブラウザまたはデバイスではパスキーを利用できません。メールアドレスとパスワードでログインできます。
+                                    このブラウザまたはデバイスではパスキーを利用できません。ログインIDとパスワードでログインできます。
                                 </p>
                             )}
 
@@ -219,5 +219,5 @@ export default function Login({ status }: Props) {
 
 Login.layout = {
     title: 'アカウントにログイン',
-    description: 'メールアドレスとパスワードを入力してログインしてください',
+    description: 'ログインIDとパスワードを入力してログインしてください',
 };

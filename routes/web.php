@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\BusinessScheduleController;
 use App\Http\Controllers\CleaningDutyRuleController;
@@ -13,11 +15,9 @@ use App\Http\Controllers\WebAuthn\WebAuthnRegisterController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function (Request $request) {
-    return $request->user()
-        ? redirect()->route('dashboard')
-        : redirect()->route('login');
-})->name('home');
+Route::get('/', fn (Request $request) => $request->user()
+    ? redirect()->route('dashboard')
+    : redirect()->route('login'))->name('home');
 
 Route::middleware(['auth', 'verified', 'password.confirm'])->group(function (): void {
     Route::post('webauthn/register/options', [WebAuthnRegisterController::class, 'createChallenge'])

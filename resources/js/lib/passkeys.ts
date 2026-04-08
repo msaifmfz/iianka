@@ -82,7 +82,7 @@ export function passkeyErrorMessage(error: unknown): string {
     }
 
     if (error instanceof Error && error.name === 'SecurityError') {
-        return 'この環境ではパスキー認証を利用できません。メールアドレスとパスワードでログインしてください。';
+        return 'この環境ではパスキー認証を利用できません。ログインIDとパスワードでログインしてください。';
     }
 
     const errorWithResponse = error as PasskeyErrorWithResponse;
@@ -98,14 +98,14 @@ export function passkeyErrorMessage(error: unknown): string {
         errorWithResponse.status ?? errorWithResponse.response?.status;
 
     if (responseStatus === 422) {
-        return 'このパスキーではログインできませんでした。別のパスキーを使うか、メールアドレスとパスワードでログインしてください。';
+        return 'このパスキーではログインできませんでした。別のパスキーを使うか、ログインIDとパスワードでログインしてください。';
     }
 
     if (error instanceof Error && error.message) {
         return error.message.includes('[POST]')
-            ? 'パスキーでログインできませんでした。メールアドレスとパスワードでもログインできます。'
+            ? 'パスキーでログインできませんでした。ログインIDとパスワードでもログインできます。'
             : error.message;
     }
 
-    return 'パスキーでログインできませんでした。メールアドレスとパスワードでもログインできます。';
+    return 'パスキーでログインできませんでした。ログインIDとパスワードでもログインできます。';
 }

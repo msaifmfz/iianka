@@ -31,7 +31,7 @@ class UpdateUserRequest extends FormRequest
         $user = $this->route('user');
 
         return [
-            ...$this->profileRules($user instanceof User ? $user->id : null),
+            ...$this->accountRules($user instanceof User ? $user->id : null),
             'password' => ['nullable', 'string', Password::default(), 'confirmed'],
             'is_admin' => ['required', 'boolean'],
         ];

@@ -21,9 +21,10 @@ class UserController extends Controller
         $role = $request->query('role');
 
         $users = User::query()
-            ->select(['id', 'name', 'email', 'email_verified_at', 'two_factor_confirmed_at', 'is_admin', 'created_at', 'updated_at'])
+            ->select(['id', 'name', 'login_id', 'email', 'email_verified_at', 'two_factor_confirmed_at', 'is_admin', 'created_at', 'updated_at'])
             ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search): void {
                 $query->where('name', 'like', "%{$search}%")
+                    ->orWhere('login_id', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%");
             }))
             ->when($role === 'admin', fn ($query) => $query->where('is_admin', true))
@@ -64,7 +65,8 @@ class UserController extends Controller
 
         $user = User::create([
             'name' => $validated['name'],
-            'email' => $validated['email'],
+            'login_id' => $validated['login_id'],
+            'email' => $validated['email'] ?: null,
             'password' => $validated['password'],
         ]);
         $user->forceFill([
@@ -91,7 +93,8 @@ class UserController extends Controller
 
         $attributes = [
             'name' => $validated['name'],
-            'email' => $validated['email'],
+            'login_id' => $validated['login_id'],
+            'email' => $validated['email'] ?: null,
             'is_admin' => $validated['is_admin'],
         ];
 
@@ -126,6 +129,7 @@ class UserController extends Controller
         return [
             'id' => $user->id,
             'name' => $user->name,
+            'login_id' => $user->login_id,
             'email' => $user->email,
             'email_verified_at' => $user->email_verified_at?->toISOString(),
             'two_factor_confirmed_at' => $user->two_factor_confirmed_at?->toISOString(),

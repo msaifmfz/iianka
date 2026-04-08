@@ -35,14 +35,16 @@ test('admins can create users', function (): void {
     $this->actingAs($admin)
         ->post(route('admin.users.store'), [
             'name' => 'New Member',
-            'email' => 'new-member@example.com',
+            'login_id' => 'new-member',
+            'email' => null,
             'password' => 'password',
             'password_confirmation' => 'password',
             'is_admin' => false,
         ])
         ->assertRedirect(route('admin.users.index'));
 
-    expect(User::query()->where('email', 'new-member@example.com')->where('is_admin', false)->exists())->toBeTrue();
+    expect(User::query()->where('login_id', 'new-member')->where('is_admin', false)->exists())->toBeTrue()
+        ->and(User::query()->where('login_id', 'new-member')->value('email'))->toBeNull();
 });
 
 test('admins can update user roles', function (): void {
@@ -52,6 +54,7 @@ test('admins can update user roles', function (): void {
     $this->actingAs($admin)
         ->put(route('admin.users.update', $member), [
             'name' => 'Promoted Member',
+            'login_id' => $member->login_id,
             'email' => $member->email,
             'password' => null,
             'password_confirmation' => null,
@@ -71,6 +74,7 @@ test('admins cannot remove their own admin role', function (): void {
     $this->actingAs($admin)
         ->put(route('admin.users.update', $admin), [
             'name' => $admin->name,
+            'login_id' => $admin->login_id,
             'email' => $admin->email,
             'password' => null,
             'password_confirmation' => null,
@@ -79,6 +83,22 @@ test('admins cannot remove their own admin role', function (): void {
         ->assertSessionHasErrors('is_admin');
 
     expect($admin->refresh()->is_admin)->toBeTrue();
+});
+
+test('admins cannot assign duplicate login ids', function (): void {
+    $admin = User::factory()->admin()->create();
+    $existingUser = User::factory()->create(['login_id' => 'worker-0009']);
+
+    $this->actingAs($admin)
+        ->post(route('admin.users.store'), [
+            'name' => 'Another Member',
+            'login_id' => 'worker-0009',
+            'email' => null,
+            'password' => 'password',
+            'password_confirmation' => 'password',
+            'is_admin' => false,
+        ])
+        ->assertSessionHasErrors('login_id');
 });
 
 test('admins can delete other users but not themselves', function (): void {

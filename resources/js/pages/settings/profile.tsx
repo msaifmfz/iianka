@@ -28,7 +28,7 @@ export default function Profile({
                 <Heading
                     variant="small"
                     title="プロフィール情報"
-                    description="名前とメールアドレスを更新します"
+                    description="名前を更新できます。メールアドレスは任意です。"
                 />
 
                 <Form
@@ -66,20 +66,24 @@ export default function Profile({
                                     id="email"
                                     type="email"
                                     className="mt-1 block w-full"
-                                    defaultValue={auth.user.email}
+                                    defaultValue={auth.user.email ?? ''}
                                     name="email"
-                                    required
                                     autoComplete="username"
-                                    placeholder="メールアドレス"
+                                    placeholder="メールアドレス（任意）"
                                 />
 
                                 <InputError
                                     className="mt-2"
                                     message={errors.email}
                                 />
+
+                                <p className="text-sm text-muted-foreground">
+                                    メールアドレスがない場合、パスワード再設定は管理者対応になります。
+                                </p>
                             </div>
 
                             {mustVerifyEmail &&
+                                auth.user.email &&
                                 auth.user.email_verified_at === null && (
                                     <div>
                                         <p className="-mt-4 text-sm text-muted-foreground">

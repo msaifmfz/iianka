@@ -171,6 +171,7 @@ return [
         'guide_files.*' => '案内図ファイル',
         'is_active' => '有効状態',
         'label' => '表示名',
+        'login_id' => 'ログインID',
         'location' => '場所',
         'meeting_place' => '集合場所',
         'memo' => 'メモ',
