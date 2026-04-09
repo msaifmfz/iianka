@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ValidatesAssignedUserScheduleTiming;
 use App\Http\Requests\Concerns\ValidatesScheduleNumber;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -11,6 +12,7 @@ use Override;
 
 class StoreBusinessScheduleRequest extends FormRequest
 {
+    use ValidatesAssignedUserScheduleTiming;
     use ValidatesScheduleNumber;
 
     #[Override]
@@ -64,6 +66,9 @@ class StoreBusinessScheduleRequest extends FormRequest
      */
     public function after(): array
     {
-        return $this->scheduleNumberAfterValidation();
+        return [
+            ...$this->assignedUserScheduleTimingAfterValidation(),
+            ...$this->scheduleNumberAfterValidation(),
+        ];
     }
 }

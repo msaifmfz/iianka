@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 
 #[Fillable([
     'construction_site_id',
@@ -41,6 +42,17 @@ class SiteGuideFile extends Model
 
     public function url(): string
     {
-        return Storage::disk($this->disk)->url($this->path);
+        return route('site-guide-files.show', $this);
+    }
+
+    public function absolutePath(): string
+    {
+        $path = Storage::disk($this->disk)->path($this->path);
+
+        if (! is_file($path)) {
+            throw new RuntimeException("Guide file [{$this->id}] is missing from storage.");
+        }
+
+        return $path;
     }
 }

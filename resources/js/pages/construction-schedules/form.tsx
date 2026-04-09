@@ -1,17 +1,17 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import {
     AlertTriangle,
-    ArrowLeft,
     CheckCircle2,
     ExternalLink,
     FileText,
     UploadCloud,
 } from 'lucide-react';
 import {
+    index as scheduleIndex,
     store as scheduleStore,
     update as scheduleUpdate,
-    index as scheduleIndex,
 } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
+import { FloatingBackButton } from '@/components/floating-back-button';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -223,6 +223,16 @@ export default function ConstructionScheduleForm({
         });
     }
 
+    function handleGoBack() {
+        if (typeof window !== 'undefined' && window.history.length > 1) {
+            window.history.back();
+
+            return;
+        }
+
+        router.visit(scheduleIndex());
+    }
+
     function selectTimeNotePreset(timeNote: string) {
         setData((values) => ({
             ...values,
@@ -266,7 +276,11 @@ export default function ConstructionScheduleForm({
     return (
         <>
             <Head title={schedule ? '予定編集' : '新規予定'} />
-            <div className="mx-auto max-w-5xl space-y-6 px-2 py-4 sm:p-4 md:p-6">
+            <FloatingBackButton
+                onClick={handleGoBack}
+                className="bottom-5 md:bottom-6 xl:bottom-8"
+            />
+            <div className="mx-auto max-w-5xl space-y-6 px-2 py-4 pb-24 sm:p-4 sm:pb-24 md:p-6 md:pb-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <p className="text-sm text-muted-foreground">
@@ -276,12 +290,6 @@ export default function ConstructionScheduleForm({
                             {schedule ? '予定編集' : '新規予定'}
                         </h1>
                     </div>
-                    <Button asChild variant="outline">
-                        <Link href={scheduleIndex()}>
-                            <ArrowLeft className="size-4" />
-                            予定表へ戻る
-                        </Link>
-                    </Button>
                 </div>
 
                 <form

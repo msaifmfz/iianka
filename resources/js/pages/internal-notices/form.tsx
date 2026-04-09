@@ -1,10 +1,10 @@
-import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft } from 'lucide-react';
+import { Head, router, useForm } from '@inertiajs/react';
 import { index as scheduleIndex } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
 import {
     store as internalNoticeStore,
     update as internalNoticeUpdate,
 } from '@/actions/App/Http/Controllers/InternalNoticeController';
+import { FloatingBackButton } from '@/components/floating-back-button';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { dashboard } from '@/routes';
@@ -79,10 +79,24 @@ export default function InternalNoticeForm({ notice, users }: Props) {
         );
     }
 
+    function handleGoBack() {
+        if (typeof window !== 'undefined' && window.history.length > 1) {
+            window.history.back();
+
+            return;
+        }
+
+        router.visit(scheduleIndex({ query: { type: 'all' } }));
+    }
+
     return (
         <>
             <Head title={notice ? '業務連絡編集' : '新規業務連絡'} />
-            <div className="mx-auto max-w-5xl space-y-6 px-2 py-4 sm:p-4 md:p-6">
+            <FloatingBackButton
+                onClick={handleGoBack}
+                className="bottom-5 md:bottom-6 xl:bottom-8"
+            />
+            <div className="mx-auto max-w-5xl space-y-6 px-2 py-4 pb-24 sm:p-4 sm:pb-24 md:p-6 md:pb-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <p className="text-sm text-muted-foreground">
@@ -92,12 +106,6 @@ export default function InternalNoticeForm({ notice, users }: Props) {
                             {notice ? '業務連絡編集' : '新規業務連絡'}
                         </h1>
                     </div>
-                    <Button asChild variant="outline">
-                        <Link href={scheduleIndex({ query: { type: 'all' } })}>
-                            <ArrowLeft className="size-4" />
-                            予定表へ戻る
-                        </Link>
-                    </Button>
                 </div>
 
                 <form

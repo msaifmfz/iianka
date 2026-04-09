@@ -10,6 +10,7 @@ use App\Http\Controllers\ConstructionScheduleVoucherController;
 use App\Http\Controllers\ConstructionSiteController;
 use App\Http\Controllers\InternalNoticeController;
 use App\Http\Controllers\Settings\SecurityController;
+use App\Http\Controllers\SiteGuideFileController;
 use App\Http\Controllers\WebAuthn\WebAuthnLoginController;
 use App\Http\Controllers\WebAuthn\WebAuthnRegisterController;
 use Illuminate\Http\Request;
@@ -40,6 +41,12 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
         ->name('voucher-confirmations.index');
     Route::patch('construction-schedules/{construction_schedule}/voucher-confirmation', [ConstructionScheduleVoucherController::class, 'update'])
         ->name('construction-schedules.voucher-confirmation.update');
+    Route::patch('construction-schedules/{construction_schedule}/number', [ConstructionScheduleController::class, 'updateNumber'])
+        ->name('construction-schedules.number.update');
+    Route::patch('business-schedules/{business_schedule}/number', [BusinessScheduleController::class, 'updateNumber'])
+        ->name('business-schedules.number.update');
+    Route::get('site-guide-files/{site_guide_file}', [SiteGuideFileController::class, 'show'])
+        ->name('site-guide-files.show');
     Route::resource('construction-schedules', ConstructionScheduleController::class);
     Route::resource('business-schedules', BusinessScheduleController::class);
     Route::resource('internal-notices', InternalNoticeController::class);

@@ -149,19 +149,19 @@ export default function CleaningDutyRuleForm({
                                 placeholder="例: 事務所"
                             />
                         </Field>
-                        <Field label="表示順" error={errors.sort_order}>
-                            <Input
-                                type="number"
-                                min="0"
-                                value={data.sort_order}
-                                onChange={(event) =>
-                                    setData(
-                                        'sort_order',
-                                        Number(event.target.value),
-                                    )
-                                }
-                            />
-                        </Field>
+                        {/* <Field label="表示順" error={errors.sort_order}> */}
+                        {/*     <Input */}
+                        {/*         type="number" */}
+                        {/*         min="0" */}
+                        {/*         value={data.sort_order} */}
+                        {/*         onChange={(event) => */}
+                        {/*             setData( */}
+                        {/*                 'sort_order', */}
+                        {/*                 Number(event.target.value), */}
+                        {/*             ) */}
+                        {/*         } */}
+                        {/*     /> */}
+                        {/* </Field> */}
                     </section>
 
                     <label className="flex items-center gap-2 text-sm font-medium">

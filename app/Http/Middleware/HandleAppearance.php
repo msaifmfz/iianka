@@ -9,6 +9,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 class HandleAppearance
 {
+    private const DEFAULT_APPEARANCE = 'light';
+
     /**
      * Handle an incoming request.
      *
@@ -16,7 +18,7 @@ class HandleAppearance
      */
     public function handle(Request $request, Closure $next): Response
     {
-        View::share('appearance', $request->cookie('appearance') ?? 'system');
+        View::share('appearance', $request->cookie('appearance') ?? self::DEFAULT_APPEARANCE);
 
         return $next($request);
     }

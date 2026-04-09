@@ -34,7 +34,7 @@ class SecurityController extends Controller implements HasMiddleware
     public function edit(TwoFactorAuthenticationRequest $request): Response
     {
         $props = [
-            'canManageTwoFactor' => Features::canManageTwoFactorAuthentication(),
+            'canManageTwoFactor' => false, // Features::canManageTwoFactorAuthentication(),
             'passkeys' => $this->passkeys($request),
         ];
 

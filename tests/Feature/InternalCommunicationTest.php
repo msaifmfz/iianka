@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\BusinessSchedule;
 use App\Models\CleaningDutyRule;
 use App\Models\ConstructionSchedule;
 use App\Models\InternalNotice;
@@ -142,6 +143,75 @@ test('inactive cleaning duty rules are hidden from the calendar', function (): v
             ->component('construction-schedules/index')
             ->has('mySchedules', 0)
             ->has('teamSchedules', 0)
+        );
+});
+
+test('admins can open cleaning duty settings index', function (): void {
+    $admin = User::factory()->admin()->create();
+    $worker = User::factory()->create(['name' => 'Mr.C']);
+
+    $rule = CleaningDutyRule::factory()->create([
+        'weekday' => 2,
+        'label' => '掃除当番',
+        'location' => '給湯室',
+    ]);
+    $rule->assignedUsers()->attach($worker);
+
+    $this->actingAs($admin)
+        ->get(route('cleaning-duty-rules.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->component('cleaning-duty-rules/index')
+            ->has('rules', 1, fn (Assert $page): Assert => $page
+                ->where('label', '掃除当番')
+                ->where('location', '給湯室')
+                ->where('assigned_users.0.name', 'Mr.C')
+                ->etc()
+            )
+        );
+});
+
+test('worker dashboard shares attention counts and worker summary', function (): void {
+    $worker = User::factory()->create(['name' => 'Worker A']);
+    $today = today()->toDateString();
+
+    $constructionSchedule = ConstructionSchedule::factory()->create([
+        'scheduled_on' => $today,
+        'status' => ConstructionSchedule::STATUS_POSTPONED,
+        'voucher_checked_at' => null,
+    ]);
+    $constructionSchedule->assignedUsers()->attach($worker);
+
+    $businessSchedule = BusinessSchedule::factory()->create([
+        'scheduled_on' => $today,
+        'location' => '朝礼',
+    ]);
+    $businessSchedule->assignedUsers()->attach($worker);
+
+    $notice = InternalNotice::factory()->create([
+        'scheduled_on' => $today,
+        'title' => '安全周知',
+    ]);
+    $notice->assignedUsers()->attach($worker);
+
+    $cleaningDutyRule = CleaningDutyRule::factory()->create([
+        'weekday' => today()->dayOfWeekIso,
+        'is_active' => true,
+    ]);
+    $cleaningDutyRule->assignedUsers()->attach($worker);
+
+    $this->actingAs($worker)
+        ->get(route('construction-schedules.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->component('construction-schedules/index')
+            ->where('attention.schedule_count', 4)
+            ->where('attention.pending_voucher_count', 1)
+            ->where('attention.internal_notice_count', 1)
+            ->where('workerSummary.assigned_count', 4)
+            ->where('workerSummary.notice_count', 1)
+            ->where('workerSummary.pending_voucher_count', 1)
+            ->where('workerSummary.status_change_count', 1)
         );
 });
 

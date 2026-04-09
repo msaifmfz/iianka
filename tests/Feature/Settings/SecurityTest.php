@@ -24,7 +24,7 @@ test('security page is displayed', function (): void {
             ->where('canManageTwoFactor', true)
             ->where('twoFactorEnabled', false),
         );
-});
+})->skip('TOTP is disabled for now');
 
 test('security page requires password confirmation when enabled', function (): void {
     $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());

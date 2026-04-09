@@ -1,11 +1,13 @@
 import { usePage } from '@inertiajs/react';
 import {
     CalendarDays,
+    ClipboardList,
     ClipboardCheck,
     FileText,
     UsersRound,
 } from 'lucide-react';
 import { index as adminUserIndex } from '@/actions/App/Http/Controllers/Admin/UserController';
+import { index as cleaningDutyRuleIndex } from '@/actions/App/Http/Controllers/CleaningDutyRuleController';
 import { index as scheduleIndex } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
 import { index as voucherIndex } from '@/actions/App/Http/Controllers/ConstructionScheduleVoucherController';
 import { index as siteIndex } from '@/actions/App/Http/Controllers/ConstructionSiteController';
@@ -38,19 +40,47 @@ const mainNavItems: NavItem[] = [
 ];
 
 const footerNavItems: NavItem[] = [];
+const emptyAttention = {
+    schedule_count: 0,
+    pending_voucher_count: 0,
+    internal_notice_count: 0,
+};
 
 export function AppSidebar() {
-    const { auth } = usePage().props;
+    const { auth, attention = emptyAttention } = usePage().props;
     const navigationItems = auth.user.is_admin
         ? [
-              ...mainNavItems,
+              {
+                  ...mainNavItems[0],
+                  // badge: attention.schedule_count || null,
+              },
+              {
+                  ...mainNavItems[1],
+                  // badge: attention.pending_voucher_count || null,
+              },
+              mainNavItems[2],
+              {
+                  title: '掃除当番設定',
+                  href: cleaningDutyRuleIndex(),
+                  icon: ClipboardList,
+              },
               {
                   title: 'ユーザー管理',
                   href: adminUserIndex(),
                   icon: UsersRound,
               },
           ]
-        : mainNavItems;
+        : [
+              {
+                  ...mainNavItems[0],
+                  // badge: attention.schedule_count || null,
+              },
+              {
+                  ...mainNavItems[1],
+                  // badge: attention.pending_voucher_count || null,
+              },
+              mainNavItems[2],
+          ];
 
     return (
         <Sidebar collapsible="icon" variant="inset">

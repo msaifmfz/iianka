@@ -6,9 +6,16 @@ export type BreadcrumbItem = {
     href: NonNullable<InertiaLinkProps['href']>;
 };
 
+export type AttentionSummary = {
+    schedule_count: number;
+    pending_voucher_count: number;
+    internal_notice_count: number;
+};
+
 export type NavItem = {
     title: string;
     href: NonNullable<InertiaLinkProps['href']>;
     icon?: LucideIcon | null;
+    badge?: number | string | null;
     isActive?: boolean;
 };

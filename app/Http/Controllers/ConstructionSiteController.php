@@ -116,8 +116,8 @@ class ConstructionSiteController extends Controller
         foreach ($files as $file) {
             $site->guideFiles()->create([
                 'name' => $file->getClientOriginalName(),
-                'disk' => 'public',
-                'path' => $file->store('site-guides', 'public'),
+                'disk' => 'local',
+                'path' => $file->store('site-guides', 'local'),
                 'mime_type' => $file->getMimeType(),
                 'size' => $file->getSize(),
             ]);

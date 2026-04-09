@@ -1,9 +1,10 @@
-import { Head, Link } from '@inertiajs/react';
-import { ArrowLeft, FileText, MapPin, Pencil, Users } from 'lucide-react';
+import { Head, Link, router } from '@inertiajs/react';
+import { FileText, MapPin, Pencil, Users } from 'lucide-react';
 import {
     edit as scheduleEdit,
     index as scheduleIndex,
 } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
+import { FloatingBackButton } from '@/components/floating-back-button';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { dashboard } from '@/routes';
@@ -12,6 +13,7 @@ import type { ConstructionSchedule } from '@/types';
 type Props = {
     schedule: ConstructionSchedule;
     canManage: boolean;
+    returnTo: string | null;
 };
 
 const statusLabels: Record<ConstructionSchedule['status'], string> = {
@@ -33,31 +35,39 @@ function Detail({ label, value }: { label: string; value: React.ReactNode }) {
 export default function ConstructionScheduleShow({
     schedule,
     canManage,
+    returnTo,
 }: Props) {
     const primaryGuideFile = schedule.guide_files[0] ?? null;
     const guideFilesHref =
         schedule.guide_files.length === 1 && primaryGuideFile !== null
             ? primaryGuideFile.url
             : '#guide-files';
+    const fallbackReturnTo = scheduleIndex({
+        query: {
+            range: 'today',
+            date: schedule.scheduled_on,
+        },
+    });
+
+    function handleReturnToIndex() {
+        if (typeof window !== 'undefined' && returnTo !== null) {
+            router.visit(returnTo);
+
+            return;
+        }
+
+        router.visit(fallbackReturnTo);
+    }
 
     return (
         <>
             <Head title={`${schedule.location} - 予定詳細`} />
+            <FloatingBackButton
+                onClick={handleReturnToIndex}
+                className="bottom-[calc(5.75rem+env(safe-area-inset-bottom))] md:bottom-6 xl:bottom-8"
+            />
             <div className="mx-auto w-full max-w-7xl space-y-6 p-4 pb-28 md:p-6 md:pb-6 xl:p-8">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                    <Button asChild variant="outline">
-                        <Link
-                            href={scheduleIndex({
-                                query: {
-                                    range: 'today',
-                                    date: schedule.scheduled_on,
-                                },
-                            })}
-                        >
-                            <ArrowLeft className="size-4" />
-                            予定表へ戻る
-                        </Link>
-                    </Button>
                     {canManage && (
                         <Button asChild>
                             <Link href={scheduleEdit(schedule.id)}>

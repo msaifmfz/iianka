@@ -2,7 +2,13 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\BusinessSchedule;
+use App\Models\CleaningDutyRule;
+use App\Models\ConstructionSchedule;
+use App\Models\InternalNotice;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Inertia\Middleware;
 use Override;
 
@@ -45,6 +51,66 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'attention' => $this->attention($request),
+        ];
+    }
+
+    /**
+     * @return array{schedule_count: int, pending_voucher_count: int, internal_notice_count: int}
+     */
+    private function attention(Request $request): array
+    {
+        /** @var User|null $user */
+        $user = $request->user();
+
+        if ($user === null) {
+            return [
+                'schedule_count' => 0,
+                'pending_voucher_count' => 0,
+                'internal_notice_count' => 0,
+            ];
+        }
+
+        $today = today()->toDateString();
+        $weekday = Carbon::today()->dayOfWeekIso;
+
+        if ($user->is_admin) {
+            return [
+                'schedule_count' => ConstructionSchedule::query()->whereDate('scheduled_on', $today)->count()
+                    + BusinessSchedule::query()->whereDate('scheduled_on', $today)->count()
+                    + InternalNotice::query()->whereDate('scheduled_on', $today)->count()
+                    + CleaningDutyRule::query()->where('is_active', true)->where('weekday', $weekday)->count(),
+                'pending_voucher_count' => ConstructionSchedule::query()
+                    ->whereDate('scheduled_on', '<=', $today)
+                    ->whereNull('voucher_checked_at')
+                    ->count(),
+                'internal_notice_count' => InternalNotice::query()
+                    ->whereDate('scheduled_on', $today)
+                    ->count(),
+            ];
+        }
+
+        return [
+            'schedule_count' => $user->constructionSchedules()
+                ->whereDate('scheduled_on', $today)
+                ->count()
+                + $user->businessSchedules()
+                    ->whereDate('scheduled_on', $today)
+                    ->count()
+                + $user->internalNotices()
+                    ->whereDate('scheduled_on', $today)
+                    ->count()
+                + $user->cleaningDutyRules()
+                    ->where('is_active', true)
+                    ->where('weekday', $weekday)
+                    ->count(),
+            'pending_voucher_count' => $user->constructionSchedules()
+                ->whereDate('scheduled_on', '<=', $today)
+                ->whereNull('voucher_checked_at')
+                ->count(),
+            'internal_notice_count' => $user->internalNotices()
+                ->whereDate('scheduled_on', $today)
+                ->count(),
         ];
     }
 }

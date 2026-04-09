@@ -12,6 +12,8 @@ test('login screen can be rendered', function (): void {
         ->assertOk()
         ->assertInertia(fn (Assert $page): Assert => $page
             ->component('auth/login')
+            ->where('name', config('app.name'))
+            ->where('canResetPassword', true)
             ->where('canRegister', false),
         );
 });

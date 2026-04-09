@@ -24,7 +24,7 @@ class SiteGuideFileFactory extends Factory
             'construction_site_id' => ConstructionSite::factory(),
             'construction_schedule_id' => null,
             'name' => fake()->words(2, true).'.pdf',
-            'disk' => 'public',
+            'disk' => 'local',
             'path' => 'site-guides/'.fake()->uuid().'.pdf',
             'mime_type' => 'application/pdf',
             'size' => fake()->numberBetween(1000, 500000),

@@ -46,13 +46,14 @@ class InternalNoticeController extends Controller
             ->with('status', '業務連絡を作成しました。');
     }
 
-    public function show(InternalNotice $internalNotice): Response
+    public function show(Request $request, InternalNotice $internalNotice): Response
     {
         $internalNotice->load('assignedUsers:id,name,email');
 
         return Inertia::render('internal-notices/show', [
             'notice' => $this->noticePayload(collect([$internalNotice]))->first(),
             'canManage' => request()->user()?->is_admin === true,
+            'returnTo' => $this->returnTo($request),
         ]);
     }
 
@@ -88,6 +89,17 @@ class InternalNoticeController extends Controller
         return redirect()
             ->route('construction-schedules.index', ['type' => 'internal_notice'])
             ->with('status', '業務連絡を削除しました。');
+    }
+
+    private function returnTo(Request $request): ?string
+    {
+        $returnTo = $request->query('return_to');
+
+        if (! is_string($returnTo) || ! str_starts_with($returnTo, '/construction-schedules')) {
+            return null;
+        }
+
+        return $returnTo;
     }
 
     /**

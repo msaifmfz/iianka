@@ -259,9 +259,6 @@ export default function AdminUsersIndex({ users, filters }: Props) {
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
                                 <CardTitle>アカウント一覧</CardTitle>
-                                <p className="mt-1 text-sm text-muted-foreground">
-                                    ログインID、権限、メール状態、セキュリティ状態を確認できます。
-                                </p>
                             </div>
                             <form
                                 onSubmit={submit}
@@ -314,16 +311,16 @@ export default function AdminUsersIndex({ users, filters }: Props) {
                                                 {formatDate(user.created_at)}
                                             </dd>
                                         </div>
-                                        <div className="grid gap-2">
-                                            <dt className="text-muted-foreground">
-                                                セキュリティ
-                                            </dt>
-                                            <dd>
-                                                <UserSecurityBadges
-                                                    user={user}
-                                                />
-                                            </dd>
-                                        </div>
+                                        {/* <div className="grid gap-2"> */}
+                                        {/*     <dt className="text-muted-foreground"> */}
+                                        {/*         セキュリティ */}
+                                        {/*     </dt> */}
+                                        {/*     <dd> */}
+                                        {/*         <UserSecurityBadges */}
+                                        {/*             user={user} */}
+                                        {/*         /> */}
+                                        {/*     </dd> */}
+                                        {/* </div> */}
                                     </dl>
 
                                     <div className="mt-4 border-t pt-4 dark:border-neutral-800">

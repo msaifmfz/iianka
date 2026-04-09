@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreBusinessScheduleRequest;
+use App\Http\Requests\UpdateBusinessScheduleNumberRequest;
 use App\Http\Requests\UpdateBusinessScheduleRequest;
 use App\Models\BusinessSchedule;
 use App\Models\ConstructionSchedule;
 use App\Models\GeneralContractor;
+use App\Models\InternalNotice;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,6 +18,24 @@ use Inertia\Response;
 
 class BusinessScheduleController extends Controller
 {
+    /**
+     * @var list<string>
+     */
+    private const DEFAULT_CONTENT_OPTIONS = [
+        '見積もり作成',
+        '単価記入',
+        '安全書類作成',
+        '施行要領書作成',
+        '作業日報作成（週末）',
+        '作業日報作成（月末）',
+        '外回り（東)',
+        '外回り（西)',
+        '外回り（南)',
+        '外回り（北)',
+        '外回り（県内)',
+        '外回り（県外)',
+    ];
+
     public function index(): RedirectResponse
     {
         return redirect()->route('construction-schedules.index', [
@@ -29,7 +49,7 @@ class BusinessScheduleController extends Controller
 
         return Inertia::render('business-schedules/form', [
             'schedule' => null,
-            ...$this->formOptions(),
+            ...$this->formOptions(null),
         ]);
     }
 
@@ -50,13 +70,14 @@ class BusinessScheduleController extends Controller
             ->with('status', '業務予定を作成しました。');
     }
 
-    public function show(BusinessSchedule $businessSchedule): Response
+    public function show(Request $request, BusinessSchedule $businessSchedule): Response
     {
         $businessSchedule->load('assignedUsers:id,name,email');
 
         return Inertia::render('business-schedules/show', [
             'schedule' => $this->schedulePayload(collect([$businessSchedule]))->first(),
             'canManage' => request()->user()?->is_admin === true,
+            'returnTo' => $this->returnTo($request),
         ]);
     }
 
@@ -68,7 +89,7 @@ class BusinessScheduleController extends Controller
 
         return Inertia::render('business-schedules/form', [
             'schedule' => $this->schedulePayload(collect([$businessSchedule]))->first(),
-            ...$this->formOptions(),
+            ...$this->formOptions($businessSchedule),
         ]);
     }
 
@@ -84,6 +105,17 @@ class BusinessScheduleController extends Controller
             ->with('status', '業務予定を更新しました。');
     }
 
+    public function updateNumber(
+        UpdateBusinessScheduleNumberRequest $request,
+        BusinessSchedule $businessSchedule,
+    ): RedirectResponse {
+        $businessSchedule->update([
+            'schedule_number' => $request->validated('schedule_number'),
+        ]);
+
+        return back()->with('status', '番号を更新しました。');
+    }
+
     public function destroy(Request $request, BusinessSchedule $businessSchedule): RedirectResponse
     {
         abort_unless($request->user()?->is_admin, 403);
@@ -93,6 +125,17 @@ class BusinessScheduleController extends Controller
         return redirect()
             ->route('construction-schedules.index', ['type' => 'business'])
             ->with('status', '業務予定を削除しました。');
+    }
+
+    private function returnTo(Request $request): ?string
+    {
+        $returnTo = $request->query('return_to');
+
+        if (! is_string($returnTo) || ! str_starts_with($returnTo, '/construction-schedules')) {
+            return null;
+        }
+
+        return $returnTo;
     }
 
     /**
@@ -121,12 +164,86 @@ class BusinessScheduleController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function formOptions(): array
+    private function formOptions(?BusinessSchedule $ignoredSchedule): array
     {
         return [
             'users' => User::query()->orderBy('name')->get(['id', 'name', 'email']),
             'generalContractorOptions' => $this->generalContractorOptions(),
+            'contentOptions' => $this->contentOptions(),
+            'scheduleAvailability' => $this->scheduleAvailability($ignoredSchedule),
         ];
+    }
+
+    /**
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function scheduleAvailability(?BusinessSchedule $ignoredSchedule): Collection
+    {
+        $constructionSchedules = ConstructionSchedule::query()
+            ->with('assignedUsers:id,name,email')
+            ->whereNotNull('starts_at')
+            ->whereNotNull('ends_at')
+            ->whereHas('assignedUsers')
+            ->get()
+            ->map(fn (ConstructionSchedule $schedule): array => [
+                'id' => $schedule->id,
+                'type' => 'construction',
+                'title' => $schedule->location,
+                'scheduled_on' => $schedule->scheduled_on->toDateString(),
+                'starts_at' => $schedule->starts_at,
+                'ends_at' => $schedule->ends_at,
+                'time' => $schedule->formattedTime(),
+                'user_ids' => $schedule->assignedUsers->pluck('id')->values(),
+                'user_names' => $schedule->assignedUsers->pluck('name')->values(),
+            ]);
+
+        $businessSchedules = BusinessSchedule::query()
+            ->with('assignedUsers:id,name,email')
+            ->when($ignoredSchedule instanceof BusinessSchedule, fn ($query) => $query->whereKeyNot($ignoredSchedule->id))
+            ->whereNotNull('starts_at')
+            ->whereNotNull('ends_at')
+            ->whereHas('assignedUsers')
+            ->get()
+            ->map(fn (BusinessSchedule $schedule): array => [
+                'id' => $schedule->id,
+                'type' => 'business',
+                'title' => $schedule->location,
+                'scheduled_on' => $schedule->scheduled_on->toDateString(),
+                'starts_at' => $schedule->starts_at,
+                'ends_at' => $schedule->ends_at,
+                'time' => $schedule->formattedTime(),
+                'user_ids' => $schedule->assignedUsers->pluck('id')->values(),
+                'user_names' => $schedule->assignedUsers->pluck('name')->values(),
+            ]);
+
+        $internalNotices = InternalNotice::query()
+            ->with('assignedUsers:id,name,email')
+            ->whereNotNull('starts_at')
+            ->whereNotNull('ends_at')
+            ->whereHas('assignedUsers')
+            ->get()
+            ->map(fn (InternalNotice $notice): array => [
+                'id' => $notice->id,
+                'type' => 'internal_notice',
+                'title' => $notice->title,
+                'scheduled_on' => $notice->scheduled_on->toDateString(),
+                'starts_at' => $notice->starts_at,
+                'ends_at' => $notice->ends_at,
+                'time' => $notice->formattedTime(),
+                'user_ids' => $notice->assignedUsers->pluck('id')->values(),
+                'user_names' => $notice->assignedUsers->pluck('name')->values(),
+            ]);
+
+        return collect()
+            ->merge($constructionSchedules)
+            ->merge($businessSchedules)
+            ->merge($internalNotices)
+            ->sortBy([
+                ['scheduled_on', 'asc'],
+                ['starts_at', 'asc'],
+                ['title', 'asc'],
+            ])
+            ->values();
     }
 
     /**
@@ -166,6 +283,25 @@ class BusinessScheduleController extends Controller
         GeneralContractor::query()->firstOrCreate([
             'name' => $generalContractor,
         ]);
+    }
+
+    /**
+     * @return Collection<int, string>
+     */
+    private function contentOptions(): Collection
+    {
+        return collect(self::DEFAULT_CONTENT_OPTIONS)
+            ->merge(
+                BusinessSchedule::query()
+                    ->whereNotNull('content')
+                    ->where('content', '!=', '')
+                    ->distinct()
+                    ->pluck('content')
+            )
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
     }
 
     /**

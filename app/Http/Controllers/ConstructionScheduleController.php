@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreConstructionScheduleRequest;
+use App\Http\Requests\UpdateConstructionScheduleNumberRequest;
 use App\Http\Requests\UpdateConstructionScheduleRequest;
 use App\Models\BusinessSchedule;
 use App\Models\CleaningDutyRule;
@@ -89,6 +90,23 @@ class ConstructionScheduleController extends Controller
 
         $user = $request->user();
         $selectedUserIds = $this->selectedUserIds($request, $user);
+        $allMyConstructionSchedules = ConstructionSchedule::query()
+            ->whereHas('assignedUsers', fn ($query) => $query->whereKey($user))
+            ->whereDate('scheduled_on', '>=', $startsOn->toDateString())
+            ->whereDate('scheduled_on', '<=', $endsOn->toDateString())
+            ->get();
+        $allMyBusinessSchedules = BusinessSchedule::query()
+            ->whereHas('assignedUsers', fn ($query) => $query->whereKey($user))
+            ->whereDate('scheduled_on', '>=', $startsOn->toDateString())
+            ->whereDate('scheduled_on', '<=', $endsOn->toDateString())
+            ->get();
+        $allMyInternalNotices = InternalNotice::query()
+            ->whereHas('assignedUsers', fn ($query) => $query->whereKey($user))
+            ->whereDate('scheduled_on', '>=', $startsOn->toDateString())
+            ->whereDate('scheduled_on', '<=', $endsOn->toDateString())
+            ->get();
+        $allMyCleaningDutyOccurrences = $this->cleaningDutyOccurrences($startsOn, $endsOn)
+            ->filter(fn (array $occurrence): bool => $occurrence['assigned_users']->contains('id', $user->id));
         $myConstructionSchedules = $constructionSchedules->filter(
             fn (ConstructionSchedule $schedule) => $schedule->assignedUsers->contains('id', $user->id)
         );
@@ -124,6 +142,7 @@ class ConstructionScheduleController extends Controller
                 'ends_on' => $endsOn->toDateString(),
                 'user_ids' => $selectedUserIds->values(),
             ],
+            'todayDate' => today()->toDateString(),
             'calendarDays' => $calendarDays,
             'scheduleNavigation' => [
                 'previous_date' => $this->previousScheduleDate($date, $types),
@@ -132,6 +151,23 @@ class ConstructionScheduleController extends Controller
             'mySchedules' => $this->combinedSchedulePayload($myConstructionSchedules, $myBusinessSchedules, $myInternalNotices, $myCleaningDutyOccurrences),
             'teamSchedules' => $this->combinedSchedulePayload($constructionSchedules, $businessSchedules, $internalNotices, $cleaningDutyOccurrences),
             'selectedUserSchedules' => $this->combinedSchedulePayload($selectedUserConstructionSchedules, $selectedUserBusinessSchedules, $selectedUserInternalNotices, $selectedUserCleaningDutyOccurrences),
+            'workerSummary' => [
+                'assigned_count' => $allMyConstructionSchedules->count()
+                    + $allMyBusinessSchedules->count()
+                    + $allMyInternalNotices->count()
+                    + $allMyCleaningDutyOccurrences->count(),
+                'notice_count' => $allMyInternalNotices->count(),
+                'pending_voucher_count' => $allMyConstructionSchedules
+                    ->whereNull('voucher_checked_at')
+                    ->count(),
+                'status_change_count' => $allMyConstructionSchedules
+                    ->filter(fn (ConstructionSchedule $schedule): bool => in_array(
+                        $schedule->status,
+                        [ConstructionSchedule::STATUS_POSTPONED, ConstructionSchedule::STATUS_CANCELED],
+                        true,
+                    ))
+                    ->count(),
+            ],
             'userOptions' => $user->is_admin === true ? User::query()->orderBy('name')->get(['id', 'name', 'email']) : [],
             'canManage' => $user->is_admin === true,
         ]);
@@ -165,13 +201,14 @@ class ConstructionScheduleController extends Controller
             ->with('status', '予定を作成しました。');
     }
 
-    public function show(ConstructionSchedule $constructionSchedule): Response
+    public function show(Request $request, ConstructionSchedule $constructionSchedule): Response
     {
         $constructionSchedule->load(['assignedUsers:id,name,email', 'voucherCheckedBy:id,name,email', 'site.guideFiles', 'selectedGuideFiles', 'directGuideFiles']);
 
         return Inertia::render('construction-schedules/show', [
             'schedule' => $this->schedulePayload(collect([$constructionSchedule]))->first(),
             'canManage' => request()->user()?->is_admin === true,
+            'returnTo' => $this->returnTo($request),
         ]);
     }
 
@@ -201,6 +238,17 @@ class ConstructionScheduleController extends Controller
             ->with('status', '予定を更新しました。');
     }
 
+    public function updateNumber(
+        UpdateConstructionScheduleNumberRequest $request,
+        ConstructionSchedule $constructionSchedule,
+    ): RedirectResponse {
+        $constructionSchedule->update([
+            'schedule_number' => $request->validated('schedule_number'),
+        ]);
+
+        return back()->with('status', '番号を更新しました。');
+    }
+
     public function destroy(Request $request, ConstructionSchedule $constructionSchedule): RedirectResponse
     {
         abort_unless($request->user()?->is_admin, 403);
@@ -210,6 +258,17 @@ class ConstructionScheduleController extends Controller
         return redirect()
             ->route('construction-schedules.index')
             ->with('status', '予定を削除しました。');
+    }
+
+    private function returnTo(Request $request): ?string
+    {
+        $returnTo = $request->query('return_to');
+
+        if (! is_string($returnTo) || ! str_starts_with($returnTo, '/construction-schedules')) {
+            return null;
+        }
+
+        return $returnTo;
     }
 
     /**
@@ -377,11 +436,35 @@ class ConstructionScheduleController extends Controller
      */
     private function storeGuideFiles(ConstructionSchedule $schedule, array $files): void
     {
+        if ($files === []) {
+            return;
+        }
+
+        if ($schedule->construction_site_id !== null) {
+            $site = $schedule->site()->first();
+
+            if ($site instanceof ConstructionSite) {
+                $guideFileIds = collect($files)
+                    ->map(fn (UploadedFile $file): int => $site->guideFiles()->create([
+                        'name' => $file->getClientOriginalName(),
+                        'disk' => 'local',
+                        'path' => $file->store('site-guides', 'local'),
+                        'mime_type' => $file->getMimeType(),
+                        'size' => $file->getSize(),
+                    ])->id)
+                    ->all();
+
+                $schedule->selectedGuideFiles()->syncWithoutDetaching($guideFileIds);
+
+                return;
+            }
+        }
+
         foreach ($files as $file) {
             $schedule->directGuideFiles()->create([
                 'name' => $file->getClientOriginalName(),
-                'disk' => 'public',
-                'path' => $file->store('site-guides', 'public'),
+                'disk' => 'local',
+                'path' => $file->store('site-guides', 'local'),
                 'mime_type' => $file->getMimeType(),
                 'size' => $file->getSize(),
             ]);

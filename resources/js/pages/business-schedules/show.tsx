@@ -1,7 +1,8 @@
-import { Head, Link } from '@inertiajs/react';
-import { ArrowLeft, BriefcaseBusiness, Pencil, Users } from 'lucide-react';
+import { Head, Link, router } from '@inertiajs/react';
+import { BriefcaseBusiness, Pencil, Users } from 'lucide-react';
 import { edit as businessScheduleEdit } from '@/actions/App/Http/Controllers/BusinessScheduleController';
 import { index as scheduleIndex } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
+import { FloatingBackButton } from '@/components/floating-back-button';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { dashboard } from '@/routes';
@@ -10,6 +11,7 @@ import type { BusinessSchedule } from '@/types';
 type Props = {
     schedule: BusinessSchedule;
     canManage: boolean;
+    returnTo: string | null;
 };
 
 function Detail({ label, value }: { label: string; value: React.ReactNode }) {
@@ -21,26 +23,35 @@ function Detail({ label, value }: { label: string; value: React.ReactNode }) {
     );
 }
 
-export default function BusinessScheduleShow({ schedule, canManage }: Props) {
+export default function BusinessScheduleShow({
+    schedule,
+    canManage,
+    returnTo,
+}: Props) {
+    const fallbackReturnTo = scheduleIndex({
+        query: {
+            range: 'today',
+            date: schedule.scheduled_on,
+            type: 'all',
+        },
+    });
+
+    function handleReturnToIndex() {
+        if (typeof window !== 'undefined' && returnTo !== null) {
+            router.visit(returnTo);
+
+            return;
+        }
+
+        router.visit(fallbackReturnTo);
+    }
+
     return (
         <>
             <Head title={`${schedule.location} - 業務予定詳細`} />
-            <div className="mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6 xl:p-8">
+            <FloatingBackButton onClick={handleReturnToIndex} />
+            <div className="mx-auto w-full max-w-7xl space-y-6 p-4 pb-24 md:p-6 md:pb-6 xl:p-8">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                    <Button asChild variant="outline">
-                        <Link
-                            href={scheduleIndex({
-                                query: {
-                                    range: 'today',
-                                    date: schedule.scheduled_on,
-                                    type: 'all',
-                                },
-                            })}
-                        >
-                            <ArrowLeft className="size-4" />
-                            予定表へ戻る
-                        </Link>
-                    </Button>
                     {canManage && (
                         <Button asChild>
                             <Link href={businessScheduleEdit(schedule.id)}>
