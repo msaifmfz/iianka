@@ -13,6 +13,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 use Laragear\WebAuthn\Contracts\WebAuthnAuthenticatable;
 use Laragear\WebAuthn\WebAuthnAuthentication;
+use Laragear\WebAuthn\WebAuthnData;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Override;
 
@@ -47,6 +48,21 @@ class User extends Authenticatable implements WebAuthnAuthenticatable
         $this->attributes['login_id'] = filled($value)
             ? Str::lower(trim($value))
             : null;
+    }
+
+    /**
+     * Returns displayable data to be used to create WebAuthn Credentials.
+     */
+    public function webAuthnData(): WebAuthnData
+    {
+        $identifier = $this->email
+            ?? $this->login_id
+            ?? 'user-'.$this->getKey();
+
+        return WebAuthnData::make(
+            $identifier,
+            $this->name ?? $this->login_id ?? $identifier,
+        );
     }
 
     /**

@@ -36,6 +36,19 @@ test('authenticated users can request a passkey registration challenge', functio
         ->assertJsonPath('authenticatorSelection.residentKey', 'required');
 });
 
+test('authenticated users without an email address can request a passkey registration challenge', function (): void {
+    $user = User::factory()->withoutEmail()->create([
+        'login_id' => 'worker-0001',
+    ]);
+
+    $this->actingAs($user)
+        ->withSession(['auth.password_confirmed_at' => Carbon::now()->getTimestamp()])
+        ->postJson(route('webauthn.register.challenge'))
+        ->assertOk()
+        ->assertJsonPath('user.name', 'worker-0001')
+        ->assertJsonPath('user.displayName', $user->name);
+});
+
 test('security page includes registered passkeys', function (): void {
     $user = User::factory()->create();
 

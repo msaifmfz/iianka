@@ -9,7 +9,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class HandleAppearance
 {
-    private const DEFAULT_APPEARANCE = 'light';
+    private const string DEFAULT_APPEARANCE = 'light';
 
     /**
      * Handle an incoming request.

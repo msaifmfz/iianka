@@ -21,7 +21,7 @@ class BusinessScheduleController extends Controller
     /**
      * @var list<string>
      */
-    private const DEFAULT_CONTENT_OPTIONS = [
+    private const array DEFAULT_CONTENT_OPTIONS = [
         '見積もり作成',
         '単価記入',
         '安全書類作成',
