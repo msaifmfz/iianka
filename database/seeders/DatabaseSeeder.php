@@ -6,7 +6,6 @@ namespace Database\Seeders;
 
 use App\Models\BusinessSchedule;
 use App\Models\ConstructionSchedule;
-use App\Models\ConstructionSite;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
@@ -34,14 +33,6 @@ class DatabaseSeeder extends Seeder
             'email_verified_at' => now(),
             'is_admin' => true,
         ])->save();
-
-        $site = ConstructionSite::query()->updateOrCreate(
-            ['name' => 'デモ高層ビル改修 現場'],
-            [
-                'address' => '東京都新宿区西新宿2-8-1',
-                'notes' => 'ブラウザテスト用のダミー現場です。',
-            ],
-        );
 
         $dates = [
             today()->subMonthNoOverflow()->startOfMonth()->addDays(9),
@@ -84,7 +75,6 @@ class DatabaseSeeder extends Seeder
                     'location' => $schedule['location'],
                 ],
                 [
-                    'construction_site_id' => $site->id,
                     'starts_at' => '08:00',
                     'ends_at' => '17:00',
                     'time_note' => null,
@@ -94,7 +84,7 @@ class DatabaseSeeder extends Seeder
                     'general_contractor' => 'デモ建設株式会社',
                     'person_in_charge' => '山田',
                     'content' => $schedule['content'],
-                    'navigation_address' => $site->address,
+                    'navigation_address' => '東京都新宿区西新宿2-8-1',
                 ],
             );
 

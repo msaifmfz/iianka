@@ -160,7 +160,6 @@ test('editing construction schedule details does not reset voucher confirmation'
 
     $this->actingAs($admin)
         ->put(route('construction-schedules.update', $schedule), [
-            'construction_site_id' => $schedule->construction_site_id,
             'scheduled_on' => today()->addDay()->toDateString(),
             'starts_at' => '09:00',
             'ends_at' => '18:00',

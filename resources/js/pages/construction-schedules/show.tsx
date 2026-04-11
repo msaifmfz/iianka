@@ -110,10 +110,6 @@ export default function ConstructionScheduleShow({
                                 value={schedule.person_in_charge}
                             />
                             <Detail
-                                label="現場ライブラリ"
-                                value={schedule.site?.name}
-                            />
-                            <Detail
                                 label="ナビ住所"
                                 value={schedule.navigation_address}
                             />

@@ -3,7 +3,6 @@
 use App\Models\BusinessSchedule;
 use App\Models\CleaningDutyRule;
 use App\Models\ConstructionSchedule;
-use App\Models\ConstructionSite;
 use App\Models\GeneralContractor;
 use App\Models\InternalNotice;
 use App\Models\SiteGuideFile;
@@ -505,15 +504,12 @@ test('admins can create schedules with assigned users and guide files', function
 
     $admin = User::factory()->admin()->create();
     $worker = User::factory()->create();
-    $site = ConstructionSite::factory()->create(['name' => '東京タワー現場']);
     $siteGuide = SiteGuideFile::factory()->create([
-        'construction_site_id' => $site->id,
-        'name' => '搬入口.pdf',
+        'name' => '東京タワー_搬入口.pdf',
     ]);
 
     $this->actingAs($admin)
         ->post(route('construction-schedules.store'), [
-            'construction_site_id' => $site->id,
             'scheduled_on' => today()->toDateString(),
             'schedule_number' => 7,
             'starts_at' => '08:00',
@@ -532,13 +528,15 @@ test('admins can create schedules with assigned users and guide files', function
             'guide_files' => [
                 UploadedFile::fake()->create('現場全体図.pdf', 100, 'application/pdf'),
             ],
+            'guide_file_names' => [
+                '現場全体図',
+            ],
         ])
         ->assertRedirect();
 
     $schedule = ConstructionSchedule::query()->where('location', '東京タワー改修')->firstOrFail();
     $uploadedGuide = SiteGuideFile::query()
-        ->where('construction_site_id', $site->id)
-        ->where('name', '現場全体図.pdf')
+        ->where('name', '現場全体図')
         ->first();
 
     expect($schedule->assignedUsers()->whereKey($worker)->exists())->toBeTrue();
@@ -546,21 +544,18 @@ test('admins can create schedules with assigned users and guide files', function
     expect($schedule->selectedGuideFiles()->whereKey($siteGuide)->exists())->toBeTrue();
     expect($uploadedGuide)->not->toBeNull();
     expect($schedule->selectedGuideFiles()->whereKey($uploadedGuide)->exists())->toBeTrue();
-    expect($schedule->directGuideFiles)->toHaveCount(0);
     expect(GeneralContractor::query()->where('name', '山田建設')->exists())->toBeTrue();
 
     Storage::disk('local')->assertExists($uploadedGuide->path);
 });
 
-test('uploaded guide files from a schedule become part of the selected site library on edit', function (): void {
+test('uploaded guide files from a schedule become standalone library files on edit', function (): void {
     Storage::fake('local');
 
     $admin = User::factory()->admin()->create();
-    $site = ConstructionSite::factory()->create(['name' => '品川再開発現場']);
 
     $this->actingAs($admin)
         ->post(route('construction-schedules.store'), [
-            'construction_site_id' => $site->id,
             'scheduled_on' => today()->toDateString(),
             'status' => ConstructionSchedule::STATUS_SCHEDULED,
             'meeting_place' => '南口',
@@ -570,17 +565,18 @@ test('uploaded guide files from a schedule become part of the selected site libr
             'guide_files' => [
                 UploadedFile::fake()->create('追加案内図.png', 100, 'image/png'),
             ],
+            'guide_file_names' => [
+                '追加案内図',
+            ],
         ])
         ->assertRedirect();
 
     $schedule = ConstructionSchedule::query()->where('location', '品川南口工区')->firstOrFail();
     $uploadedGuide = SiteGuideFile::query()
-        ->where('construction_site_id', $site->id)
-        ->where('name', '追加案内図.png')
+        ->where('name', '追加案内図')
         ->firstOrFail();
 
-    expect($schedule->selectedGuideFiles()->whereKey($uploadedGuide)->exists())->toBeTrue()
-        ->and($schedule->directGuideFiles()->count())->toBe(0);
+    expect($schedule->selectedGuideFiles()->whereKey($uploadedGuide)->exists())->toBeTrue();
 
     $this->actingAs($admin)
         ->get(route('construction-schedules.edit', $schedule))
@@ -589,12 +585,20 @@ test('uploaded guide files from a schedule become part of the selected site libr
             ->component('construction-schedules/form')
             ->where('schedule.id', $schedule->id)
             ->where('schedule.selected_site_guide_file_ids', fn ($ids): bool => collect($ids)->contains($uploadedGuide->id))
-            ->where('sites', fn ($sites): bool => collect($sites)
-                ->contains(fn (array $candidateSite): bool => $candidateSite['id'] === $site->id
-                    && collect($candidateSite['guide_files'])->contains(
-                        fn (array $guideFile): bool => $guideFile['id'] === $uploadedGuide->id
-                            && $guideFile['name'] === '追加案内図.png'
-                    )))
+            ->where('siteGuideFiles', fn ($guideFiles): bool => collect($guideFiles)
+                ->contains(fn (array $guideFile): bool => $guideFile['id'] === $uploadedGuide->id
+                    && $guideFile['name'] === '追加案内図'))
+            ->etc()
+        );
+
+    $this->actingAs($admin)
+        ->get(route('construction-sites.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->component('construction-sites/index')
+            ->where('guideFiles', fn ($guideFiles): bool => collect($guideFiles)
+                ->contains(fn (array $guideFile): bool => $guideFile['id'] === $uploadedGuide->id
+                    && $guideFile['name'] === '追加案内図'))
             ->etc()
         );
 });
@@ -1023,4 +1027,144 @@ test('schedule guide uploads must be pdfs or images', function (): void {
         ])
         ->assertRedirect(route('construction-schedules.create'))
         ->assertSessionHasErrors('guide_files.0');
+});
+
+test('schedule guide uploads may be smartphone photo formats up to 50 megabytes', function (): void {
+    Storage::fake('local');
+
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)
+        ->post(route('construction-schedules.store'), [
+            'scheduled_on' => today()->toDateString(),
+            'status' => ConstructionSchedule::STATUS_SCHEDULED,
+            'meeting_place' => '正面ゲート',
+            'location' => 'スマートフォン写真現場',
+            'content' => '作業内容',
+            'navigation_address' => '東京都千代田区1-1',
+            'guide_files' => [
+                UploadedFile::fake()->create('site-photo.heif', 50 * 1024, 'image/heif'),
+            ],
+            'guide_file_names' => [
+                'スマートフォン写真',
+            ],
+        ])
+        ->assertRedirect();
+
+    $uploadedGuide = SiteGuideFile::query()
+        ->where('name', 'スマートフォン写真')
+        ->firstOrFail();
+
+    expect($uploadedGuide->mime_type)->toBe('image/heif');
+
+    Storage::disk('local')->assertExists($uploadedGuide->path);
+});
+
+test('schedule guide uploads may not exceed 50 megabytes', function (): void {
+    Storage::fake('local');
+
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)
+        ->from(route('construction-schedules.create'))
+        ->post(route('construction-schedules.store'), [
+            'scheduled_on' => today()->toDateString(),
+            'status' => ConstructionSchedule::STATUS_SCHEDULED,
+            'meeting_place' => '正面ゲート',
+            'location' => '東京現場',
+            'content' => '作業内容',
+            'navigation_address' => '東京都千代田区1-1',
+            'guide_files' => [
+                UploadedFile::fake()->create('too-large-guide.pdf', (50 * 1024) + 1, 'application/pdf'),
+            ],
+            'guide_file_names' => [
+                '大きすぎる案内図',
+            ],
+        ])
+        ->assertRedirect(route('construction-schedules.create'))
+        ->assertSessionHasErrors('guide_files.0');
+});
+
+test('schedule guide uploads require display names', function (): void {
+    Storage::fake('local');
+
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)
+        ->from(route('construction-schedules.create'))
+        ->post(route('construction-schedules.store'), [
+            'scheduled_on' => today()->toDateString(),
+            'status' => ConstructionSchedule::STATUS_SCHEDULED,
+            'meeting_place' => '正面ゲート',
+            'location' => '東京現場',
+            'content' => '作業内容',
+            'navigation_address' => '東京都千代田区1-1',
+            'guide_files' => [
+                UploadedFile::fake()->create('guide.pdf', 10, 'application/pdf'),
+            ],
+            'guide_file_names' => [
+                '',
+            ],
+        ])
+        ->assertRedirect(route('construction-schedules.create'))
+        ->assertSessionHasErrors('guide_file_names.0');
+});
+
+test('schedule guide upload display names must be unique', function (): void {
+    Storage::fake('local');
+
+    $admin = User::factory()->admin()->create();
+    SiteGuideFile::factory()->create([
+        'name' => '既存案内図',
+    ]);
+
+    $this->actingAs($admin)
+        ->from(route('construction-schedules.create'))
+        ->post(route('construction-schedules.store'), [
+            'scheduled_on' => today()->toDateString(),
+            'status' => ConstructionSchedule::STATUS_SCHEDULED,
+            'meeting_place' => '正面ゲート',
+            'location' => '東京現場',
+            'content' => '作業内容',
+            'navigation_address' => '東京都千代田区1-1',
+            'guide_files' => [
+                UploadedFile::fake()->create('guide.pdf', 10, 'application/pdf'),
+            ],
+            'guide_file_names' => [
+                '既存案内図',
+            ],
+        ])
+        ->assertRedirect(route('construction-schedules.create'))
+        ->assertSessionHasErrors('guide_file_names.0');
+
+    expect(SiteGuideFile::query()->where('name', '既存案内図')->count())->toBe(1);
+});
+
+test('schedule guide upload display names must be distinct in the same request', function (): void {
+    Storage::fake('local');
+
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)
+        ->from(route('construction-schedules.create'))
+        ->post(route('construction-schedules.store'), [
+            'scheduled_on' => today()->toDateString(),
+            'status' => ConstructionSchedule::STATUS_SCHEDULED,
+            'meeting_place' => '正面ゲート',
+            'location' => '東京現場',
+            'content' => '作業内容',
+            'navigation_address' => '東京都千代田区1-1',
+            'guide_files' => [
+                UploadedFile::fake()->create('first.pdf', 10, 'application/pdf'),
+                UploadedFile::fake()->create('second.pdf', 10, 'application/pdf'),
+            ],
+            'guide_file_names' => [
+                '重複案内図',
+                '重複案内図',
+            ],
+        ])
+        ->assertRedirect(route('construction-schedules.create'))
+        ->assertSessionHasErrors('guide_file_names.0');
+
+    expect(SiteGuideFile::query()->where('name', '重複案内図')->exists())->toBeFalse();
 });

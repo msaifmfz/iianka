@@ -1,137 +1,154 @@
-import { Head, Link } from '@inertiajs/react';
-import { FileText, MapPin, Pencil, Plus } from 'lucide-react';
+import { Head, Link, router } from '@inertiajs/react';
+import { ExternalLink, FileText, Pencil, Plus, Trash2 } from 'lucide-react';
 import {
-    create as siteCreate,
-    edit as siteEdit,
-    index as siteIndex,
-    show as siteShow,
+    create as guideCreate,
+    destroy as guideDestroy,
+    edit as guideEdit,
+    index as guideIndex,
 } from '@/actions/App/Http/Controllers/ConstructionSiteController';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { dashboard } from '@/routes';
-import type { ConstructionSite } from '@/types';
+import type { SiteGuideFile } from '@/types';
 
 type Props = {
-    sites: ConstructionSite[];
+    guideFiles: SiteGuideFile[];
     canManage: boolean;
 };
 
-export default function ConstructionSitesIndex({ sites, canManage }: Props) {
-    const totalGuideFiles = sites.reduce(
-        (count, site) => count + site.guide_files.length,
-        0,
-    );
+function guideFileTypeLabel(file: SiteGuideFile) {
+    if (file.mime_type?.includes('pdf')) {
+        return 'PDF';
+    }
+
+    if (file.mime_type?.startsWith('image/')) {
+        return '画像';
+    }
+
+    return 'ファイル';
+}
+
+export default function ConstructionSitesIndex({
+    guideFiles,
+    canManage,
+}: Props) {
+    function deleteGuideFile(file: SiteGuideFile) {
+        if (!confirm(`${file.name} を削除しますか？`)) {
+            return;
+        }
+
+        router.delete(guideDestroy.url(file.id), {
+            preserveScroll: true,
+        });
+    }
 
     return (
         <>
             <Head title="現場案内図" />
             <div className="mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6 xl:p-8">
-                <section className="rounded-3xl border bg-linear-to-br from-white via-neutral-50 to-sky-50/60 p-5 shadow-sm dark:border-neutral-800 dark:from-neutral-950 dark:via-neutral-950 dark:to-sky-950/20 sm:p-6 xl:p-7">
+                <section className="rounded-2xl border bg-white p-5 shadow-sm sm:p-6 xl:p-7 dark:border-neutral-800 dark:bg-neutral-950">
                     <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
                         <div className="max-w-3xl space-y-2">
                             <p className="text-sm text-muted-foreground">
-                                Reusable site guide library
+                                Site guide library
                             </p>
                             <h1 className="text-2xl font-bold tracking-tight xl:text-3xl">
                                 現場案内図
                             </h1>
                             <p className="text-sm leading-6 text-muted-foreground">
-                                現場ごとの案内図と補足メモをまとめて管理できます。
+                                ファイル名で判別できるように案内図を管理します。
                             </p>
                         </div>
-                        <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[320px]">
-                            <div className="rounded-2xl border bg-white/90 p-4 dark:border-neutral-800 dark:bg-neutral-950/80">
-                                <p className="text-xs font-medium tracking-[0.18em] text-muted-foreground uppercase">
-                                    Sites
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                            <div className="rounded-2xl border bg-neutral-50 px-4 py-3 dark:border-neutral-800 dark:bg-neutral-900/70">
+                                <p className="text-xs font-medium text-muted-foreground">
+                                    登録ファイル
                                 </p>
-                                <p className="mt-2 text-3xl font-semibold">
-                                    {sites.length}
-                                </p>
-                            </div>
-                            <div className="rounded-2xl border bg-white/90 p-4 dark:border-neutral-800 dark:bg-neutral-950/80">
-                                <p className="text-xs font-medium tracking-[0.18em] text-muted-foreground uppercase">
-                                    Files
-                                </p>
-                                <p className="mt-2 text-3xl font-semibold">
-                                    {totalGuideFiles}
+                                <p className="mt-1 text-2xl font-semibold">
+                                    {guideFiles.length}
                                 </p>
                             </div>
+                            {canManage && (
+                                <Button asChild>
+                                    <Link href={guideCreate()}>
+                                        <Plus className="size-4" />
+                                        案内図を追加
+                                    </Link>
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </section>
 
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="max-w-2xl">
-                        <p className="text-sm text-muted-foreground">
-                            登録済みの現場一覧
-                        </p>
-                        <h2 className="text-xl font-semibold">
-                            案内図ライブラリをすばやく確認
-                        </h2>
-                    </div>
-                    {canManage && (
-                        <Button asChild>
-                            <Link href={siteCreate()}>
-                                <Plus className="size-4" />
-                                現場を追加
-                            </Link>
-                        </Button>
-                    )}
-                </div>
-
-                <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
-                    {sites.map((site) => (
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {guideFiles.map((file) => (
                         <Card
-                            key={site.id}
-                            className="h-full border-neutral-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-neutral-800"
+                            key={file.id}
+                            className="rounded-2xl border-neutral-200/80 shadow-sm dark:border-neutral-800"
                         >
-                            <CardHeader className="space-y-3">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                        <CardTitle className="text-xl">
-                                            {site.name}
-                                        </CardTitle>
-                                        {site.address && (
-                                            <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-                                                <MapPin className="size-4" />
-                                                {site.address}
-                                            </p>
-                                        )}
+                            <CardContent className="grid gap-4 p-4">
+                                <div className="flex min-w-0 items-start gap-3">
+                                    <div className="rounded-lg bg-neutral-100 p-2 dark:bg-neutral-900">
+                                        <FileText className="size-5 text-muted-foreground" />
                                     </div>
-                                    {canManage && (
-                                        <Button
-                                            asChild
-                                            variant="outline"
-                                            size="sm"
+                                    <div className="min-w-0 flex-1">
+                                        <h2 className="truncate font-semibold">
+                                            {file.name}
+                                        </h2>
+                                        <p className="mt-1 text-xs text-muted-foreground">
+                                            {guideFileTypeLabel(file)}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-wrap gap-2">
+                                    <Button
+                                        asChild
+                                        variant="outline"
+                                        size="sm"
+                                        className="flex-1 justify-center"
+                                    >
+                                        <a
+                                            href={file.url}
+                                            target="_blank"
+                                            rel="noreferrer"
                                         >
-                                            <Link href={siteEdit(site.id)}>
-                                                <Pencil className="size-4" />
-                                                編集
-                                            </Link>
-                                        </Button>
+                                            <ExternalLink className="size-4" />
+                                            確認
+                                        </a>
+                                    </Button>
+                                    {canManage && (
+                                        <>
+                                            <Button
+                                                asChild
+                                                variant="outline"
+                                                size="sm"
+                                            >
+                                                <Link href={guideEdit(file.id)}>
+                                                    <Pencil className="size-4" />
+                                                    編集
+                                                </Link>
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() =>
+                                                    deleteGuideFile(file)
+                                                }
+                                            >
+                                                <Trash2 className="size-4" />
+                                                削除
+                                            </Button>
+                                        </>
                                     )}
                                 </div>
-                            </CardHeader>
-                            <CardContent className="flex h-full flex-col gap-4">
-                                <p className="min-h-12 text-sm leading-6 text-muted-foreground">
-                                    {site.notes || 'メモはありません。'}
-                                </p>
-                                <Button
-                                    asChild
-                                    variant="outline"
-                                    className="mt-auto w-full justify-start"
-                                >
-                                    <Link href={siteShow(site.id)}>
-                                        <FileText className="size-4" />
-                                        案内図 {site.guide_files.length} 件
-                                    </Link>
-                                </Button>
                             </CardContent>
                         </Card>
                     ))}
-                    {sites.length === 0 && (
-                        <div className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground lg:col-span-2 2xl:col-span-3 dark:border-neutral-800">
-                            現場案内図ライブラリはまだ登録されていません。
+                    {guideFiles.length === 0 && (
+                        <div className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground md:col-span-2 xl:col-span-3 dark:border-neutral-800">
+                            現場案内図はまだ登録されていません。
                         </div>
                     )}
                 </div>
@@ -148,7 +165,7 @@ ConstructionSitesIndex.layout = {
         },
         {
             title: '現場案内図',
-            href: siteIndex(),
+            href: guideIndex(),
         },
     ],
 };

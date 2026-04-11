@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Models\ConstructionSite;
 use App\Models\SiteGuideFile;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -21,8 +20,6 @@ class SiteGuideFileFactory extends Factory
     public function definition(): array
     {
         return [
-            'construction_site_id' => ConstructionSite::factory(),
-            'construction_schedule_id' => null,
             'name' => fake()->words(2, true).'.pdf',
             'disk' => 'local',
             'path' => 'site-guides/'.fake()->uuid().'.pdf',

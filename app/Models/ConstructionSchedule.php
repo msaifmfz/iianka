@@ -8,13 +8,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Override;
 
 #[Fillable([
-    'construction_site_id',
     'scheduled_on',
     'schedule_number',
     'starts_at',
@@ -58,14 +56,6 @@ class ConstructionSchedule extends Model
     }
 
     /**
-     * @return BelongsTo<ConstructionSite, $this>
-     */
-    public function site(): BelongsTo
-    {
-        return $this->belongsTo(ConstructionSite::class, 'construction_site_id');
-    }
-
-    /**
      * @return BelongsTo<User, $this>
      */
     public function voucherCheckedBy(): BelongsTo
@@ -89,14 +79,6 @@ class ConstructionSchedule extends Model
         return $this->belongsToMany(SiteGuideFile::class, 'construction_schedule_site_guide_file')->withTimestamps();
     }
 
-    /**
-     * @return HasMany<SiteGuideFile, $this>
-     */
-    public function directGuideFiles(): HasMany
-    {
-        return $this->hasMany(SiteGuideFile::class);
-    }
-
     public function googleMapsUrl(): ?string
     {
         if ($this->navigation_address === null || $this->navigation_address === '') {
@@ -111,7 +93,7 @@ class ConstructionSchedule extends Model
      */
     public function allGuideFiles(): Collection
     {
-        return $this->selectedGuideFiles->merge($this->directGuideFiles)->values();
+        return $this->selectedGuideFiles->values();
     }
 
     public function formattedTime(): string

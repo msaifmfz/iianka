@@ -5,16 +5,18 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ValidatesConstructionScheduleTiming;
+use App\Http\Requests\Concerns\ValidatesGuideFileUploads;
 use App\Http\Requests\Concerns\ValidatesScheduleNumber;
+use App\Models\SiteGuideFile;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\File;
 use Override;
 
 class StoreConstructionScheduleRequest extends FormRequest
 {
     use ValidatesConstructionScheduleTiming;
+    use ValidatesGuideFileUploads;
     use ValidatesScheduleNumber;
 
     #[Override]
@@ -40,7 +42,6 @@ class StoreConstructionScheduleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'construction_site_id' => ['nullable', 'integer', 'exists:construction_sites,id'],
             'scheduled_on' => ['required', 'date'],
             'schedule_number' => ['nullable', 'integer', 'min:1'],
             'starts_at' => ['nullable', 'date_format:H:i'],
@@ -60,8 +61,10 @@ class StoreConstructionScheduleRequest extends FormRequest
             'site_guide_file_ids.*' => ['integer', 'exists:site_guide_files,id'],
             'guide_files' => ['nullable', 'array'],
             'guide_files.*' => [
-                File::types(['pdf', 'jpg', 'jpeg', 'png', 'webp'])->max(10 * 1024),
+                ...$this->guideFileRules(),
             ],
+            'guide_file_names' => ['nullable', 'array'],
+            'guide_file_names.*' => ['nullable', 'string', 'max:255', 'distinct:strict', Rule::unique(SiteGuideFile::class, 'name')],
         ];
     }
 
@@ -73,6 +76,7 @@ class StoreConstructionScheduleRequest extends FormRequest
         return [
             ...$this->constructionScheduleTimingAfterValidation(),
             ...$this->scheduleNumberAfterValidation(),
+            ...$this->guideFileUploadAfterValidation(),
         ];
     }
 }

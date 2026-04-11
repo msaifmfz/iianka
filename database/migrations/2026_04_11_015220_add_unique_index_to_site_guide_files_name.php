@@ -11,12 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('construction_sites', function (Blueprint $table): void {
-            $table->id();
-            $table->string('name');
-            $table->string('address')->nullable();
-            $table->text('notes')->nullable();
-            $table->timestamps();
+        Schema::table('site_guide_files', function (Blueprint $table): void {
+            $table->unique('name');
         });
     }
 
@@ -25,6 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('construction_sites');
+        Schema::table('site_guide_files', function (Blueprint $table): void {
+            $table->dropUnique(['name']);
+        });
     }
 };

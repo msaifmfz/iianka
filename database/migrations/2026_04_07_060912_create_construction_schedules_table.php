@@ -13,7 +13,6 @@ return new class extends Migration
     {
         Schema::create('construction_schedules', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('construction_site_id')->nullable()->constrained()->nullOnDelete();
             $table->date('scheduled_on')->index();
             $table->time('starts_at')->nullable();
             $table->time('ends_at')->nullable();

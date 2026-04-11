@@ -51,7 +51,8 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::resource('business-schedules', BusinessScheduleController::class);
     Route::resource('internal-notices', InternalNoticeController::class);
     Route::resource('cleaning-duty-rules', CleaningDutyRuleController::class);
-    Route::resource('construction-sites', ConstructionSiteController::class);
+    Route::resource('construction-sites', ConstructionSiteController::class)
+        ->parameters(['construction-sites' => 'site_guide_file']);
     Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::resource('users', AdminUserController::class)->except('show');
     });

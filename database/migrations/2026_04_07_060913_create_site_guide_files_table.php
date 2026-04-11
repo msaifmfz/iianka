@@ -13,8 +13,6 @@ return new class extends Migration
     {
         Schema::create('site_guide_files', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('construction_site_id')->nullable()->constrained()->cascadeOnDelete();
-            $table->foreignId('construction_schedule_id')->nullable()->constrained()->cascadeOnDelete();
             $table->string('name');
             $table->string('disk')->default('public');
             $table->string('path');

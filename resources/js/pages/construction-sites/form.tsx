@@ -1,26 +1,27 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, UploadCloud } from 'lucide-react';
+import { ArrowLeft, FileText, UploadCloud } from 'lucide-react';
 import {
-    index as siteIndex,
-    store as siteStore,
-    update as siteUpdate,
+    index as guideIndex,
+    store as guideStore,
+    update as guideUpdate,
 } from '@/actions/App/Http/Controllers/ConstructionSiteController';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { dashboard } from '@/routes';
-import type { ConstructionSite } from '@/types';
+import type { SiteGuideFile } from '@/types';
 
 type Props = {
-    site: ConstructionSite | null;
+    guideFile: SiteGuideFile | null;
 };
 
-type SiteForm = {
+type GuideFileForm = {
     _method: 'put' | '';
     name: string;
-    address: string;
-    notes: string;
-    guide_files: File[];
+    guide_file: File | null;
 };
+
+const guideFileAccept =
+    'application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif';
 
 function Field({
     label,
@@ -40,39 +41,39 @@ function Field({
     );
 }
 
-export default function ConstructionSiteForm({ site }: Props) {
+export default function ConstructionSiteForm({ guideFile }: Props) {
     const { data, setData, post, processing, progress, errors } =
-        useForm<SiteForm>({
-            _method: site ? 'put' : '',
-            name: site?.name ?? '',
-            address: site?.address ?? '',
-            notes: site?.notes ?? '',
-            guide_files: [],
+        useForm<GuideFileForm>({
+            _method: guideFile ? 'put' : '',
+            name: guideFile?.name ?? '',
+            guide_file: null,
         });
 
     function submit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
 
-        post(site ? siteUpdate.url(site.id) : siteStore.url(), {
+        post(guideFile ? guideUpdate.url(guideFile.id) : guideStore.url(), {
             forceFormData: true,
         });
     }
 
+    const selectedFiles = data.guide_file === null ? [] : [data.guide_file];
+
     return (
         <>
-            <Head title={site ? '現場案内図編集' : '現場案内図追加'} />
-            <div className="mx-auto w-full max-w-6xl space-y-6 p-4 md:p-6 xl:p-8">
+            <Head title={guideFile ? '現場案内図編集' : '現場案内図追加'} />
+            <div className="mx-auto w-full max-w-4xl space-y-6 p-4 md:p-6 xl:p-8">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <p className="text-sm text-muted-foreground">
                             Site guide library
                         </p>
                         <h1 className="text-2xl font-bold">
-                            {site ? '現場案内図編集' : '現場案内図追加'}
+                            {guideFile ? '現場案内図編集' : '現場案内図追加'}
                         </h1>
                     </div>
                     <Button asChild variant="outline">
-                        <Link href={siteIndex()}>
+                        <Link href={guideIndex()}>
                             <ArrowLeft className="size-4" />
                             一覧へ戻る
                         </Link>
@@ -81,105 +82,89 @@ export default function ConstructionSiteForm({ site }: Props) {
 
                 <form
                     onSubmit={submit}
-                    className="grid gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.85fr)]"
+                    className="grid gap-6 rounded-2xl border bg-white p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950"
                 >
-                    <div className="grid gap-5 rounded-3xl border bg-white p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
-                        <div className="grid gap-5 md:grid-cols-2">
-                            <Field label="場所 / 現場名" error={errors.name}>
-                                <Input
-                                    value={data.name}
-                                    onChange={(event) =>
-                                        setData('name', event.target.value)
-                                    }
-                                />
-                            </Field>
-                            <Field label="住所" error={errors.address}>
-                                <Input
-                                    value={data.address}
-                                    onChange={(event) =>
-                                        setData('address', event.target.value)
-                                    }
-                                />
-                            </Field>
-                        </div>
-                        <Field label="メモ" error={errors.notes}>
-                            <textarea
-                                className="min-h-32 rounded-md border bg-transparent px-3 py-2 text-sm"
-                                value={data.notes}
-                                onChange={(event) =>
-                                    setData('notes', event.target.value)
-                                }
-                            />
-                        </Field>
+                    <Field label="表示名" error={errors.name}>
+                        <Input
+                            required
+                            value={data.name}
+                            onChange={(event) =>
+                                setData('name', event.target.value)
+                            }
+                        />
+                    </Field>
 
-                        {site?.guide_files.length ? (
-                            <div className="rounded-2xl bg-neutral-50 p-4 text-sm dark:bg-neutral-900">
-                                <p className="font-medium">登録済みファイル</p>
-                                <p className="mt-2 text-muted-foreground">
-                                    {site.guide_files
-                                        .map((file) => file.name)
-                                        .join('、')}
-                                </p>
-                            </div>
-                        ) : null}
-                    </div>
-
-                    <div className="grid gap-5 lg:content-start">
-                        <div className="grid gap-4 rounded-3xl border bg-white p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
-                            <div className="space-y-1">
-                                <h2 className="font-semibold">
-                                    ファイルアップロード
-                                </h2>
-                                <p className="text-sm text-muted-foreground">
-                                    PDF や画像を追加すると、この現場の案内図ライブラリで共有できます。
-                                </p>
-                            </div>
-                            <label className="flex min-h-52 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground transition hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-900">
-                                <UploadCloud className="size-6" />
-                                PDF / 画像をアップロード
-                                <input
-                                    className="hidden"
-                                    type="file"
-                                    multiple
-                                    accept="application/pdf,image/jpeg,image/png,image/webp"
-                                    onChange={(event) =>
-                                        setData(
-                                            'guide_files',
-                                            Array.from(
-                                                event.currentTarget.files ?? [],
-                                            ),
-                                        )
-                                    }
-                                />
-                            </label>
-                            {data.guide_files.length > 0 && (
-                                <p className="text-xs text-muted-foreground">
-                                    {data.guide_files.length} ファイル選択中
-                                </p>
-                            )}
-                            {errors.guide_files && (
-                                <p className="text-xs text-destructive">
-                                    {errors.guide_files}
-                                </p>
-                            )}
-                            {progress && (
-                                <progress
-                                    value={progress.percentage}
-                                    max="100"
-                                    className="w-full"
-                                />
-                            )}
-                        </div>
-
-                        <div className="flex justify-end lg:justify-start">
-                            <Button
-                                type="submit"
-                                disabled={processing}
-                                className="w-full lg:w-auto"
+                    {guideFile && (
+                        <div className="rounded-2xl bg-neutral-50 p-4 text-sm dark:bg-neutral-900">
+                            <p className="font-medium">現在のファイル</p>
+                            <a
+                                href={guideFile.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mt-2 inline-flex min-w-0 items-center gap-2 text-muted-foreground hover:text-foreground"
                             >
-                                {processing ? '保存中...' : '保存'}
-                            </Button>
+                                <FileText className="size-4 shrink-0" />
+                                <span className="truncate">
+                                    {guideFile.name}
+                                </span>
+                            </a>
                         </div>
+                    )}
+
+                    <label className="flex min-h-52 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground transition hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-900">
+                        <UploadCloud className="size-6" />
+                        {guideFile
+                            ? 'PDF / 画像を差し替え'
+                            : 'PDF / 画像をアップロード'}
+                        <span className="text-xs">
+                            {guideFile
+                                ? '表示名だけを変える場合は選択不要です。'
+                                : 'PDF / JPEG / PNG / WebP / HEIC / HEIF、50MBまで。'}
+                        </span>
+                        <input
+                            className="hidden"
+                            type="file"
+                            accept={guideFileAccept}
+                            onChange={(event) => {
+                                const files = Array.from(
+                                    event.currentTarget.files ?? [],
+                                );
+
+                                setData('guide_file', files[0] ?? null);
+                            }}
+                        />
+                    </label>
+
+                    {selectedFiles.length > 0 && (
+                        <div className="rounded-2xl bg-neutral-50 p-4 text-sm dark:bg-neutral-900">
+                            <p className="font-medium">
+                                {selectedFiles.length} ファイル選択中
+                            </p>
+                            <p className="mt-2 text-muted-foreground">
+                                {selectedFiles
+                                    .map((file) => file.name)
+                                    .join('、')}
+                            </p>
+                        </div>
+                    )}
+
+                    {errors.guide_file && (
+                        <p className="text-xs text-destructive">
+                            {errors.guide_file}
+                        </p>
+                    )}
+                    {progress && (
+                        <progress
+                            value={progress.percentage}
+                            max="100"
+                            className="w-full"
+                        />
+                    )}
+
+                    <div className="flex justify-end">
+                        <Button type="submit" disabled={processing}>
+                            {processing ? '保存中...' : '保存'}
+                        </Button>
                     </div>
                 </form>
             </div>
@@ -195,7 +180,7 @@ ConstructionSiteForm.layout = {
         },
         {
             title: '現場案内図',
-            href: siteIndex(),
+            href: guideIndex(),
         },
     ],
 };

@@ -3,7 +3,6 @@
 namespace Database\Factories;
 
 use App\Models\ConstructionSchedule;
-use App\Models\ConstructionSite;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -19,7 +18,6 @@ class ConstructionScheduleFactory extends Factory
     public function definition(): array
     {
         return [
-            'construction_site_id' => ConstructionSite::factory(),
             'scheduled_on' => fake()->dateTimeBetween('-1 week', '+1 month')->format('Y-m-d'),
             'schedule_number' => null,
             'starts_at' => '08:00',

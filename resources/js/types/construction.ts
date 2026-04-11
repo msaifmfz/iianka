@@ -11,14 +11,6 @@ export type SiteGuideFile = {
     mime_type: string | null;
 };
 
-export type ConstructionSite = {
-    id: number;
-    name: string;
-    address: string | null;
-    notes?: string | null;
-    guide_files: SiteGuideFile[];
-};
-
 export type ConstructionScheduleStatus =
     | 'scheduled'
     | 'confirmed'
@@ -47,7 +39,6 @@ export type ConstructionSchedule = {
     voucher_checked_at: string | null;
     voucher_checked_by: ConstructionUser | null;
     voucher_note: string | null;
-    site: Pick<ConstructionSite, 'id' | 'name' | 'address'> | null;
     assigned_users: ConstructionUser[];
     guide_files: SiteGuideFile[];
     selected_site_guide_file_ids: number[];

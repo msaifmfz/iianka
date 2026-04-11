@@ -8,7 +8,6 @@ use App\Http\Requests\UpdateConstructionScheduleRequest;
 use App\Models\BusinessSchedule;
 use App\Models\CleaningDutyRule;
 use App\Models\ConstructionSchedule;
-use App\Models\ConstructionSite;
 use App\Models\GeneralContractor;
 use App\Models\InternalNotice;
 use App\Models\SiteGuideFile;
@@ -49,7 +48,7 @@ class ConstructionScheduleController extends Controller
 
         if ($types->contains('construction')) {
             $constructionSchedules = ConstructionSchedule::query()
-                ->with(['assignedUsers:id,name,email', 'voucherCheckedBy:id,name,email', 'site.guideFiles', 'selectedGuideFiles', 'directGuideFiles'])
+                ->with(['assignedUsers:id,name,email', 'voucherCheckedBy:id,name,email', 'selectedGuideFiles'])
                 ->whereDate('scheduled_on', '>=', $startsOn->toDateString())
                 ->whereDate('scheduled_on', '<=', $endsOn->toDateString())
                 ->orderBy('scheduled_on')
@@ -190,7 +189,7 @@ class ConstructionScheduleController extends Controller
 
         $schedule->assignedUsers()->sync($request->input('assigned_user_ids', []));
         $schedule->selectedGuideFiles()->sync($request->input('site_guide_file_ids', []));
-        $this->storeGuideFiles($schedule, $request->file('guide_files', []));
+        $this->storeGuideFiles($schedule, $request->file('guide_files', []), $validated['guide_file_names'] ?? []);
         $this->rememberGeneralContractor($validated['general_contractor'] ?? null);
 
         return redirect()
@@ -203,7 +202,7 @@ class ConstructionScheduleController extends Controller
 
     public function show(Request $request, ConstructionSchedule $constructionSchedule): Response
     {
-        $constructionSchedule->load(['assignedUsers:id,name,email', 'voucherCheckedBy:id,name,email', 'site.guideFiles', 'selectedGuideFiles', 'directGuideFiles']);
+        $constructionSchedule->load(['assignedUsers:id,name,email', 'voucherCheckedBy:id,name,email', 'selectedGuideFiles']);
 
         return Inertia::render('construction-schedules/show', [
             'schedule' => $this->schedulePayload(collect([$constructionSchedule]))->first(),
@@ -216,7 +215,7 @@ class ConstructionScheduleController extends Controller
     {
         abort_unless($request->user()?->is_admin, 403);
 
-        $constructionSchedule->load(['assignedUsers:id,name,email', 'voucherCheckedBy:id,name,email', 'site.guideFiles', 'selectedGuideFiles', 'directGuideFiles']);
+        $constructionSchedule->load(['assignedUsers:id,name,email', 'voucherCheckedBy:id,name,email', 'selectedGuideFiles']);
 
         return Inertia::render('construction-schedules/form', [
             'schedule' => $this->schedulePayload(collect([$constructionSchedule]))->first(),
@@ -230,7 +229,7 @@ class ConstructionScheduleController extends Controller
         $constructionSchedule->update($this->scheduleAttributes($validated));
         $constructionSchedule->assignedUsers()->sync($request->input('assigned_user_ids', []));
         $constructionSchedule->selectedGuideFiles()->sync($request->input('site_guide_file_ids', []));
-        $this->storeGuideFiles($constructionSchedule, $request->file('guide_files', []));
+        $this->storeGuideFiles($constructionSchedule, $request->file('guide_files', []), $validated['guide_file_names'] ?? []);
         $this->rememberGeneralContractor($validated['general_contractor'] ?? null);
 
         return redirect()
@@ -413,7 +412,6 @@ class ConstructionScheduleController extends Controller
     {
         return collect($validated)
             ->only([
-                'construction_site_id',
                 'scheduled_on',
                 'schedule_number',
                 'starts_at',
@@ -432,43 +430,22 @@ class ConstructionScheduleController extends Controller
     }
 
     /**
-     * @param  array<int, UploadedFile>  $files
+     * @param  array<int|string, UploadedFile>  $files
+     * @param  array<int|string, string>  $names
      */
-    private function storeGuideFiles(ConstructionSchedule $schedule, array $files): void
+    private function storeGuideFiles(ConstructionSchedule $schedule, array $files, array $names): void
     {
-        if ($files === []) {
-            return;
-        }
-
-        if ($schedule->construction_site_id !== null) {
-            $site = $schedule->site()->first();
-
-            if ($site instanceof ConstructionSite) {
-                $guideFileIds = collect($files)
-                    ->map(fn (UploadedFile $file): int => $site->guideFiles()->create([
-                        'name' => $file->getClientOriginalName(),
-                        'disk' => 'local',
-                        'path' => $file->store('site-guides', 'local'),
-                        'mime_type' => $file->getMimeType(),
-                        'size' => $file->getSize(),
-                    ])->id)
-                    ->all();
-
-                $schedule->selectedGuideFiles()->syncWithoutDetaching($guideFileIds);
-
-                return;
-            }
-        }
-
-        foreach ($files as $file) {
-            $schedule->directGuideFiles()->create([
-                'name' => $file->getClientOriginalName(),
+        $guideFileIds = collect($files)
+            ->map(fn (UploadedFile $file, int|string $index): int => SiteGuideFile::query()->create([
+                'name' => trim($names[$index] ?? '') ?: $file->getClientOriginalName(),
                 'disk' => 'local',
                 'path' => $file->store('site-guides', 'local'),
                 'mime_type' => $file->getMimeType(),
                 'size' => $file->getSize(),
-            ]);
-        }
+            ])->id)
+            ->all();
+
+        $schedule->selectedGuideFiles()->syncWithoutDetaching($guideFileIds);
     }
 
     /**
@@ -478,16 +455,10 @@ class ConstructionScheduleController extends Controller
     {
         return [
             'users' => User::query()->orderBy('name')->get(['id', 'name', 'email']),
-            'sites' => ConstructionSite::query()
-                ->with('guideFiles')
+            'siteGuideFiles' => SiteGuideFile::query()
                 ->orderBy('name')
                 ->get()
-                ->map(fn (ConstructionSite $site): array => [
-                    'id' => $site->id,
-                    'name' => $site->name,
-                    'address' => $site->address,
-                    'guide_files' => $this->guideFilePayload($site->guideFiles),
-                ]),
+                ->pipe(fn (Collection $files): Collection => $this->guideFilePayload($files)),
             'generalContractorOptions' => $this->generalContractorOptions(),
             'scheduleAvailability' => $this->scheduleAvailability($ignoredSchedule),
         ];
@@ -752,11 +723,6 @@ class ConstructionScheduleController extends Controller
                 'email' => $schedule->voucherCheckedBy->email,
             ],
             'voucher_note' => $schedule->voucher_note,
-            'site' => $schedule->site === null ? null : [
-                'id' => $schedule->site->id,
-                'name' => $schedule->site->name,
-                'address' => $schedule->site->address,
-            ],
             'assigned_users' => $schedule->assignedUsers->map(fn (User $user): array => [
                 'id' => $user->id,
                 'name' => $user->name,
