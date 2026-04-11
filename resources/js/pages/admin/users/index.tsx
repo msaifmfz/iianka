@@ -152,6 +152,7 @@ function UserRoleBadge({ user }: { user: ManagedUser }) {
     );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function UserSecurityBadges({ user }: { user: ManagedUser }) {
     return (
         <div className="flex flex-wrap gap-2">

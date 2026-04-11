@@ -15,7 +15,8 @@ import {
     Plus,
     Users,
 } from 'lucide-react';
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useEffect, useRef, useState  } from 'react';
+import type {RefObject} from 'react';
 import {
     create as businessScheduleCreate,
     edit as businessScheduleEdit,

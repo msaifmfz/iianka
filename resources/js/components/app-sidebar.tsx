@@ -49,6 +49,7 @@ const emptyAttention = {
 };
 
 export function AppSidebar() {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { auth, attention = emptyAttention } = usePage().props;
     const navigationItems = auth.user.is_admin
         ? [

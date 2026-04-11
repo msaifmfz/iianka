@@ -1,6 +1,6 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { AlertTriangle, CheckCircle2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
     store as businessScheduleStore,
     update as businessScheduleUpdate,
@@ -233,9 +233,8 @@ export default function BusinessScheduleForm({
             assigned_user_ids:
                 schedule?.assigned_users.map((user) => user.id) ?? [],
         });
-    const [rememberedContentOptions, setRememberedContentOptions] = useState<
-        string[]
-    >([]);
+    const [rememberedContentOptions, setRememberedContentOptions] =
+        useState<string[]>(loadRememberedContentOptions);
     const busySchedules = matchingBusySchedules(
         scheduleAvailability,
         data.scheduled_on,
@@ -257,10 +256,6 @@ export default function BusinessScheduleForm({
         rememberedContentOptions,
         data.content ? [data.content] : [],
     );
-
-    useEffect(() => {
-        setRememberedContentOptions(loadRememberedContentOptions());
-    }, []);
 
     function rememberContentOption(value: string) {
         const normalizedValue = normalizeAutocompleteOption(value);
