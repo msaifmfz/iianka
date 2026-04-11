@@ -140,3 +140,22 @@ export type ScheduleAvailability = {
     user_ids: number[];
     user_names: string[];
 };
+
+export type AttendanceStatus = 'working' | 'leave';
+
+export type AttendanceRecord = {
+    id: number;
+    user_id: number;
+    work_date: string;
+    status: AttendanceStatus;
+    note: string | null;
+    user: ConstructionUser;
+};
+
+export type AttendanceLeaveRecord = {
+    id: number;
+    user_id: number;
+    user_name: string;
+    work_date: string;
+    note: string | null;
+};

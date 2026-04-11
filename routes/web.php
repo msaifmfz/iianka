@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\AttendanceRecordController;
 use App\Http\Controllers\BusinessScheduleController;
 use App\Http\Controllers\CleaningDutyRuleController;
 use App\Http\Controllers\ConstructionScheduleController;
@@ -49,6 +50,7 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
         ->name('site-guide-files.show');
     Route::resource('construction-schedules', ConstructionScheduleController::class);
     Route::resource('business-schedules', BusinessScheduleController::class);
+    Route::resource('attendance-records', AttendanceRecordController::class)->only(['index', 'store', 'destroy']);
     Route::resource('internal-notices', InternalNoticeController::class);
     Route::resource('cleaning-duty-rules', CleaningDutyRuleController::class);
     Route::resource('construction-sites', ConstructionSiteController::class)

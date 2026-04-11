@@ -1,12 +1,14 @@
 import { usePage } from '@inertiajs/react';
 import {
     CalendarDays,
+    CalendarCheck2,
     ClipboardList,
     ClipboardCheck,
     FileText,
     UsersRound,
 } from 'lucide-react';
 import { index as adminUserIndex } from '@/actions/App/Http/Controllers/Admin/UserController';
+import { index as attendanceRecordIndex } from '@/actions/App/Http/Controllers/AttendanceRecordController';
 import { index as cleaningDutyRuleIndex } from '@/actions/App/Http/Controllers/CleaningDutyRuleController';
 import { index as scheduleIndex } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
 import { index as voucherIndex } from '@/actions/App/Http/Controllers/ConstructionScheduleVoucherController';
@@ -60,6 +62,11 @@ export function AppSidebar() {
               },
               mainNavItems[2],
               {
+                  title: '出勤管理',
+                  href: attendanceRecordIndex(),
+                  icon: CalendarCheck2,
+              },
+              {
                   title: '掃除当番設定',
                   href: cleaningDutyRuleIndex(),
                   icon: ClipboardList,
@@ -80,6 +87,11 @@ export function AppSidebar() {
                   // badge: attention.pending_voucher_count || null,
               },
               mainNavItems[2],
+              {
+                  title: '出勤管理',
+                  href: attendanceRecordIndex(),
+                  icon: CalendarCheck2,
+              },
           ];
 
     return (

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreConstructionScheduleRequest;
 use App\Http\Requests\UpdateConstructionScheduleNumberRequest;
 use App\Http\Requests\UpdateConstructionScheduleRequest;
+use App\Models\AttendanceRecord;
 use App\Models\BusinessSchedule;
 use App\Models\CleaningDutyRule;
 use App\Models\ConstructionSchedule;
@@ -461,7 +462,28 @@ class ConstructionScheduleController extends Controller
                 ->pipe(fn (Collection $files): Collection => $this->guideFilePayload($files)),
             'generalContractorOptions' => $this->generalContractorOptions(),
             'scheduleAvailability' => $this->scheduleAvailability($ignoredSchedule),
+            'attendanceLeaveRecords' => $this->attendanceLeaveRecords(),
         ];
+    }
+
+    /**
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function attendanceLeaveRecords(): Collection
+    {
+        return AttendanceRecord::query()
+            ->with('user:id,name,email')
+            ->where('status', AttendanceRecord::STATUS_LEAVE)
+            ->orderBy('work_date')
+            ->get()
+            ->map(fn (AttendanceRecord $record): array => [
+                'id' => $record->id,
+                'user_id' => $record->user_id,
+                'user_name' => $record->user->name,
+                'work_date' => $record->work_date->toDateString(),
+                'note' => $record->note,
+            ])
+            ->values();
     }
 
     /**

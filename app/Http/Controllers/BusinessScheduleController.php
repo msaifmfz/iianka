@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreBusinessScheduleRequest;
 use App\Http\Requests\UpdateBusinessScheduleNumberRequest;
 use App\Http\Requests\UpdateBusinessScheduleRequest;
+use App\Models\AttendanceRecord;
 use App\Models\BusinessSchedule;
 use App\Models\ConstructionSchedule;
 use App\Models\GeneralContractor;
@@ -171,7 +172,28 @@ class BusinessScheduleController extends Controller
             'generalContractorOptions' => $this->generalContractorOptions(),
             'contentOptions' => $this->contentOptions(),
             'scheduleAvailability' => $this->scheduleAvailability($ignoredSchedule),
+            'attendanceLeaveRecords' => $this->attendanceLeaveRecords(),
         ];
+    }
+
+    /**
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function attendanceLeaveRecords(): Collection
+    {
+        return AttendanceRecord::query()
+            ->with('user:id,name,email')
+            ->where('status', AttendanceRecord::STATUS_LEAVE)
+            ->orderBy('work_date')
+            ->get()
+            ->map(fn (AttendanceRecord $record): array => [
+                'id' => $record->id,
+                'user_id' => $record->user_id,
+                'user_name' => $record->user->name,
+                'work_date' => $record->work_date->toDateString(),
+                'note' => $record->note,
+            ])
+            ->values();
     }
 
     /**

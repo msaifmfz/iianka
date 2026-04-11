@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import type {
+    AttendanceLeaveRecord,
     BusinessSchedule,
     ConstructionUser,
     ScheduleAvailability,
@@ -23,6 +24,7 @@ type Props = {
     generalContractorOptions: string[];
     contentOptions: string[];
     scheduleAvailability: ScheduleAvailability[];
+    attendanceLeaveRecords: AttendanceLeaveRecord[];
 };
 
 type BusinessScheduleForm = {
@@ -131,6 +133,22 @@ function matchingBusySchedules(
     );
 }
 
+function matchingLeaveRecords(
+    records: AttendanceLeaveRecord[],
+    scheduledOn: string,
+    assignedUserIds: number[],
+) {
+    if (assignedUserIds.length === 0) {
+        return [];
+    }
+
+    return records.filter(
+        (record) =>
+            record.work_date === scheduledOn &&
+            assignedUserIds.includes(record.user_id),
+    );
+}
+
 function availableTimeSlots(schedules: ScheduleAvailability[]) {
     return preferredTimeSlots.filter(
         ([startsAt, endsAt]) =>
@@ -158,7 +176,9 @@ function loadRememberedContentOptions() {
     }
 
     try {
-        const storedValue = window.localStorage.getItem(contentMemoryStorageKey);
+        const storedValue = window.localStorage.getItem(
+            contentMemoryStorageKey,
+        );
 
         if (storedValue === null) {
             return [];
@@ -167,7 +187,9 @@ function loadRememberedContentOptions() {
         const parsedValue: unknown = JSON.parse(storedValue);
 
         return Array.isArray(parsedValue)
-            ? parsedValue.filter((value): value is string => typeof value === 'string')
+            ? parsedValue.filter(
+                  (value): value is string => typeof value === 'string',
+              )
             : [];
     } catch {
         return [];
@@ -191,6 +213,7 @@ export default function BusinessScheduleForm({
     generalContractorOptions,
     contentOptions,
     scheduleAvailability,
+    attendanceLeaveRecords,
 }: Props) {
     const { data, setData, post, processing, errors } =
         useForm<BusinessScheduleForm>({
@@ -215,6 +238,11 @@ export default function BusinessScheduleForm({
     >([]);
     const busySchedules = matchingBusySchedules(
         scheduleAvailability,
+        data.scheduled_on,
+        data.assigned_user_ids,
+    );
+    const leaveRecords = matchingLeaveRecords(
+        attendanceLeaveRecords,
         data.scheduled_on,
         data.assigned_user_ids,
     );
@@ -412,6 +440,30 @@ export default function BusinessScheduleForm({
                                 <p className="mt-2 text-xs text-destructive">
                                     {errors.assigned_user_ids}
                                 </p>
+                            )}
+                            {leaveRecords.length > 0 && (
+                                <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-100">
+                                    <div className="flex items-center gap-2 font-semibold">
+                                        <AlertTriangle className="size-4" />
+                                        選択した日に休みの担当者がいます
+                                    </div>
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                        {leaveRecords.map((record) => (
+                                            <span
+                                                key={record.id}
+                                                className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-rose-900 ring-1 ring-rose-200 dark:bg-neutral-950 dark:text-rose-100 dark:ring-rose-900"
+                                            >
+                                                {record.user_name}
+                                                {record.note
+                                                    ? `: ${record.note}`
+                                                    : ''}
+                                            </span>
+                                        ))}
+                                    </div>
+                                    <p className="mt-2 text-xs">
+                                        登録は続行できます。必要に応じて担当者を調整してください。
+                                    </p>
+                                </div>
                             )}
                         </div>
                         <Field label="開始時間" error={errors.starts_at}>

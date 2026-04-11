@@ -24,6 +24,7 @@ import type {
     ConstructionSchedule,
     ConstructionScheduleStatus,
     ConstructionUser,
+    AttendanceLeaveRecord,
     ScheduleAvailability,
     SiteGuideFile,
 } from '@/types';
@@ -34,6 +35,7 @@ type Props = {
     siteGuideFiles: SiteGuideFile[];
     generalContractorOptions: string[];
     scheduleAvailability: ScheduleAvailability[];
+    attendanceLeaveRecords: AttendanceLeaveRecord[];
 };
 
 type ScheduleForm = {
@@ -64,7 +66,7 @@ const statuses: { value: ConstructionScheduleStatus; label: string }[] = [
     { value: 'canceled', label: '中止' },
 ];
 
-const timeNotePresets = ['本日中'];
+const timeNotePresets = ['本日中', '午前中', '午後中', '時間未定'];
 const preferredTimeSlots = [
     ['08:00', '10:00'],
     ['10:00', '12:00'],
@@ -186,6 +188,22 @@ function matchingBusySchedules(
     );
 }
 
+function matchingLeaveRecords(
+    records: AttendanceLeaveRecord[],
+    scheduledOn: string,
+    assignedUserIds: number[],
+) {
+    if (assignedUserIds.length === 0) {
+        return [];
+    }
+
+    return records.filter(
+        (record) =>
+            record.work_date === scheduledOn &&
+            assignedUserIds.includes(record.user_id),
+    );
+}
+
 function availableTimeSlots(schedules: ScheduleAvailability[]) {
     return preferredTimeSlots.filter(
         ([startsAt, endsAt]) =>
@@ -199,6 +217,7 @@ export default function ConstructionScheduleForm({
     siteGuideFiles,
     generalContractorOptions,
     scheduleAvailability,
+    attendanceLeaveRecords,
 }: Props) {
     const [guideFileSearch, setGuideFileSearch] = useState('');
     const { data, setData, post, processing, progress, errors } =
@@ -240,6 +259,11 @@ export default function ConstructionScheduleForm({
         .map((file) => file.id);
     const busySchedules = matchingBusySchedules(
         scheduleAvailability,
+        data.scheduled_on,
+        data.assigned_user_ids,
+    );
+    const leaveRecords = matchingLeaveRecords(
+        attendanceLeaveRecords,
         data.scheduled_on,
         data.assigned_user_ids,
     );
@@ -466,6 +490,30 @@ export default function ConstructionScheduleForm({
                                 <p className="mt-2 text-xs text-destructive">
                                     {errors.assigned_user_ids}
                                 </p>
+                            )}
+                            {leaveRecords.length > 0 && (
+                                <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-100">
+                                    <div className="flex items-center gap-2 font-semibold">
+                                        <AlertTriangle className="size-4" />
+                                        選択した日に休みの担当者がいます
+                                    </div>
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                        {leaveRecords.map((record) => (
+                                            <span
+                                                key={record.id}
+                                                className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-rose-900 ring-1 ring-rose-200 dark:bg-neutral-950 dark:text-rose-100 dark:ring-rose-900"
+                                            >
+                                                {record.user_name}
+                                                {record.note
+                                                    ? `: ${record.note}`
+                                                    : ''}
+                                            </span>
+                                        ))}
+                                    </div>
+                                    <p className="mt-2 text-xs">
+                                        登録は続行できます。必要に応じて担当者を調整してください。
+                                    </p>
+                                </div>
                             )}
                         </div>
                         <Field label="開始時間" error={errors.starts_at}>
