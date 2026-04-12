@@ -21,7 +21,7 @@ class UserController extends Controller
         $role = $request->query('role');
 
         $users = User::query()
-            ->select(['id', 'name', 'login_id', 'email', 'email_verified_at', 'two_factor_confirmed_at', 'is_admin', 'created_at', 'updated_at'])
+            ->select(['id', 'name', 'login_id', 'email', 'email_verified_at', 'two_factor_confirmed_at', 'is_admin', 'is_hidden_from_workers', 'created_at', 'updated_at'])
             ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search): void {
                 $query->where('name', 'like', "%{$search}%")
                     ->orWhere('login_id', 'like', "%{$search}%")
@@ -71,6 +71,7 @@ class UserController extends Controller
         ]);
         $user->forceFill([
             'is_admin' => $validated['is_admin'],
+            'is_hidden_from_workers' => $validated['is_hidden_from_workers'],
         ])->save();
 
         return redirect()
@@ -96,6 +97,7 @@ class UserController extends Controller
             'login_id' => $validated['login_id'],
             'email' => $validated['email'] ?: null,
             'is_admin' => $validated['is_admin'],
+            'is_hidden_from_workers' => $validated['is_hidden_from_workers'],
         ];
 
         if (filled($validated['password'] ?? null)) {
@@ -134,6 +136,7 @@ class UserController extends Controller
             'email_verified_at' => $user->email_verified_at?->toISOString(),
             'two_factor_confirmed_at' => $user->two_factor_confirmed_at?->toISOString(),
             'is_admin' => $user->is_admin,
+            'is_hidden_from_workers' => $user->is_hidden_from_workers,
             'created_at' => $user->created_at?->toISOString(),
             'updated_at' => $user->updated_at?->toISOString(),
             'is_current_user' => $currentUser?->is($user) === true,

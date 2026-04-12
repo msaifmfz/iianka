@@ -7,11 +7,17 @@ use Inertia\Testing\AssertableInertia as Assert;
 test('users can view attendance records', function (): void {
     $user = User::factory()->create(['name' => '閲覧者']);
     $worker = User::factory()->create(['name' => '山田 太郎']);
+    $hiddenUser = User::factory()->hiddenFromWorkers()->create(['name' => '非表示 管理者']);
 
     AttendanceRecord::factory()->leave()->create([
         'user_id' => $worker->id,
         'work_date' => '2026-05-04',
         'note' => '有給',
+    ]);
+    AttendanceRecord::factory()->leave()->create([
+        'user_id' => $hiddenUser->id,
+        'work_date' => '2026-05-04',
+        'note' => '秘密',
     ]);
 
     $this->actingAs($user)
@@ -26,6 +32,42 @@ test('users can view attendance records', function (): void {
             ->where('records.0.user.name', '山田 太郎')
             ->where('records.0.status', AttendanceRecord::STATUS_LEAVE)
             ->where('records.0.note', '有給')
+            ->where('users', fn ($users): bool => ! collect($users)->contains(
+                fn (array $user): bool => $user['id'] === $hiddenUser->id || $user['name'] === '非表示 管理者'
+            ))
+        );
+});
+
+test('admins cannot view hidden users on attendance records', function (): void {
+    $admin = User::factory()->admin()->create();
+    $worker = User::factory()->create(['name' => '山田 太郎']);
+    $hiddenUser = User::factory()->hiddenFromWorkers()->create(['name' => '非表示 管理者']);
+
+    AttendanceRecord::factory()->leave()->create([
+        'user_id' => $worker->id,
+        'work_date' => '2026-05-04',
+        'note' => '有給',
+    ]);
+    AttendanceRecord::factory()->leave()->create([
+        'user_id' => $hiddenUser->id,
+        'work_date' => '2026-05-04',
+        'note' => '秘密',
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('attendance-records.index', ['month' => '2026-05-01']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->component('attendance-records/index')
+            ->where('canManage', true)
+            ->has('users', 2)
+            ->has('records', 1)
+            ->where('records.0.user.name', '山田 太郎')
+            ->where('records.0.status', AttendanceRecord::STATUS_LEAVE)
+            ->where('stats.leave', 1)
+            ->where('users', fn ($users): bool => ! collect($users)->contains(
+                fn (array $user): bool => $user['id'] === $hiddenUser->id || $user['name'] === '非表示 管理者'
+            ))
         );
 });
 

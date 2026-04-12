@@ -6,6 +6,8 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -37,8 +39,15 @@ class User extends Authenticatable implements WebAuthnAuthenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_admin' => 'boolean',
+            'is_hidden_from_workers' => 'boolean',
             'two_factor_confirmed_at' => 'datetime',
         ];
+    }
+
+    #[Scope]
+    protected function visibleToWorkers(Builder $query): void
+    {
+        $query->where('is_hidden_from_workers', false);
     }
 
     /**

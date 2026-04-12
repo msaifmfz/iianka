@@ -32,6 +32,7 @@ class StoreUserRequest extends FormRequest
             ...$this->accountRules(),
             'password' => $this->passwordRules(),
             'is_admin' => ['required', 'boolean'],
+            'is_hidden_from_workers' => ['required', 'boolean'],
         ];
     }
 }

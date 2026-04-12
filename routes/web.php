@@ -14,14 +14,16 @@ use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\SiteGuideFileController;
 use App\Http\Controllers\WebAuthn\WebAuthnLoginController;
 use App\Http\Controllers\WebAuthn\WebAuthnRegisterController;
+use Illuminate\Contracts\Routing\ResponseFactory;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn (Request $request) => $request->user()
     ? redirect()->route('dashboard')
     : redirect()->route('login'))->name('home');
 
-Route::get('robots.txt', fn () => response("User-agent: *\nDisallow: /\n", 200, [
+Route::get('robots.txt', fn (): ResponseFactory|Response => response("User-agent: *\nDisallow: /\n", 200, [
     'Content-Type' => 'text/plain',
 ]))->name('robots');
 

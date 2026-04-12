@@ -1,5 +1,5 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, ShieldCheck, UserRound } from 'lucide-react';
+import { ArrowLeft, EyeOff, ShieldCheck, UserRound } from 'lucide-react';
 import {
     index as userIndex,
     store as userStore,
@@ -16,6 +16,7 @@ type ManagedUser = {
     login_id: string;
     email: string | null;
     is_admin: boolean;
+    is_hidden_from_workers: boolean;
     is_current_user: boolean;
 };
 
@@ -31,6 +32,7 @@ type UserForm = {
     password: string;
     password_confirmation: string;
     is_admin: boolean;
+    is_hidden_from_workers: boolean;
 };
 
 function Field({
@@ -60,6 +62,7 @@ export default function AdminUserForm({ managedUser }: Props) {
         password: '',
         password_confirmation: '',
         is_admin: managedUser?.is_admin ?? false,
+        is_hidden_from_workers: managedUser?.is_hidden_from_workers ?? false,
     });
 
     function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -220,6 +223,43 @@ export default function AdminUserForm({ managedUser }: Props) {
                                 {errors.is_admin && (
                                     <p className="text-xs text-destructive">
                                         {errors.is_admin}
+                                    </p>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>表示</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <label
+                                    className={`flex items-start gap-3 rounded-lg border p-4 text-sm transition dark:border-neutral-800 ${data.is_hidden_from_workers ? 'border-rose-300 bg-rose-50 dark:border-rose-800 dark:bg-rose-950/30' : ''}`}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={data.is_hidden_from_workers}
+                                        onChange={(event) =>
+                                            setData(
+                                                'is_hidden_from_workers',
+                                                event.target.checked,
+                                            )
+                                        }
+                                        className="mt-1"
+                                    />
+                                    <span>
+                                        <span className="flex items-center gap-2 font-semibold">
+                                            <EyeOff className="size-4 text-rose-600" />
+                                            作業員向け画面では非表示
+                                        </span>
+                                        <span className="mt-1 block text-muted-foreground">
+                                            予定表と出勤管理の作業員向け表示から除外します。
+                                        </span>
+                                    </span>
+                                </label>
+                                {errors.is_hidden_from_workers && (
+                                    <p className="text-xs text-destructive">
+                                        {errors.is_hidden_from_workers}
                                     </p>
                                 )}
                             </CardContent>

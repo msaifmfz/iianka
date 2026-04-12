@@ -44,6 +44,60 @@ test('users can see their own and others schedules for today', function (): void
         );
 });
 
+test('worker schedule payloads include assigned users hidden from workers', function (): void {
+    $user = User::factory()->create();
+    $worker = User::factory()->create(['name' => '表示 作業員']);
+    $hiddenUser = User::factory()->hiddenFromWorkers()->create(['name' => '非表示 管理者']);
+
+    $schedule = ConstructionSchedule::factory()
+        ->scheduledToday()
+        ->create([
+            'location' => '共同作業',
+            'voucher_checked_at' => now(),
+            'voucher_checked_by_user_id' => $hiddenUser->id,
+        ]);
+    $schedule->assignedUsers()->attach([$worker->id, $hiddenUser->id]);
+
+    $this->actingAs($user)
+        ->get(route('construction-schedules.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->component('construction-schedules/index')
+            ->has('teamSchedules', 1)
+            ->where('teamSchedules.0.location', '共同作業')
+            ->where('teamSchedules.0.voucher_checked_by.name', '非表示 管理者')
+            ->has('teamSchedules.0.assigned_users', 2)
+            ->where('teamSchedules.0.assigned_users.0.name', '表示 作業員')
+            ->where('teamSchedules.0.assigned_users', fn ($users): bool => collect($users)->contains(
+                fn (array $user): bool => $user['id'] === $hiddenUser->id || $user['name'] === '非表示 管理者'
+            ))
+        );
+});
+
+test('admins can see hidden users in schedule payloads', function (): void {
+    $admin = User::factory()->admin()->create();
+    $hiddenUser = User::factory()->hiddenFromWorkers()->create(['name' => '非表示 管理者']);
+
+    $schedule = ConstructionSchedule::factory()
+        ->scheduledToday()
+        ->create([
+            'location' => '管理者だけの確認',
+            'voucher_checked_at' => now(),
+            'voucher_checked_by_user_id' => $hiddenUser->id,
+        ]);
+    $schedule->assignedUsers()->attach($hiddenUser);
+
+    $this->actingAs($admin)
+        ->get(route('construction-schedules.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->component('construction-schedules/index')
+            ->has('teamSchedules', 1)
+            ->where('teamSchedules.0.voucher_checked_by.name', '非表示 管理者')
+            ->where('teamSchedules.0.assigned_users.0.name', '非表示 管理者')
+        );
+});
+
 test('schedules are ordered by number before time', function (): void {
     $user = User::factory()->create();
     $date = '2026-05-04';
@@ -603,6 +657,73 @@ test('uploaded guide files from a schedule become standalone library files on ed
         );
 });
 
+test('schedule create form hides users hidden from workers', function (): void {
+    $admin = User::factory()->admin()->create();
+    $worker = User::factory()->create(['name' => '表示 作業員']);
+    $hiddenUser = User::factory()->hiddenFromWorkers()->create(['name' => '非表示 管理者']);
+    $hiddenSchedule = ConstructionSchedule::factory()->create([
+        'scheduled_on' => '2026-05-04',
+        'starts_at' => '09:00',
+        'ends_at' => '10:00',
+        'location' => '非表示担当の予定',
+    ]);
+    $hiddenSchedule->assignedUsers()->attach($hiddenUser);
+
+    $this->actingAs($admin)
+        ->get(route('construction-schedules.create'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->component('construction-schedules/form')
+            ->where('users', fn ($users): bool => collect($users)->contains(
+                fn (array $user): bool => $user['id'] === $worker->id && $user['name'] === '表示 作業員'
+            ) && ! collect($users)->contains(
+                fn (array $user): bool => $user['id'] === $hiddenUser->id || $user['name'] === '非表示 管理者'
+            ))
+            ->where('scheduleAvailability', fn ($schedules): bool => ! collect($schedules)->contains(
+                fn (array $schedule): bool => collect($schedule['user_ids'])->contains($hiddenUser->id)
+                    || collect($schedule['user_names'])->contains('非表示 管理者')
+            ))
+        );
+});
+
+test('schedule edit form includes only selected users hidden from workers', function (): void {
+    $admin = User::factory()->admin()->create();
+    $worker = User::factory()->create(['name' => '表示 作業員']);
+    $selectedHiddenUser = User::factory()->hiddenFromWorkers()->create(['name' => '選択済み 非表示']);
+    $unselectedHiddenUser = User::factory()->hiddenFromWorkers()->create(['name' => '未選択 非表示']);
+    $schedule = ConstructionSchedule::factory()->create([
+        'scheduled_on' => '2026-05-04',
+        'location' => '編集対象',
+    ]);
+    $schedule->assignedUsers()->attach($selectedHiddenUser);
+
+    $otherSchedule = ConstructionSchedule::factory()->create([
+        'scheduled_on' => '2026-05-05',
+        'starts_at' => '09:00',
+        'ends_at' => '10:00',
+        'location' => '未選択非表示の予定',
+    ]);
+    $otherSchedule->assignedUsers()->attach($unselectedHiddenUser);
+
+    $this->actingAs($admin)
+        ->get(route('construction-schedules.edit', $schedule))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->component('construction-schedules/form')
+            ->where('users', fn ($users): bool => collect($users)->contains(
+                fn (array $user): bool => $user['id'] === $worker->id && $user['name'] === '表示 作業員'
+            ) && collect($users)->contains(
+                fn (array $user): bool => $user['id'] === $selectedHiddenUser->id && $user['name'] === '選択済み 非表示'
+            ) && ! collect($users)->contains(
+                fn (array $user): bool => $user['id'] === $unselectedHiddenUser->id || $user['name'] === '未選択 非表示'
+            ))
+            ->where('scheduleAvailability', fn ($schedules): bool => ! collect($schedules)->contains(
+                fn (array $schedule): bool => collect($schedule['user_ids'])->contains($unselectedHiddenUser->id)
+                    || collect($schedule['user_names'])->contains('未選択 非表示')
+            ))
+        );
+});
+
 test('admins can update a construction schedule number from the index flow', function (): void {
     $admin = User::factory()->admin()->create();
     $schedule = ConstructionSchedule::factory()->create([
@@ -653,17 +774,20 @@ test('admins can update a business schedule number from the index flow', functio
 
 test('inline schedule number updates cannot overlap with another schedule on the same day', function (): void {
     $admin = User::factory()->admin()->create();
+    $worker = User::factory()->create();
     $scheduledOn = '2026-05-04';
 
-    ConstructionSchedule::factory()->create([
+    $existingSchedule = ConstructionSchedule::factory()->create([
         'scheduled_on' => $scheduledOn,
         'schedule_number' => 5,
     ]);
+    $existingSchedule->assignedUsers()->attach($worker);
 
     $schedule = BusinessSchedule::factory()->create([
         'scheduled_on' => $scheduledOn,
         'schedule_number' => 2,
     ]);
+    $schedule->assignedUsers()->attach($worker);
 
     $this->actingAs($admin)
         ->from(route('construction-schedules.index', [
@@ -682,6 +806,43 @@ test('inline schedule number updates cannot overlap with another schedule on the
         ->assertSessionHasErrors('schedule_number');
 
     expect($schedule->fresh()->schedule_number)->toBe(2);
+});
+
+test('inline schedule number updates can reuse a number for different users on the same day', function (): void {
+    $admin = User::factory()->admin()->create();
+    $firstWorker = User::factory()->create();
+    $secondWorker = User::factory()->create();
+    $scheduledOn = '2026-05-04';
+
+    $existingSchedule = ConstructionSchedule::factory()->create([
+        'scheduled_on' => $scheduledOn,
+        'schedule_number' => 5,
+    ]);
+    $existingSchedule->assignedUsers()->attach($firstWorker);
+
+    $schedule = BusinessSchedule::factory()->create([
+        'scheduled_on' => $scheduledOn,
+        'schedule_number' => 2,
+    ]);
+    $schedule->assignedUsers()->attach($secondWorker);
+
+    $this->actingAs($admin)
+        ->from(route('construction-schedules.index', [
+            'range' => 'today',
+            'date' => $scheduledOn,
+            'type' => 'business',
+        ]))
+        ->patch(route('business-schedules.number.update', $schedule), [
+            'schedule_number' => 5,
+        ])
+        ->assertRedirect(route('construction-schedules.index', [
+            'range' => 'today',
+            'date' => $scheduledOn,
+            'type' => 'business',
+        ]))
+        ->assertSessionDoesntHaveErrors('schedule_number');
+
+    expect($schedule->fresh()->schedule_number)->toBe(5);
 });
 
 test('schedule form includes remembered general contractor options', function (): void {
@@ -948,15 +1109,17 @@ test('business schedule form includes remembered content options', function (): 
         );
 });
 
-test('schedule numbers cannot overlap on the same day across construction and business schedules', function (): void {
+test('schedule numbers cannot overlap on the same day for the same assigned user across construction and business schedules', function (): void {
     $admin = User::factory()->admin()->create();
+    $worker = User::factory()->create();
     $scheduledOn = today()->toDateString();
 
-    ConstructionSchedule::factory()->create([
+    $existingSchedule = ConstructionSchedule::factory()->create([
         'scheduled_on' => $scheduledOn,
         'schedule_number' => 5,
         'location' => '既存番号の工事',
     ]);
+    $existingSchedule->assignedUsers()->attach($worker);
 
     $this->actingAs($admin)
         ->from(route('business-schedules.create'))
@@ -965,11 +1128,65 @@ test('schedule numbers cannot overlap on the same day across construction and bu
             'schedule_number' => 5,
             'location' => '重複番号の業務',
             'content' => '安全協議会',
+            'assigned_user_ids' => [$worker->id],
         ])
         ->assertRedirect(route('business-schedules.create'))
         ->assertSessionHasErrors('schedule_number');
 
     expect(BusinessSchedule::query()->where('location', '重複番号の業務')->exists())->toBeFalse();
+});
+
+test('schedule numbers can overlap on the same day for different assigned users', function (): void {
+    $admin = User::factory()->admin()->create();
+    $firstWorker = User::factory()->create();
+    $secondWorker = User::factory()->create();
+    $scheduledOn = today()->toDateString();
+
+    $existingSchedule = ConstructionSchedule::factory()->create([
+        'scheduled_on' => $scheduledOn,
+        'schedule_number' => 5,
+        'location' => '既存番号の工事',
+    ]);
+    $existingSchedule->assignedUsers()->attach($firstWorker);
+
+    $this->actingAs($admin)
+        ->post(route('business-schedules.store'), [
+            'scheduled_on' => $scheduledOn,
+            'schedule_number' => 5,
+            'location' => '別担当の業務',
+            'content' => '安全協議会',
+            'assigned_user_ids' => [$secondWorker->id],
+        ])
+        ->assertRedirect();
+
+    expect(BusinessSchedule::query()->where('location', '別担当の業務')->exists())->toBeTrue();
+});
+
+test('schedule number conflicts include hidden assigned users', function (): void {
+    $admin = User::factory()->admin()->create();
+    $hiddenUser = User::factory()->hiddenFromWorkers()->create();
+    $scheduledOn = today()->toDateString();
+
+    $existingSchedule = ConstructionSchedule::factory()->create([
+        'scheduled_on' => $scheduledOn,
+        'schedule_number' => 5,
+        'location' => '非表示担当の工事',
+    ]);
+    $existingSchedule->assignedUsers()->attach($hiddenUser);
+
+    $this->actingAs($admin)
+        ->from(route('business-schedules.create'))
+        ->post(route('business-schedules.store'), [
+            'scheduled_on' => $scheduledOn,
+            'schedule_number' => 5,
+            'location' => '非表示担当と重複する業務',
+            'content' => '安全協議会',
+            'assigned_user_ids' => [$hiddenUser->id],
+        ])
+        ->assertRedirect(route('business-schedules.create'))
+        ->assertSessionHasErrors('schedule_number');
+
+    expect(BusinessSchedule::query()->where('location', '非表示担当と重複する業務')->exists())->toBeFalse();
 });
 
 test('schedule time note supports same day preset', function (): void {

@@ -91,6 +91,10 @@ function statusClass(status: AttendanceStatus | undefined) {
     return 'border-neutral-200 bg-white text-muted-foreground hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:bg-neutral-900';
 }
 
+function isHiddenUser(user: ConstructionUser) {
+    return user.is_hidden_from_workers === true;
+}
+
 function AttendanceCell({
     user,
     day,
@@ -159,7 +163,6 @@ export default function AttendanceRecordIndex({
     days,
     users,
     records,
-    stats,
     canManage,
 }: Props) {
     const [selectedRecord, setSelectedRecord] =
@@ -174,15 +177,41 @@ export default function AttendanceRecordIndex({
             status: 'working',
             note: '',
         });
+    const visibleUsers = useMemo(() => {
+        return users.filter((user) => !isHiddenUser(user));
+    }, [users]);
+    const visibleUserIds = useMemo(() => {
+        return new Set(visibleUsers.map((user) => user.id));
+    }, [visibleUsers]);
+    const visibleRecords = useMemo(() => {
+        return records.filter(
+            (record) =>
+                visibleUserIds.has(record.user_id) &&
+                !isHiddenUser(record.user),
+        );
+    }, [records, visibleUserIds]);
+    const visibleStats = useMemo(() => {
+        return {
+            working: visibleRecords.filter(
+                (record) => record.status === 'working',
+            ).length,
+            leave: visibleRecords.filter((record) => record.status === 'leave')
+                .length,
+            unmarked: Math.max(
+                0,
+                visibleUsers.length * days.length - visibleRecords.length,
+            ),
+        };
+    }, [days.length, visibleRecords, visibleUsers.length]);
     const recordMap = useMemo(() => {
         return new Map(
-            records.map((record) => [
+            visibleRecords.map((record) => [
                 recordKey(record.user_id, record.work_date),
                 record,
             ]),
         );
-    }, [records]);
-    const leaveToday = records.filter(
+    }, [visibleRecords]);
+    const leaveToday = visibleRecords.filter(
         (record) =>
             record.status === 'leave' &&
             record.work_date === new Date().toISOString().slice(0, 10),
@@ -272,13 +301,13 @@ export default function AttendanceRecordIndex({
                     <div className="rounded-lg border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
                         <p className="text-sm text-muted-foreground">出勤</p>
                         <p className="mt-2 text-2xl font-bold text-emerald-700 dark:text-emerald-300">
-                            {stats.working}
+                            {visibleStats.working}
                         </p>
                     </div>
                     <div className="rounded-lg border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
                         <p className="text-sm text-muted-foreground">休み</p>
                         <p className="mt-2 text-2xl font-bold text-rose-700 dark:text-rose-300">
-                            {stats.leave}
+                            {visibleStats.leave}
                         </p>
                     </div>
                 </section>
@@ -342,7 +371,7 @@ export default function AttendanceRecordIndex({
                                     </div>
                                 </div>
                             ))}
-                            {users.map((user) => (
+                            {visibleUsers.map((user) => (
                                 <div key={user.id} className="contents">
                                     <div className="sticky left-0 z-10 flex items-center gap-2 bg-white py-2 pr-3 dark:bg-neutral-950">
                                         <div className="grid size-9 shrink-0 place-items-center rounded-full bg-neutral-900 text-sm font-bold text-white dark:bg-white dark:text-neutral-950">
@@ -378,7 +407,7 @@ export default function AttendanceRecordIndex({
                     </div>
 
                     <div className="grid gap-4 p-4 lg:hidden">
-                        {users.map((user) => (
+                        {visibleUsers.map((user) => (
                             <article
                                 key={user.id}
                                 className="rounded-lg border p-3 dark:border-neutral-800"

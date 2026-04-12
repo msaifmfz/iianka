@@ -7,6 +7,7 @@ namespace App\Http\Requests\Concerns;
 use App\Models\BusinessSchedule;
 use App\Models\ConstructionSchedule;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Validator;
 
 trait ValidatesScheduleNumber
@@ -44,12 +45,13 @@ trait ValidatesScheduleNumber
     {
         $scheduleNumber = $this->integer('schedule_number');
         $scheduledOn = $this->date('scheduled_on')?->toDateString();
+        $assignedUserIds = $this->assignedUserIdsForScheduleNumber();
 
-        if ($scheduleNumber === 0 || $scheduledOn === null) {
+        if ($scheduleNumber === 0 || $scheduledOn === null || $assignedUserIds->isEmpty()) {
             return;
         }
 
-        if (! $this->scheduleNumberExistsOnDate($scheduledOn, $scheduleNumber)) {
+        if (! $this->scheduleNumberExistsOnDateForAssignedUsers($scheduledOn, $scheduleNumber, $assignedUserIds)) {
             return;
         }
 
@@ -59,16 +61,50 @@ trait ValidatesScheduleNumber
         );
     }
 
-    private function scheduleNumberExistsOnDate(string $scheduledOn, int $scheduleNumber): bool
+    /**
+     * @return Collection<int, int>
+     */
+    private function assignedUserIdsForScheduleNumber(): Collection
     {
-        if ($this->numberedConstructionSchedules($scheduledOn, $scheduleNumber)->exists()) {
+        if ($this->has('assigned_user_ids')) {
+            return collect($this->input('assigned_user_ids', []))
+                ->filter(fn (mixed $userId): bool => is_numeric($userId))
+                ->map(fn (mixed $userId): int => (int) $userId)
+                ->unique()
+                ->values();
+        }
+
+        $constructionSchedule = $this->route('construction_schedule');
+
+        if ($constructionSchedule instanceof ConstructionSchedule) {
+            return $constructionSchedule->assignedUsers()->pluck('users.id')->values();
+        }
+
+        $businessSchedule = $this->route('business_schedule');
+
+        if ($businessSchedule instanceof BusinessSchedule) {
+            return $businessSchedule->assignedUsers()->pluck('users.id')->values();
+        }
+
+        return collect();
+    }
+
+    /**
+     * @param  Collection<int, int>  $assignedUserIds
+     */
+    private function scheduleNumberExistsOnDateForAssignedUsers(string $scheduledOn, int $scheduleNumber, Collection $assignedUserIds): bool
+    {
+        if ($this->numberedConstructionSchedules($scheduledOn, $scheduleNumber, $assignedUserIds)->exists()) {
             return true;
         }
 
-        return (bool) $this->numberedBusinessSchedules($scheduledOn, $scheduleNumber)->exists();
+        return (bool) $this->numberedBusinessSchedules($scheduledOn, $scheduleNumber, $assignedUserIds)->exists();
     }
 
-    private function numberedConstructionSchedules(string $scheduledOn, int $scheduleNumber): Builder
+    /**
+     * @param  Collection<int, int>  $assignedUserIds
+     */
+    private function numberedConstructionSchedules(string $scheduledOn, int $scheduleNumber, Collection $assignedUserIds): Builder
     {
         return ConstructionSchedule::query()
             ->when(
@@ -76,10 +112,14 @@ trait ValidatesScheduleNumber
                 fn (Builder $query): Builder => $query->whereKeyNot($this->ignoredConstructionScheduleForScheduleNumberId())
             )
             ->whereDate('scheduled_on', $scheduledOn)
-            ->where('schedule_number', $scheduleNumber);
+            ->where('schedule_number', $scheduleNumber)
+            ->whereHas('assignedUsers', fn (Builder $query): Builder => $query->whereIn('users.id', $assignedUserIds));
     }
 
-    private function numberedBusinessSchedules(string $scheduledOn, int $scheduleNumber): Builder
+    /**
+     * @param  Collection<int, int>  $assignedUserIds
+     */
+    private function numberedBusinessSchedules(string $scheduledOn, int $scheduleNumber, Collection $assignedUserIds): Builder
     {
         return BusinessSchedule::query()
             ->when(
@@ -87,7 +127,8 @@ trait ValidatesScheduleNumber
                 fn (Builder $query): Builder => $query->whereKeyNot($this->ignoredBusinessScheduleForScheduleNumberId())
             )
             ->whereDate('scheduled_on', $scheduledOn)
-            ->where('schedule_number', $scheduleNumber);
+            ->where('schedule_number', $scheduleNumber)
+            ->whereHas('assignedUsers', fn (Builder $query): Builder => $query->whereIn('users.id', $assignedUserIds));
     }
 
     private function ignoredConstructionScheduleForScheduleNumberId(): ?int

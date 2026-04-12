@@ -49,7 +49,7 @@ class ConstructionScheduleController extends Controller
 
         if ($types->contains('construction')) {
             $constructionSchedules = ConstructionSchedule::query()
-                ->with(['assignedUsers:id,name,email', 'voucherCheckedBy:id,name,email', 'selectedGuideFiles'])
+                ->with(['assignedUsers:id,name,email,is_hidden_from_workers', 'voucherCheckedBy:id,name,email,is_hidden_from_workers', 'selectedGuideFiles'])
                 ->whereDate('scheduled_on', '>=', $startsOn->toDateString())
                 ->whereDate('scheduled_on', '<=', $endsOn->toDateString())
                 ->orderBy('scheduled_on')
@@ -59,7 +59,7 @@ class ConstructionScheduleController extends Controller
 
         if ($types->contains('business')) {
             $businessSchedules = BusinessSchedule::query()
-                ->with('assignedUsers:id,name,email')
+                ->with('assignedUsers:id,name,email,is_hidden_from_workers')
                 ->whereDate('scheduled_on', '>=', $startsOn->toDateString())
                 ->whereDate('scheduled_on', '<=', $endsOn->toDateString())
                 ->orderBy('scheduled_on')
@@ -69,7 +69,7 @@ class ConstructionScheduleController extends Controller
 
         if ($types->contains('internal_notice')) {
             $internalNotices = InternalNotice::query()
-                ->with('assignedUsers:id,name,email')
+                ->with('assignedUsers:id,name,email,is_hidden_from_workers')
                 ->whereDate('scheduled_on', '>=', $startsOn->toDateString())
                 ->whereDate('scheduled_on', '<=', $endsOn->toDateString())
                 ->orderBy('scheduled_on')
@@ -89,6 +89,7 @@ class ConstructionScheduleController extends Controller
         $calendarDays = $this->calendarDays($calendarStart, $calendarEnd, $types);
 
         $user = $request->user();
+        $canManage = $user->is_admin === true;
         $selectedUserIds = $this->selectedUserIds($request, $user);
         $allMyConstructionSchedules = ConstructionSchedule::query()
             ->whereHas('assignedUsers', fn ($query) => $query->whereKey($user))
@@ -168,8 +169,8 @@ class ConstructionScheduleController extends Controller
                     ))
                     ->count(),
             ],
-            'userOptions' => $user->is_admin === true ? User::query()->orderBy('name')->get(['id', 'name', 'email']) : [],
-            'canManage' => $user->is_admin === true,
+            'userOptions' => $canManage ? User::query()->orderBy('name')->get(['id', 'name', 'email']) : [],
+            'canManage' => $canManage,
         ]);
     }
 
@@ -203,7 +204,7 @@ class ConstructionScheduleController extends Controller
 
     public function show(Request $request, ConstructionSchedule $constructionSchedule): Response
     {
-        $constructionSchedule->load(['assignedUsers:id,name,email', 'voucherCheckedBy:id,name,email', 'selectedGuideFiles']);
+        $constructionSchedule->load(['assignedUsers:id,name,email,is_hidden_from_workers', 'voucherCheckedBy:id,name,email,is_hidden_from_workers', 'selectedGuideFiles']);
 
         return Inertia::render('construction-schedules/show', [
             'schedule' => $this->schedulePayload(collect([$constructionSchedule]))->first(),
@@ -216,7 +217,7 @@ class ConstructionScheduleController extends Controller
     {
         abort_unless($request->user()?->is_admin, 403);
 
-        $constructionSchedule->load(['assignedUsers:id,name,email', 'voucherCheckedBy:id,name,email', 'selectedGuideFiles']);
+        $constructionSchedule->load(['assignedUsers:id,name,email,is_hidden_from_workers', 'voucherCheckedBy:id,name,email,is_hidden_from_workers', 'selectedGuideFiles']);
 
         return Inertia::render('construction-schedules/form', [
             'schedule' => $this->schedulePayload(collect([$constructionSchedule]))->first(),
@@ -454,26 +455,39 @@ class ConstructionScheduleController extends Controller
      */
     private function formOptions(?ConstructionSchedule $ignoredSchedule): array
     {
+        $selectedUserIds = $ignoredSchedule instanceof ConstructionSchedule
+            ? $ignoredSchedule->assignedUsers->pluck('id')
+            : collect();
+
+        $users = User::query()
+            ->where(fn ($query) => $query
+                ->visibleToWorkers()
+                ->when($selectedUserIds->isNotEmpty(), fn ($query) => $query->orWhereIn('id', $selectedUserIds))
+            )
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
+
         return [
-            'users' => User::query()->orderBy('name')->get(['id', 'name', 'email']),
+            'users' => $users,
             'siteGuideFiles' => SiteGuideFile::query()
                 ->orderBy('name')
                 ->get()
                 ->pipe(fn (Collection $files): Collection => $this->guideFilePayload($files)),
             'generalContractorOptions' => $this->generalContractorOptions(),
-            'scheduleAvailability' => $this->scheduleAvailability($ignoredSchedule),
-            'attendanceLeaveRecords' => $this->attendanceLeaveRecords(),
+            'scheduleAvailability' => $this->scheduleAvailability($ignoredSchedule, $users->pluck('id')),
+            'attendanceLeaveRecords' => $this->attendanceLeaveRecords($users->pluck('id')),
         ];
     }
 
     /**
      * @return Collection<int, array<string, mixed>>
      */
-    private function attendanceLeaveRecords(): Collection
+    private function attendanceLeaveRecords(Collection $userIds): Collection
     {
         return AttendanceRecord::query()
             ->with('user:id,name,email')
             ->where('status', AttendanceRecord::STATUS_LEAVE)
+            ->whereIn('user_id', $userIds)
             ->orderBy('work_date')
             ->get()
             ->map(fn (AttendanceRecord $record): array => [
@@ -489,10 +503,10 @@ class ConstructionScheduleController extends Controller
     /**
      * @return Collection<int, array<string, mixed>>
      */
-    private function scheduleAvailability(?ConstructionSchedule $ignoredSchedule): Collection
+    private function scheduleAvailability(?ConstructionSchedule $ignoredSchedule, Collection $userIds): Collection
     {
         $constructionSchedules = ConstructionSchedule::query()
-            ->with('assignedUsers:id,name,email')
+            ->with('assignedUsers:id,name,email,is_hidden_from_workers')
             ->when($ignoredSchedule instanceof ConstructionSchedule, fn ($query) => $query->whereKeyNot($ignoredSchedule->id))
             ->whereNotNull('starts_at')
             ->whereNotNull('ends_at')
@@ -506,12 +520,12 @@ class ConstructionScheduleController extends Controller
                 'starts_at' => $schedule->starts_at,
                 'ends_at' => $schedule->ends_at,
                 'time' => $schedule->formattedTime(),
-                'user_ids' => $schedule->assignedUsers->pluck('id')->values(),
-                'user_names' => $schedule->assignedUsers->pluck('name')->values(),
+                'user_ids' => $schedule->assignedUsers->whereIn('id', $userIds)->pluck('id')->values(),
+                'user_names' => $schedule->assignedUsers->whereIn('id', $userIds)->pluck('name')->values(),
             ]);
 
         $businessSchedules = BusinessSchedule::query()
-            ->with('assignedUsers:id,name,email')
+            ->with('assignedUsers:id,name,email,is_hidden_from_workers')
             ->whereNotNull('starts_at')
             ->whereNotNull('ends_at')
             ->whereHas('assignedUsers')
@@ -524,12 +538,12 @@ class ConstructionScheduleController extends Controller
                 'starts_at' => $schedule->starts_at,
                 'ends_at' => $schedule->ends_at,
                 'time' => $schedule->formattedTime(),
-                'user_ids' => $schedule->assignedUsers->pluck('id')->values(),
-                'user_names' => $schedule->assignedUsers->pluck('name')->values(),
+                'user_ids' => $schedule->assignedUsers->whereIn('id', $userIds)->pluck('id')->values(),
+                'user_names' => $schedule->assignedUsers->whereIn('id', $userIds)->pluck('name')->values(),
             ]);
 
         $internalNotices = InternalNotice::query()
-            ->with('assignedUsers:id,name,email')
+            ->with('assignedUsers:id,name,email,is_hidden_from_workers')
             ->whereNotNull('starts_at')
             ->whereNotNull('ends_at')
             ->whereHas('assignedUsers')
@@ -542,13 +556,14 @@ class ConstructionScheduleController extends Controller
                 'starts_at' => $notice->starts_at,
                 'ends_at' => $notice->ends_at,
                 'time' => $notice->formattedTime(),
-                'user_ids' => $notice->assignedUsers->pluck('id')->values(),
-                'user_names' => $notice->assignedUsers->pluck('name')->values(),
+                'user_ids' => $notice->assignedUsers->whereIn('id', $userIds)->pluck('id')->values(),
+                'user_names' => $notice->assignedUsers->whereIn('id', $userIds)->pluck('name')->values(),
             ]);
 
         return $constructionSchedules
             ->merge($businessSchedules)
             ->merge($internalNotices)
+            ->filter(fn (array $schedule): bool => $schedule['user_ids']->isNotEmpty())
             ->sortBy([
                 ['scheduled_on', 'asc'],
                 ['starts_at', 'asc'],
@@ -745,11 +760,7 @@ class ConstructionScheduleController extends Controller
                 'email' => $schedule->voucherCheckedBy->email,
             ],
             'voucher_note' => $schedule->voucher_note,
-            'assigned_users' => $schedule->assignedUsers->map(fn (User $user): array => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-            ])->values(),
+            'assigned_users' => $this->userPayload($schedule->assignedUsers),
             'guide_files' => $this->guideFilePayload($schedule->allGuideFiles()),
             'selected_site_guide_file_ids' => $schedule->selectedGuideFiles->pluck('id')->values(),
         ])->values();
@@ -776,11 +787,7 @@ class ConstructionScheduleController extends Controller
             'person_in_charge' => $schedule->person_in_charge,
             'content' => $schedule->content,
             'memo' => $schedule->memo,
-            'assigned_users' => $schedule->assignedUsers->map(fn (User $user): array => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-            ])->values(),
+            'assigned_users' => $this->userPayload($schedule->assignedUsers),
         ])->values();
     }
 
@@ -802,11 +809,7 @@ class ConstructionScheduleController extends Controller
             'location' => $notice->location,
             'content' => $notice->content,
             'memo' => $notice->memo,
-            'assigned_users' => $notice->assignedUsers->map(fn (User $user): array => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-            ])->values(),
+            'assigned_users' => $this->userPayload($notice->assignedUsers),
         ])->values();
     }
 
@@ -831,12 +834,23 @@ class ConstructionScheduleController extends Controller
             'rule_id' => $occurrence['rule']->id,
             'weekday' => $occurrence['rule']->weekday,
             'weekday_label' => $occurrence['rule']->weekdayLabel(),
-            'assigned_users' => $occurrence['assigned_users']->map(fn (User $user): array => [
+            'assigned_users' => $this->userPayload($occurrence['assigned_users']),
+        ])->values();
+    }
+
+    /**
+     * @param  Collection<int, User>  $users
+     * @return Collection<int, array{id: int, name: string, email: string|null}>
+     */
+    private function userPayload(Collection $users): Collection
+    {
+        return $users
+            ->map(fn (User $user): array => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-            ])->values(),
-        ])->values();
+            ])
+            ->values();
     }
 
     /**
@@ -845,7 +859,7 @@ class ConstructionScheduleController extends Controller
     private function cleaningDutyOccurrences(Carbon $startsOn, Carbon $endsOn): Collection
     {
         $rules = CleaningDutyRule::query()
-            ->with('assignedUsers:id,name,email')
+            ->with('assignedUsers:id,name,email,is_hidden_from_workers')
             ->where('is_active', true)
             ->orderBy('weekday')
             ->orderBy('sort_order')

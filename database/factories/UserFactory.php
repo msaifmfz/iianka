@@ -34,6 +34,7 @@ class UserFactory extends Factory
             'two_factor_secret' => null,
             'two_factor_recovery_codes' => null,
             'two_factor_confirmed_at' => null,
+            'is_hidden_from_workers' => false,
         ];
     }
 
@@ -54,6 +55,16 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes): array => [
             'is_admin' => true,
+        ]);
+    }
+
+    /**
+     * Indicate that the user should be hidden from worker-facing pages.
+     */
+    public function hiddenFromWorkers(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'is_hidden_from_workers' => true,
         ]);
     }
 

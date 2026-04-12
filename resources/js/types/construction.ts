@@ -2,6 +2,7 @@ export type ConstructionUser = {
     id: number;
     name: string;
     email: string | null;
+    is_hidden_from_workers?: boolean;
 };
 
 export type SiteGuideFile = {

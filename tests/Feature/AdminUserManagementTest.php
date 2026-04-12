@@ -40,11 +40,13 @@ test('admins can create users', function (): void {
             'password' => 'password',
             'password_confirmation' => 'password',
             'is_admin' => false,
+            'is_hidden_from_workers' => true,
         ])
         ->assertRedirect(route('admin.users.index'));
 
     expect(User::query()->where('login_id', 'new-member')->where('is_admin', false)->exists())->toBeTrue()
-        ->and(User::query()->where('login_id', 'new-member')->value('email'))->toBeNull();
+        ->and(User::query()->where('login_id', 'new-member')->value('email'))->toBeNull()
+        ->and(User::query()->where('login_id', 'new-member')->value('is_hidden_from_workers'))->toBeTrue();
 });
 
 test('admins can update user roles', function (): void {
@@ -59,13 +61,15 @@ test('admins can update user roles', function (): void {
             'password' => null,
             'password_confirmation' => null,
             'is_admin' => true,
+            'is_hidden_from_workers' => true,
         ])
         ->assertRedirect(route('admin.users.index'));
 
     $member->refresh();
 
     expect($member->name)->toBe('Promoted Member')
-        ->and($member->is_admin)->toBeTrue();
+        ->and($member->is_admin)->toBeTrue()
+        ->and($member->is_hidden_from_workers)->toBeTrue();
 });
 
 test('admins cannot remove their own admin role', function (): void {
@@ -79,6 +83,7 @@ test('admins cannot remove their own admin role', function (): void {
             'password' => null,
             'password_confirmation' => null,
             'is_admin' => false,
+            'is_hidden_from_workers' => false,
         ])
         ->assertSessionHasErrors('is_admin');
 
@@ -97,6 +102,7 @@ test('admins cannot assign duplicate login ids', function (): void {
             'password' => 'password',
             'password_confirmation' => 'password',
             'is_admin' => false,
+            'is_hidden_from_workers' => false,
         ])
         ->assertSessionHasErrors('login_id');
 });

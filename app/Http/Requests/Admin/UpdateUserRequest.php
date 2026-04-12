@@ -34,6 +34,7 @@ class UpdateUserRequest extends FormRequest
             ...$this->accountRules($user instanceof User ? $user->id : null),
             'password' => ['nullable', 'string', Password::default(), 'confirmed'],
             'is_admin' => ['required', 'boolean'],
+            'is_hidden_from_workers' => ['required', 'boolean'],
         ];
     }
 

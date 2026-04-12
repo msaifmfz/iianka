@@ -6,6 +6,7 @@ import {
     Plus,
     Search,
     Trash2,
+    EyeOff,
 } from 'lucide-react';
 import { useState } from 'react';
 import {
@@ -28,6 +29,7 @@ type ManagedUser = {
     email_verified_at: string | null;
     two_factor_confirmed_at: string | null;
     is_admin: boolean;
+    is_hidden_from_workers: boolean;
     created_at: string | null;
     updated_at: string | null;
     is_current_user: boolean;
@@ -131,6 +133,12 @@ function UserIdentity({ user }: { user: ManagedUser }) {
                     <p className="truncate font-semibold">{user.name}</p>
                     {user.is_current_user && (
                         <Badge variant="secondary">自分</Badge>
+                    )}
+                    {user.is_hidden_from_workers && (
+                        <Badge variant="outline">
+                            <EyeOff className="size-3" />
+                            作業員非表示
+                        </Badge>
                     )}
                 </div>
                 <p className="truncate text-sm text-muted-foreground">

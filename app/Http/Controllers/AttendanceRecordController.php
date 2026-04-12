@@ -19,13 +19,16 @@ class AttendanceRecordController extends Controller
         $month = Carbon::parse($request->query('month', today()->toDateString()))->startOfMonth();
         $startsOn = $month->copy()->startOfMonth();
         $endsOn = $month->copy()->endOfMonth();
+        $canManage = $request->user()?->is_admin === true;
 
         $users = User::query()
+            ->visibleToWorkers()
             ->orderBy('name')
-            ->get(['id', 'name', 'email']);
+            ->get(['id', 'name', 'email', 'is_hidden_from_workers']);
 
         $records = AttendanceRecord::query()
-            ->with('user:id,name,email')
+            ->with('user:id,name,email,is_hidden_from_workers')
+            ->whereHas('user', fn ($query) => $query->visibleToWorkers())
             ->whereDate('work_date', '>=', $startsOn->toDateString())
             ->whereDate('work_date', '<=', $endsOn->toDateString())
             ->orderBy('work_date')
@@ -45,7 +48,7 @@ class AttendanceRecordController extends Controller
                 'leave' => $records->where('status', AttendanceRecord::STATUS_LEAVE)->count(),
                 'unmarked' => max(0, ($users->count() * $startsOn->daysInMonth) - $records->count()),
             ],
-            'canManage' => $request->user()?->is_admin === true,
+            'canManage' => $canManage,
         ]);
     }
 
@@ -114,6 +117,7 @@ class AttendanceRecordController extends Controller
                 'id' => $record->user->id,
                 'name' => $record->user->name,
                 'email' => $record->user->email,
+                'is_hidden_from_workers' => $record->user->is_hidden_from_workers,
             ],
         ])->values();
     }
