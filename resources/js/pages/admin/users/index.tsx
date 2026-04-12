@@ -90,10 +90,6 @@ function formatDate(value: string | null) {
     }).format(new Date(value));
 }
 
-function paginationLabel(label: string) {
-    return label.replace('&laquo;', '前へ').replace('&raquo;', '次へ');
-}
-
 function RoleFilter({
     label,
     value,
@@ -410,10 +406,10 @@ export default function AdminUsersIndex({ users, filters }: Props) {
                             >
                                 {link.url ? (
                                     <Link href={link.url} preserveScroll>
-                                        {paginationLabel(link.label)}
+                                        {link.label}
                                     </Link>
                                 ) : (
-                                    <span>{paginationLabel(link.label)}</span>
+                                    <span>{link.label}</span>
                                 )}
                             </Button>
                         ))}
