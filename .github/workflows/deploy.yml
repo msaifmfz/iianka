@@ -74,11 +74,10 @@ jobs:
       DEPLOY_ENVIRONMENT: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
       DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
       DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
-      DEPLOY_PRODUCTION_PATH: ${{ vars.DEPLOY_PATH }}
+      DEPLOY_TARGET_PATH: ${{ vars.DEPLOY_PATH }}
       DEPLOY_SHA: ${{ github.sha }}
       DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
       DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
-      DEPLOY_STAGING_PATH: ${{ vars.DEPLOY_STAGING_PATH }}
 
     steps:
       - name: Configure SSH
@@ -100,19 +99,7 @@ jobs:
           set -euo pipefail
 
           DEPLOY_PORT="${DEPLOY_PORT:-22}"
-
-          case "$DEPLOY_ENVIRONMENT" in
-            production)
-              DEPLOY_PATH="${DEPLOY_PRODUCTION_PATH:?Missing production path}"
-              ;;
-            staging)
-              DEPLOY_PATH="${DEPLOY_STAGING_PATH:?Missing staging path}"
-              ;;
-            *)
-              echo "Unsupported deploy environment: $DEPLOY_ENVIRONMENT" >&2
-              exit 1
-              ;;
-          esac
+          DEPLOY_PATH="${DEPLOY_TARGET_PATH:?Missing target path}"
 
           ssh \
             -i ~/.ssh/deploy_key \
