@@ -19,6 +19,16 @@ trait ValidatesConstructionScheduleTiming
             }
         }
 
+        if ($this->has('new_subcontractors') && is_array($this->input('new_subcontractors'))) {
+            $values['new_subcontractors'] = collect($this->input('new_subcontractors'))
+                ->map(fn (mixed $subcontractor): mixed => is_array($subcontractor) ? [
+                    'name' => trim((string) ($subcontractor['name'] ?? '')),
+                    'phone' => trim((string) ($subcontractor['phone'] ?? '')),
+                ] : $subcontractor)
+                ->values()
+                ->all();
+        }
+
         if ($values !== []) {
             $this->merge($values);
         }

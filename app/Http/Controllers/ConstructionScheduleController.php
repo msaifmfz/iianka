@@ -464,7 +464,7 @@ class ConstructionScheduleController extends Controller
         $newSubcontractorIds = collect($validated['new_subcontractors'] ?? [])
             ->map(fn (array $subcontractor): int => ConstructionSubcontractor::query()->create([
                 'name' => trim((string) $subcontractor['name']),
-                'phone' => trim((string) $subcontractor['phone']),
+                'phone' => trim((string) ($subcontractor['phone'] ?? '')),
             ])->id);
 
         $schedule->subcontractors()->sync(

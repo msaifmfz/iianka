@@ -655,6 +655,34 @@ test('construction schedule payloads include subcontractor phone numbers', funct
         );
 });
 
+test('admins can create new subcontractors without phone numbers', function (): void {
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)
+        ->post(route('construction-schedules.store'), [
+            'scheduled_on' => today()->toDateString(),
+            'status' => ConstructionSchedule::STATUS_SCHEDULED,
+            'location' => '下請け電話未定現場',
+            'new_subcontractors' => [
+                [
+                    'name' => '電話未定 下請け',
+                    'phone' => '   ',
+                ],
+            ],
+        ])
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    $schedule = ConstructionSchedule::query()
+        ->where('location', '下請け電話未定現場')
+        ->firstOrFail();
+
+    expect($schedule->subcontractors()
+        ->where('name', '電話未定 下請け')
+        ->where('phone', '')
+        ->exists())->toBeTrue();
+});
+
 test('admins can update schedule subcontractors separately from assigned users', function (): void {
     $admin = User::factory()->admin()->create();
     $worker = User::factory()->create();
@@ -682,7 +710,7 @@ test('admins can update schedule subcontractors separately from assigned users',
             'new_subcontractors' => [
                 [
                     'name' => '追加 下請け',
-                    'phone' => '090-9999-0000',
+                    'phone' => '',
                 ],
             ],
         ])
@@ -693,7 +721,7 @@ test('admins can update schedule subcontractors separately from assigned users',
     expect($schedule->assignedUsers()->whereKey($worker)->exists())->toBeTrue();
     expect($schedule->subcontractors()->whereKey($oldSubcontractor)->exists())->toBeFalse();
     expect($schedule->subcontractors()->whereKey($newSubcontractor)->exists())->toBeTrue();
-    expect($schedule->subcontractors()->where('name', '追加 下請け')->where('phone', '090-9999-0000')->exists())->toBeTrue();
+    expect($schedule->subcontractors()->where('name', '追加 下請け')->where('phone', '')->exists())->toBeTrue();
 });
 
 test('uploaded guide files from a schedule become standalone library files on edit', function (): void {

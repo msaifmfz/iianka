@@ -101,6 +101,14 @@ export default function InternalNoticeShow({
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-6 xl:px-8">
+                        {notice.assigned_users.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-2 text-sm">
+                                <Users className="size-4 text-muted-foreground" />
+                                {notice.assigned_users
+                                    .map((user) => user.name)
+                                    .join('、')}
+                            </div>
+                        )}
                         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 xl:gap-4">
                             <Detail label="場所" value={notice.location} />
                         </div>
@@ -122,15 +130,6 @@ export default function InternalNoticeShow({
                                 {notice.memo || '未設定'}
                             </p>
                         </div>
-
-                        {notice.assigned_users.length > 0 && (
-                            <div className="flex flex-wrap items-center gap-2 text-sm">
-                                <Users className="size-4 text-muted-foreground" />
-                                {notice.assigned_users
-                                    .map((user) => user.name)
-                                    .join('、')}
-                            </div>
-                        )}
                     </CardContent>
                 </Card>
             </div>

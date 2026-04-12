@@ -118,6 +118,51 @@ export default function ConstructionScheduleShow({
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-6 xl:px-8">
+                        {schedule.assigned_users.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-2 text-sm">
+                                <Users className="size-4 text-muted-foreground" />
+                                {schedule.assigned_users
+                                    .map((user) => user.name)
+                                    .join('、')}
+                            </div>
+                        )}
+
+                        {schedule.subcontractors.length > 0 && (
+                            <div className="rounded-2xl border p-4 dark:border-neutral-800">
+                                <p className="text-sm text-muted-foreground">
+                                    下請け
+                                </p>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    {schedule.subcontractors.map(
+                                        (subcontractor) =>
+                                            subcontractor.phone ? (
+                                                <a
+                                                    key={subcontractor.id}
+                                                    href={phoneHref(
+                                                        subcontractor.phone,
+                                                    )}
+                                                    className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition hover:bg-muted hover:text-sky-700 dark:border-neutral-800 dark:hover:text-sky-300"
+                                                >
+                                                    <Phone className="size-4 text-muted-foreground" />
+                                                    <span>
+                                                        {subcontractor.name}
+                                                    </span>
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {subcontractor.phone}
+                                                    </span>
+                                                </a>
+                                            ) : (
+                                                <span
+                                                    key={subcontractor.id}
+                                                    className="inline-flex items-center rounded-md border px-3 py-2 text-sm font-medium dark:border-neutral-800"
+                                                >
+                                                    {subcontractor.name}
+                                                </span>
+                                            ),
+                                    )}
+                                </div>
+                            </div>
+                        )}
                         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 xl:gap-4">
                             <Detail
                                 label="集合場所"
@@ -146,44 +191,6 @@ export default function ConstructionScheduleShow({
                                 {schedule.content || '未設定'}
                             </p>
                         </div>
-
-                        {schedule.assigned_users.length > 0 && (
-                            <div className="flex flex-wrap items-center gap-2 text-sm">
-                                <Users className="size-4 text-muted-foreground" />
-                                {schedule.assigned_users
-                                    .map((user) => user.name)
-                                    .join('、')}
-                            </div>
-                        )}
-
-                        {schedule.subcontractors.length > 0 && (
-                            <div className="rounded-2xl border p-4 dark:border-neutral-800">
-                                <p className="text-sm text-muted-foreground">
-                                    下請け
-                                </p>
-                                <div className="mt-3 flex flex-wrap gap-2">
-                                    {schedule.subcontractors.map(
-                                        (subcontractor) => (
-                                            <a
-                                                key={subcontractor.id}
-                                                href={phoneHref(
-                                                    subcontractor.phone,
-                                                )}
-                                                className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition hover:bg-muted hover:text-sky-700 dark:border-neutral-800 dark:hover:text-sky-300"
-                                            >
-                                                <Phone className="size-4 text-muted-foreground" />
-                                                <span>
-                                                    {subcontractor.name}
-                                                </span>
-                                                <span className="text-xs text-muted-foreground">
-                                                    {subcontractor.phone}
-                                                </span>
-                                            </a>
-                                        ),
-                                    )}
-                                </div>
-                            </div>
-                        )}
 
                         {schedule.google_maps_url && (
                             <div className="grid gap-2 sm:grid-cols-2">

@@ -101,6 +101,14 @@ export default function BusinessScheduleShow({
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-6 xl:px-8">
+                        {schedule.assigned_users.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-2 text-sm">
+                                <Users className="size-4 text-muted-foreground" />
+                                {schedule.assigned_users
+                                    .map((user) => user.name)
+                                    .join('、')}
+                            </div>
+                        )}
                         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 xl:gap-4">
                             <Detail label="人員" value={schedule.personnel} />
                             <Detail
@@ -130,15 +138,6 @@ export default function BusinessScheduleShow({
                                 {schedule.memo || '未設定'}
                             </p>
                         </div>
-
-                        {schedule.assigned_users.length > 0 && (
-                            <div className="flex flex-wrap items-center gap-2 text-sm">
-                                <Users className="size-4 text-muted-foreground" />
-                                {schedule.assigned_users
-                                    .map((user) => user.name)
-                                    .join('、')}
-                            </div>
-                        )}
                     </CardContent>
                 </Card>
             </div>

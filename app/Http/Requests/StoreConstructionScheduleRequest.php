@@ -61,7 +61,7 @@ class StoreConstructionScheduleRequest extends FormRequest
             'subcontractor_ids.*' => ['integer', 'exists:construction_subcontractors,id'],
             'new_subcontractors' => ['nullable', 'array'],
             'new_subcontractors.*.name' => ['required', 'string', 'max:255'],
-            'new_subcontractors.*.phone' => ['required', 'string', 'max:255'],
+            'new_subcontractors.*.phone' => ['nullable', 'string', 'max:255'],
             'site_guide_file_ids' => ['nullable', 'array'],
             'site_guide_file_ids.*' => ['integer', 'exists:site_guide_files,id'],
             'guide_files' => ['nullable', 'array'],

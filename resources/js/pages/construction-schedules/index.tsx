@@ -715,16 +715,25 @@ function ScheduleCard({
                         <span className="rounded-md bg-neutral-100 px-2 py-0.5 text-xs font-semibold dark:bg-neutral-900">
                             下請け
                         </span>
-                        {schedule.subcontractors.map((subcontractor) => (
-                            <a
-                                key={subcontractor.id}
-                                href={phoneHref(subcontractor.phone)}
-                                className="inline-flex items-center gap-1 rounded-md px-1 py-0.5 hover:bg-neutral-100 hover:text-sky-700 dark:hover:bg-neutral-900 dark:hover:text-sky-300"
-                            >
-                                <Phone className="size-3.5" />
-                                {subcontractor.name}
-                            </a>
-                        ))}
+                        {schedule.subcontractors.map((subcontractor) =>
+                            subcontractor.phone ? (
+                                <a
+                                    key={subcontractor.id}
+                                    href={phoneHref(subcontractor.phone)}
+                                    className="inline-flex items-center gap-1 rounded-md px-1 py-0.5 hover:bg-neutral-100 hover:text-sky-700 dark:hover:bg-neutral-900 dark:hover:text-sky-300"
+                                >
+                                    <Phone className="size-3.5" />
+                                    {subcontractor.name}
+                                </a>
+                            ) : (
+                                <span
+                                    key={subcontractor.id}
+                                    className="inline-flex items-center rounded-md px-1 py-0.5"
+                                >
+                                    {subcontractor.name}
+                                </span>
+                            ),
+                        )}
                     </div>
                 )}
             <p className="text-md text-muted-foreground">

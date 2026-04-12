@@ -646,15 +646,19 @@ export default function ConstructionScheduleForm({
                                                     <span className="block truncate font-medium">
                                                         {subcontractor.name}
                                                     </span>
-                                                    <a
-                                                        href={phoneHref(
-                                                            subcontractor.phone,
-                                                        )}
-                                                        className="mt-1 inline-flex items-center gap-1 text-xs text-sky-700 hover:underline dark:text-sky-300"
-                                                    >
-                                                        <Phone className="size-3.5" />
-                                                        {subcontractor.phone}
-                                                    </a>
+                                                    {subcontractor.phone && (
+                                                        <a
+                                                            href={phoneHref(
+                                                                subcontractor.phone,
+                                                            )}
+                                                            className="mt-1 inline-flex items-center gap-1 text-xs text-sky-700 hover:underline dark:text-sky-300"
+                                                        >
+                                                            <Phone className="size-3.5" />
+                                                            {
+                                                                subcontractor.phone
+                                                            }
+                                                        </a>
+                                                    )}
                                                 </span>
                                             </label>
                                             <button
@@ -735,7 +739,7 @@ export default function ConstructionScheduleForm({
                                                                         .value,
                                                                 )
                                                             }
-                                                            placeholder="電話番号"
+                                                            placeholder="電話番号（任意）"
                                                         />
                                                         <button
                                                             type="button"
