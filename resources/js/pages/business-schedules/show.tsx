@@ -1,6 +1,9 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { BriefcaseBusiness, Pencil, Users } from 'lucide-react';
-import { edit as businessScheduleEdit } from '@/actions/App/Http/Controllers/BusinessScheduleController';
+import { BriefcaseBusiness, Pencil, Trash2, Users } from 'lucide-react';
+import {
+    destroy as businessScheduleDestroy,
+    edit as businessScheduleEdit,
+} from '@/actions/App/Http/Controllers/BusinessScheduleController';
 import { index as scheduleIndex } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
 import { FloatingBackButton } from '@/components/floating-back-button';
 import { Button } from '@/components/ui/button';
@@ -46,6 +49,14 @@ export default function BusinessScheduleShow({
         router.visit(fallbackReturnTo);
     }
 
+    function deleteSchedule() {
+        if (!confirm('この業務予定を削除しますか？')) {
+            return;
+        }
+
+        router.delete(businessScheduleDestroy.url(schedule.id));
+    }
+
     return (
         <>
             <Head title={`${schedule.location} - 業務予定詳細`} />
@@ -53,12 +64,22 @@ export default function BusinessScheduleShow({
             <div className="mx-auto w-full max-w-7xl space-y-6 p-4 pb-24 md:p-6 md:pb-6 xl:p-8">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     {canManage && (
-                        <Button asChild>
-                            <Link href={businessScheduleEdit(schedule.id)}>
-                                <Pencil className="size-4" />
-                                編集
-                            </Link>
-                        </Button>
+                        <div className="flex flex-wrap gap-2">
+                            <Button asChild>
+                                <Link href={businessScheduleEdit(schedule.id)}>
+                                    <Pencil className="size-4" />
+                                    編集
+                                </Link>
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={deleteSchedule}
+                            >
+                                <Trash2 className="size-4" />
+                                削除
+                            </Button>
+                        </div>
                     )}
                 </div>
 

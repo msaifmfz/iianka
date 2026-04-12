@@ -1,4 +1,4 @@
-import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
     BriefcaseBusiness,
     CalendarDays,
@@ -14,18 +14,21 @@ import {
     Pencil,
     Phone,
     Plus,
+    Trash2,
     Users,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import {
     create as businessScheduleCreate,
+    destroy as businessScheduleDestroy,
     edit as businessScheduleEdit,
     show as businessScheduleShow,
     updateNumber as businessScheduleUpdateNumber,
 } from '@/actions/App/Http/Controllers/BusinessScheduleController';
 import { edit as cleaningDutyRuleEdit } from '@/actions/App/Http/Controllers/CleaningDutyRuleController';
 import {
+    destroy as scheduleDestroy,
     index as scheduleIndex,
     show as scheduleShow,
     create as scheduleCreate,
@@ -34,6 +37,7 @@ import {
 } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
 import {
     create as internalNoticeCreate,
+    destroy as internalNoticeDestroy,
     edit as internalNoticeEdit,
     show as internalNoticeShow,
 } from '@/actions/App/Http/Controllers/InternalNoticeController';
@@ -312,6 +316,22 @@ function scheduleNumberClasses(schedule: ScheduleEvent) {
     }
 
     return 'bg-amber-500 text-white shadow-sm ring-4 ring-amber-100 dark:ring-amber-950';
+}
+
+function scheduleDeleteConfirmation(schedule: ScheduleEvent) {
+    if (schedule.type === 'construction') {
+        return 'この工事予定を削除しますか？';
+    }
+
+    if (schedule.type === 'business') {
+        return 'この業務予定を削除しますか？';
+    }
+
+    if (schedule.type === 'internal_notice') {
+        return 'この業務連絡を削除しますか？';
+    }
+
+    return null;
 }
 
 type ScheduleNumberForm = {
@@ -612,6 +632,14 @@ function ScheduleCard({
               : schedule.type === 'internal_notice'
                 ? internalNoticeEdit(schedule.id)
                 : cleaningDutyRuleEdit(schedule.rule_id);
+    const scheduleDeleteHref =
+        schedule.type === 'construction'
+            ? scheduleDestroy.url(schedule.id)
+            : schedule.type === 'business'
+              ? businessScheduleDestroy.url(schedule.id)
+              : schedule.type === 'internal_notice'
+                ? internalNoticeDestroy.url(schedule.id)
+                : null;
     const typeBadge = {
         construction:
             'bg-orange-100 text-orange-900 dark:bg-orange-950 dark:text-orange-200',
@@ -653,6 +681,22 @@ function ScheduleCard({
         (schedule.type === 'construction' || schedule.type === 'business')
             ? schedule
             : null;
+    function deleteSchedule() {
+        const confirmation = scheduleDeleteConfirmation(schedule);
+
+        if (scheduleDeleteHref === null || confirmation === null) {
+            return;
+        }
+
+        if (!confirm(confirmation)) {
+            return;
+        }
+
+        router.delete(scheduleDeleteHref, {
+            preserveScroll: true,
+        });
+    }
+
     const headerContent = (
         <div className="min-w-0">
             {schedule.assigned_users.length > 0 && (
@@ -849,16 +893,29 @@ function ScheduleCard({
                         </Button>
                     )}
                     {canManage && (
-                        <Button
-                            asChild
-                            variant="outline"
-                            className="min-h-11 justify-center sm:justify-start"
-                        >
-                            <Link href={scheduleEditHref}>
-                                <Pencil className="size-4" />
-                                編集
-                            </Link>
-                        </Button>
+                        <>
+                            <Button
+                                asChild
+                                variant="outline"
+                                className="min-h-11 justify-center sm:justify-start"
+                            >
+                                <Link href={scheduleEditHref}>
+                                    <Pencil className="size-4" />
+                                    編集
+                                </Link>
+                            </Button>
+                            {scheduleDeleteHref !== null && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="min-h-11 justify-center sm:justify-start"
+                                    onClick={deleteSchedule}
+                                >
+                                    <Trash2 className="size-4" />
+                                    削除
+                                </Button>
+                            )}
+                        </>
                     )}
                 </div>
             </CardContent>

@@ -1,7 +1,10 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Megaphone, Pencil, Users } from 'lucide-react';
+import { Megaphone, Pencil, Trash2, Users } from 'lucide-react';
 import { index as scheduleIndex } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
-import { edit as internalNoticeEdit } from '@/actions/App/Http/Controllers/InternalNoticeController';
+import {
+    destroy as internalNoticeDestroy,
+    edit as internalNoticeEdit,
+} from '@/actions/App/Http/Controllers/InternalNoticeController';
 import { FloatingBackButton } from '@/components/floating-back-button';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,6 +49,14 @@ export default function InternalNoticeShow({
         router.visit(fallbackReturnTo);
     }
 
+    function deleteNotice() {
+        if (!confirm('この業務連絡を削除しますか？')) {
+            return;
+        }
+
+        router.delete(internalNoticeDestroy.url(notice.id));
+    }
+
     return (
         <>
             <Head title={`${notice.title} - 業務連絡詳細`} />
@@ -53,12 +64,22 @@ export default function InternalNoticeShow({
             <div className="mx-auto w-full max-w-7xl space-y-6 p-4 pb-24 md:p-6 md:pb-6 xl:p-8">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     {canManage && (
-                        <Button asChild>
-                            <Link href={internalNoticeEdit(notice.id)}>
-                                <Pencil className="size-4" />
-                                編集
-                            </Link>
-                        </Button>
+                        <div className="flex flex-wrap gap-2">
+                            <Button asChild>
+                                <Link href={internalNoticeEdit(notice.id)}>
+                                    <Pencil className="size-4" />
+                                    編集
+                                </Link>
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={deleteNotice}
+                            >
+                                <Trash2 className="size-4" />
+                                削除
+                            </Button>
+                        </div>
                     )}
                 </div>
 

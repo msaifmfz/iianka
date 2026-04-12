@@ -871,6 +871,82 @@ test('non admins cannot delete subcontractors', function (): void {
     expect($subcontractor->fresh())->not->toBeNull();
 });
 
+test('admins can delete construction schedules', function (): void {
+    $admin = User::factory()->admin()->create();
+    $schedule = ConstructionSchedule::factory()->create([
+        'scheduled_on' => '2026-05-04',
+    ]);
+
+    $this->actingAs($admin)
+        ->delete(route('construction-schedules.destroy', $schedule))
+        ->assertRedirect(route('construction-schedules.index'));
+
+    $this->assertModelMissing($schedule);
+});
+
+test('non admins cannot delete construction schedules', function (): void {
+    $user = User::factory()->create();
+    $schedule = ConstructionSchedule::factory()->create();
+
+    $this->actingAs($user)
+        ->delete(route('construction-schedules.destroy', $schedule))
+        ->assertForbidden();
+
+    expect($schedule->fresh())->not->toBeNull();
+});
+
+test('admins can delete business schedules', function (): void {
+    $admin = User::factory()->admin()->create();
+    $schedule = BusinessSchedule::factory()->create([
+        'scheduled_on' => '2026-05-04',
+    ]);
+
+    $this->actingAs($admin)
+        ->delete(route('business-schedules.destroy', $schedule))
+        ->assertRedirect(route('construction-schedules.index', [
+            'type' => 'business',
+        ]));
+
+    $this->assertModelMissing($schedule);
+});
+
+test('non admins cannot delete business schedules', function (): void {
+    $user = User::factory()->create();
+    $schedule = BusinessSchedule::factory()->create();
+
+    $this->actingAs($user)
+        ->delete(route('business-schedules.destroy', $schedule))
+        ->assertForbidden();
+
+    expect($schedule->fresh())->not->toBeNull();
+});
+
+test('admins can delete internal notices', function (): void {
+    $admin = User::factory()->admin()->create();
+    $notice = InternalNotice::factory()->create([
+        'scheduled_on' => '2026-05-04',
+    ]);
+
+    $this->actingAs($admin)
+        ->delete(route('internal-notices.destroy', $notice))
+        ->assertRedirect(route('construction-schedules.index', [
+            'type' => 'internal_notice',
+        ]));
+
+    $this->assertModelMissing($notice);
+});
+
+test('non admins cannot delete internal notices', function (): void {
+    $user = User::factory()->create();
+    $notice = InternalNotice::factory()->create();
+
+    $this->actingAs($user)
+        ->delete(route('internal-notices.destroy', $notice))
+        ->assertForbidden();
+
+    expect($notice->fresh())->not->toBeNull();
+});
+
 test('admins can update a construction schedule number from the index flow', function (): void {
     $admin = User::factory()->admin()->create();
     $schedule = ConstructionSchedule::factory()->create([

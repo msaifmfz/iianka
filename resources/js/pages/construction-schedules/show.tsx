@@ -1,6 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { FileText, MapPin, Pencil, Phone, Users } from 'lucide-react';
+import { FileText, MapPin, Pencil, Phone, Trash2, Users } from 'lucide-react';
 import {
+    destroy as scheduleDestroy,
     edit as scheduleEdit,
     index as scheduleIndex,
 } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
@@ -63,6 +64,14 @@ export default function ConstructionScheduleShow({
         router.visit(fallbackReturnTo);
     }
 
+    function deleteSchedule() {
+        if (!confirm('この工事予定を削除しますか？')) {
+            return;
+        }
+
+        router.delete(scheduleDestroy.url(schedule.id));
+    }
+
     return (
         <>
             <Head title={`${schedule.location} - 予定詳細`} />
@@ -73,12 +82,22 @@ export default function ConstructionScheduleShow({
             <div className="mx-auto w-full max-w-7xl space-y-6 p-4 pb-28 md:p-6 md:pb-6 xl:p-8">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     {canManage && (
-                        <Button asChild>
-                            <Link href={scheduleEdit(schedule.id)}>
-                                <Pencil className="size-4" />
-                                編集
-                            </Link>
-                        </Button>
+                        <div className="flex flex-wrap gap-2">
+                            <Button asChild>
+                                <Link href={scheduleEdit(schedule.id)}>
+                                    <Pencil className="size-4" />
+                                    編集
+                                </Link>
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={deleteSchedule}
+                            >
+                                <Trash2 className="size-4" />
+                                削除
+                            </Button>
+                        </div>
                     )}
                 </div>
 
@@ -262,12 +281,23 @@ export default function ConstructionScheduleShow({
                     )}
                 </div>
                 {canManage && (
-                    <Button asChild variant="outline" className="mt-2 w-full">
-                        <Link href={scheduleEdit(schedule.id)}>
-                            <Pencil className="size-4" />
-                            編集
-                        </Link>
-                    </Button>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                        <Button asChild variant="outline" className="w-full">
+                            <Link href={scheduleEdit(schedule.id)}>
+                                <Pencil className="size-4" />
+                                編集
+                            </Link>
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full"
+                            onClick={deleteSchedule}
+                        >
+                            <Trash2 className="size-4" />
+                            削除
+                        </Button>
+                    </div>
                 )}
             </div>
         </>
