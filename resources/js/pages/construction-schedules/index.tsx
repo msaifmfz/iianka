@@ -1526,7 +1526,7 @@ export default function ConstructionSchedulesIndex({
                                                         className="size-1.5 rounded-full bg-emerald-500"
                                                     />
                                                 ),
-                                            ].filter(Boolean).length > 1 && (
+                                            ].filter(Boolean).length > 0 && (
                                                 <span className="absolute bottom-1 left-1/2 flex -translate-x-1/2 gap-0.5">
                                                     {[
                                                         day.constructionCount >
