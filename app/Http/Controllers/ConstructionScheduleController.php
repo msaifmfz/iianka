@@ -87,11 +87,11 @@ class ConstructionScheduleController extends Controller
         $calendarStart = $monthStart->copy()->subDays($monthStart->dayOfWeek);
         $calendarEnd = $monthEnd->copy()->addDays(6 - $monthEnd->dayOfWeek);
 
-        $calendarDays = $this->calendarDays($calendarStart, $calendarEnd, $types);
-
         $user = $request->user();
         $canManage = $user->is_admin === true;
         $selectedUserIds = $this->selectedUserIds($request, $user);
+        $calendarDays = $this->calendarDays($calendarStart, $calendarEnd, $types);
+        $myCalendarDays = $this->calendarDays($calendarStart, $calendarEnd, $types, $user);
         $allMyConstructionSchedules = ConstructionSchedule::query()
             ->whereHas('assignedUsers', fn ($query) => $query->whereKey($user))
             ->whereDate('scheduled_on', '>=', $startsOn->toDateString())
@@ -146,6 +146,7 @@ class ConstructionScheduleController extends Controller
             ],
             'todayDate' => today()->toDateString(),
             'calendarDays' => $calendarDays,
+            'myCalendarDays' => $myCalendarDays,
             'scheduleNavigation' => [
                 'previous_date' => $this->previousScheduleDate($date, $types),
                 'next_date' => $this->nextScheduleDate($date, $types),
@@ -654,13 +655,14 @@ class ConstructionScheduleController extends Controller
     /**
      * @param  Collection<int, string>  $types
      */
-    private function calendarDays(Carbon $calendarStart, Carbon $calendarEnd, Collection $types): Collection
+    private function calendarDays(Carbon $calendarStart, Carbon $calendarEnd, Collection $types, ?User $assignedUser = null): Collection
     {
         $days = collect();
 
         if ($types->contains('construction')) {
             ConstructionSchedule::query()
                 ->selectRaw('scheduled_on, count(*) as schedule_count')
+                ->when($assignedUser, fn ($query) => $query->whereHas('assignedUsers', fn ($query) => $query->whereKey($assignedUser)))
                 ->whereDate('scheduled_on', '>=', $calendarStart->toDateString())
                 ->whereDate('scheduled_on', '<=', $calendarEnd->toDateString())
                 ->groupBy('scheduled_on')
@@ -685,6 +687,7 @@ class ConstructionScheduleController extends Controller
         if ($types->contains('business')) {
             BusinessSchedule::query()
                 ->selectRaw('scheduled_on, count(*) as schedule_count')
+                ->when($assignedUser, fn ($query) => $query->whereHas('assignedUsers', fn ($query) => $query->whereKey($assignedUser)))
                 ->whereDate('scheduled_on', '>=', $calendarStart->toDateString())
                 ->whereDate('scheduled_on', '<=', $calendarEnd->toDateString())
                 ->groupBy('scheduled_on')
@@ -709,6 +712,7 @@ class ConstructionScheduleController extends Controller
         if ($types->contains('internal_notice')) {
             InternalNotice::query()
                 ->selectRaw('scheduled_on, count(*) as schedule_count')
+                ->when($assignedUser, fn ($query) => $query->whereHas('assignedUsers', fn ($query) => $query->whereKey($assignedUser)))
                 ->whereDate('scheduled_on', '>=', $calendarStart->toDateString())
                 ->whereDate('scheduled_on', '<=', $calendarEnd->toDateString())
                 ->groupBy('scheduled_on')
@@ -732,6 +736,9 @@ class ConstructionScheduleController extends Controller
 
         if ($types->contains('cleaning_duty')) {
             $this->cleaningDutyOccurrences($calendarStart, $calendarEnd)
+                ->when($assignedUser, fn (Collection $occurrences): Collection => $occurrences->filter(
+                    fn (array $occurrence): bool => $occurrence['assigned_users']->contains('id', $assignedUser->id)
+                ))
                 ->each(function (array $occurrence) use ($days): void {
                     $date = $occurrence['scheduled_on'];
                     $day = $days->get($date, [

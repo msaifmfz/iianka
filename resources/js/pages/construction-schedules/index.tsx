@@ -79,6 +79,8 @@ type ScheduleType =
 
 type ScheduleTypeFilter = 'all' | ScheduleType;
 
+type CalendarScope = 'all' | 'mine';
+
 type Filters = {
     range: 'today' | 'week' | 'month';
     type: ScheduleType[];
@@ -97,6 +99,7 @@ type Props = {
     filters: Filters;
     todayDate: string;
     calendarDays: CalendarDay[];
+    myCalendarDays: CalendarDay[];
     scheduleNavigation: ScheduleNavigation;
     mySchedules: ScheduleEvent[];
     teamSchedules: ScheduleEvent[];
@@ -260,6 +263,10 @@ function monthDays(selectedDate: string, calendarDays: CalendarDay[]) {
     }
 
     return days;
+}
+
+function calendarDayTotal(calendarDays: CalendarDay[]) {
+    return calendarDays.reduce((total, day) => total + day.count, 0);
 }
 
 function calendarDayClass(day: MonthDay) {
@@ -1001,6 +1008,7 @@ function ScheduleSection({
 export default function ConstructionSchedulesIndex({
     filters,
     calendarDays,
+    myCalendarDays,
     scheduleNavigation,
     mySchedules,
     teamSchedules,
@@ -1019,7 +1027,29 @@ export default function ConstructionSchedulesIndex({
     const floatingActionRef = useRef<HTMLButtonElement | null>(null);
     const [isFloatingActionAboveCalendar, setIsFloatingActionAboveCalendar] =
         useState(false);
-    const days = monthDays(filters.date, calendarDays);
+    const [calendarScope, setCalendarScope] = useState<CalendarScope>('all');
+    const activeCalendarDays =
+        calendarScope === 'mine' ? myCalendarDays : calendarDays;
+    const days = monthDays(filters.date, activeCalendarDays);
+    const calendarScopeOptions: {
+        value: CalendarScope;
+        label: string;
+        description: string;
+        count: number;
+    }[] = [
+        {
+            value: 'all',
+            label: '全体',
+            description: '全員の予定',
+            count: calendarDayTotal(calendarDays),
+        },
+        {
+            value: 'mine',
+            label: '自分',
+            description: '自分の予定だけ',
+            count: calendarDayTotal(myCalendarDays),
+        },
+    ];
     const previousMonthDate = adjacentMonthDate(filters.date, -1);
     const nextMonthDate = adjacentMonthDate(filters.date, 1);
     const previousYearDate = adjacentYearDate(filters.date, -1);
@@ -1302,6 +1332,42 @@ export default function ConstructionSchedulesIndex({
                                         <span className="size-2 rounded-full bg-emerald-500" />
                                         掃除当番
                                     </span>
+                                </div>
+                                <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50 p-1 dark:border-neutral-800 dark:bg-neutral-900/70">
+                                    <div className="grid grid-cols-2 gap-1">
+                                        {calendarScopeOptions.map((option) => {
+                                            const selected =
+                                                calendarScope === option.value;
+
+                                            return (
+                                                <button
+                                                    key={option.value}
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setCalendarScope(
+                                                            option.value,
+                                                        )
+                                                    }
+                                                    className={`rounded-md px-3 py-2.5 text-left transition focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-50 focus-visible:outline-none dark:focus-visible:ring-offset-neutral-950 ${selected ? 'bg-white text-neutral-950 shadow-sm ring-1 ring-neutral-200 dark:bg-neutral-950 dark:text-white dark:ring-neutral-800' : 'text-muted-foreground hover:bg-white/70 hover:text-neutral-900 dark:hover:bg-neutral-950/70 dark:hover:text-white'}`}
+                                                    aria-pressed={selected}
+                                                >
+                                                    <span className="flex items-center justify-between gap-2">
+                                                        <span className="text-sm font-semibold">
+                                                            {option.label}
+                                                        </span>
+                                                        <span
+                                                            className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${selected ? 'bg-amber-500 text-white dark:bg-amber-400 dark:text-neutral-950' : 'bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200'}`}
+                                                        >
+                                                            {option.count}件
+                                                        </span>
+                                                    </span>
+                                                    <span className="mt-1 block text-xs">
+                                                        {option.description}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                                 <div className="mt-5 flex items-center justify-between gap-3">
                                     <Button

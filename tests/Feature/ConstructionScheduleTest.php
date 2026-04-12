@@ -381,6 +381,54 @@ test('calendar includes construction and business schedules together', function 
         );
 });
 
+test('calendar exposes personal month counts separately from team counts', function (): void {
+    $user = User::factory()->create();
+    $otherUser = User::factory()->create();
+    $selectedDate = '2026-05-04';
+    $futureDate = '2026-05-12';
+
+    $todayBusinessSchedule = BusinessSchedule::factory()->create([
+        'scheduled_on' => $selectedDate,
+        'location' => '自分の今日の業務',
+        'content' => '自分の今日の業務',
+    ]);
+    $todayBusinessSchedule->assignedUsers()->attach($user);
+
+    $futureMySchedule = ConstructionSchedule::factory()->create([
+        'scheduled_on' => $futureDate,
+        'location' => '自分の月内工事',
+    ]);
+    $futureMySchedule->assignedUsers()->attach($user);
+
+    $futureTeamSchedule = ConstructionSchedule::factory()->create([
+        'scheduled_on' => $futureDate,
+        'location' => '他スタッフの月内工事',
+    ]);
+    $futureTeamSchedule->assignedUsers()->attach($otherUser);
+
+    $this->actingAs($user)
+        ->get(route('construction-schedules.index', [
+            'range' => 'today',
+            'date' => $selectedDate,
+        ]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->component('construction-schedules/index')
+            ->has('mySchedules', 1)
+            ->where('calendarDays', fn ($calendarDays): bool => collect($calendarDays)->contains(
+                fn (array $day): bool => $day['date'] === $futureDate
+                    && $day['count'] === 2
+                    && $day['construction_count'] === 2
+            ))
+            ->where('myCalendarDays', fn ($calendarDays): bool => collect($calendarDays)->contains(
+                fn (array $day): bool => $day['date'] === $futureDate
+                    && $day['count'] === 1
+                    && $day['construction_count'] === 1
+                    && $day['business_count'] === 0
+            ))
+        );
+});
+
 test('calendar can filter to business schedules', function (): void {
     $user = User::factory()->create();
     $date = '2026-05-04';
