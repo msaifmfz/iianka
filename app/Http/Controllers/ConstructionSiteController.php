@@ -41,12 +41,17 @@ class ConstructionSiteController extends Controller
         $validated = $request->validated();
         $file = $validated['guide_file'];
 
-        SiteGuideFile::query()->create([
+        $siteGuideFile = SiteGuideFile::query()->create([
             'name' => $validated['name'],
             'disk' => 'local',
             'path' => $file->store('site-guides', 'local'),
             'mime_type' => $file->getMimeType(),
             'size' => $file->getSize(),
+        ]);
+
+        $this->auditSuccess('site_guide_files.created', 'A site guide file was created.', $siteGuideFile, [
+            'mime_type' => $siteGuideFile->mime_type,
+            'size' => $siteGuideFile->size,
         ]);
 
         return redirect()
@@ -89,6 +94,11 @@ class ConstructionSiteController extends Controller
 
         $siteGuideFile->update($attributes);
 
+        $this->auditSuccess('site_guide_files.updated', 'A site guide file was updated.', $siteGuideFile, [
+            'changed' => array_values(array_diff(array_keys($siteGuideFile->getChanges()), ['updated_at'])),
+            'replaced_file' => $request->hasFile('guide_file'),
+        ]);
+
         return redirect()
             ->route('construction-sites.show', $siteGuideFile)
             ->with('status', '現場案内図を更新しました。');
@@ -97,6 +107,8 @@ class ConstructionSiteController extends Controller
     public function destroy(Request $request, SiteGuideFile $siteGuideFile): RedirectResponse
     {
         abort_unless($request->user()?->is_admin, 403);
+
+        $this->auditSuccess('site_guide_files.deleted', 'A site guide file was deleted.', $siteGuideFile);
 
         $siteGuideFile->delete();
 

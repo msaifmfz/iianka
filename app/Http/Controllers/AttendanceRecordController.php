@@ -56,7 +56,7 @@ class AttendanceRecordController extends Controller
     {
         $validated = $request->validated();
 
-        AttendanceRecord::query()->updateOrCreate(
+        $record = AttendanceRecord::query()->updateOrCreate(
             [
                 'user_id' => $validated['user_id'],
                 'work_date' => $validated['work_date'],
@@ -67,12 +67,23 @@ class AttendanceRecordController extends Controller
             ],
         );
 
+        $this->auditSuccess('attendance_records.updated', 'An attendance record was updated.', $record, [
+            'user_id' => $record->user_id,
+            'work_date' => $record->work_date->toDateString(),
+            'status' => $record->status,
+        ]);
+
         return back()->with('status', '出勤状況を更新しました。');
     }
 
     public function destroy(Request $request, AttendanceRecord $attendanceRecord): RedirectResponse
     {
         abort_unless($request->user()?->is_admin === true, 403);
+
+        $this->auditSuccess('attendance_records.deleted', 'An attendance record was deleted.', $attendanceRecord, [
+            'user_id' => $attendanceRecord->user_id,
+            'work_date' => $attendanceRecord->work_date->toDateString(),
+        ]);
 
         $attendanceRecord->delete();
 

@@ -37,6 +37,10 @@ class InternalNoticeController extends Controller
         $notice = InternalNotice::create($this->noticeAttributes($validated));
         $notice->assignedUsers()->sync($request->input('assigned_user_ids', []));
 
+        $this->auditSuccess('internal_notices.created', 'An internal notice was created.', $notice, [
+            'assigned_user_ids' => $request->input('assigned_user_ids', []),
+        ]);
+
         return redirect()
             ->route('construction-schedules.index', [
                 'range' => 'today',
@@ -75,6 +79,11 @@ class InternalNoticeController extends Controller
         $internalNotice->update($this->noticeAttributes($validated));
         $internalNotice->assignedUsers()->sync($request->input('assigned_user_ids', []));
 
+        $this->auditSuccess('internal_notices.updated', 'An internal notice was updated.', $internalNotice, [
+            'changed' => array_values(array_diff(array_keys($internalNotice->getChanges()), ['updated_at'])),
+            'assigned_user_ids' => $request->input('assigned_user_ids', []),
+        ]);
+
         return redirect()
             ->route('internal-notices.show', $internalNotice)
             ->with('status', '業務連絡を更新しました。');
@@ -83,6 +92,8 @@ class InternalNoticeController extends Controller
     public function destroy(Request $request, InternalNotice $internalNotice): RedirectResponse
     {
         abort_unless($request->user()?->is_admin, 403);
+
+        $this->auditSuccess('internal_notices.deleted', 'An internal notice was deleted.', $internalNotice);
 
         $internalNotice->delete();
 

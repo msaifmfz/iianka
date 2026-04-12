@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\AttendanceRecordController;
 use App\Http\Controllers\BusinessScheduleController;
@@ -65,6 +66,8 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::resource('construction-sites', ConstructionSiteController::class)
         ->parameters(['construction-sites' => 'site_guide_file']);
     Route::prefix('admin')->name('admin.')->group(function (): void {
+        Route::get('audit-logs', [AuditLogController::class, 'index'])
+            ->name('audit-logs.index');
         Route::resource('users', AdminUserController::class)->except('show');
     });
 });

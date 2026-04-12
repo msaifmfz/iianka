@@ -74,6 +74,11 @@ class UserController extends Controller
             'is_hidden_from_workers' => $validated['is_hidden_from_workers'],
         ])->save();
 
+        $this->auditSuccess('admin.users.created', 'An admin created a user account.', $user, [
+            'is_admin' => $user->is_admin,
+            'is_hidden_from_workers' => $user->is_hidden_from_workers,
+        ]);
+
         return redirect()
             ->route('admin.users.index')
             ->with('status', 'ユーザーを作成しました。');
@@ -106,6 +111,10 @@ class UserController extends Controller
 
         $user->forceFill($attributes)->save();
 
+        $this->auditSuccess('admin.users.updated', 'An admin updated a user account.', $user, [
+            'changed' => array_values(array_diff(array_keys($user->getChanges()), ['updated_at'])),
+        ]);
+
         return redirect()
             ->route('admin.users.index')
             ->with('status', 'ユーザーを更新しました。');
@@ -115,6 +124,8 @@ class UserController extends Controller
     {
         abort_unless($request->user()?->is_admin, 403);
         abort_if($request->user()?->is($user), 422, '自分自身は削除できません。');
+
+        $this->auditSuccess('admin.users.deleted', 'An admin deleted a user account.', $user);
 
         $user->delete();
 

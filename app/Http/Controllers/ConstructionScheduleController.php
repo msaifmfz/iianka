@@ -200,6 +200,11 @@ class ConstructionScheduleController extends Controller
         $this->storeGuideFiles($schedule, $request->file('guide_files', []), $validated['guide_file_names'] ?? []);
         $this->rememberGeneralContractor($validated['general_contractor'] ?? null);
 
+        $this->auditSuccess('construction_schedules.created', 'A construction schedule was created.', $schedule, [
+            'assigned_user_ids' => $request->input('assigned_user_ids', []),
+            'site_guide_file_ids' => $request->input('site_guide_file_ids', []),
+        ]);
+
         return redirect()
             ->route('construction-schedules.index', [
                 'range' => 'today',
@@ -241,6 +246,12 @@ class ConstructionScheduleController extends Controller
         $this->storeGuideFiles($constructionSchedule, $request->file('guide_files', []), $validated['guide_file_names'] ?? []);
         $this->rememberGeneralContractor($validated['general_contractor'] ?? null);
 
+        $this->auditSuccess('construction_schedules.updated', 'A construction schedule was updated.', $constructionSchedule, [
+            'changed' => array_values(array_diff(array_keys($constructionSchedule->getChanges()), ['updated_at'])),
+            'assigned_user_ids' => $request->input('assigned_user_ids', []),
+            'site_guide_file_ids' => $request->input('site_guide_file_ids', []),
+        ]);
+
         return redirect()
             ->route('construction-schedules.show', $constructionSchedule)
             ->with('status', '予定を更新しました。');
@@ -254,12 +265,18 @@ class ConstructionScheduleController extends Controller
             'schedule_number' => $request->validated('schedule_number'),
         ]);
 
+        $this->auditSuccess('construction_schedules.number_updated', 'A construction schedule number was updated.', $constructionSchedule, [
+            'schedule_number' => $constructionSchedule->schedule_number,
+        ]);
+
         return back()->with('status', '番号を更新しました。');
     }
 
     public function destroy(Request $request, ConstructionSchedule $constructionSchedule): RedirectResponse
     {
         abort_unless($request->user()?->is_admin, 403);
+
+        $this->auditSuccess('construction_schedules.deleted', 'A construction schedule was deleted.', $constructionSchedule);
 
         $constructionSchedule->delete();
 

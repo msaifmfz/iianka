@@ -46,6 +46,10 @@ class CleaningDutyRuleController extends Controller
         $rule = CleaningDutyRule::create($this->ruleAttributes($validated));
         $rule->assignedUsers()->sync($request->input('assigned_user_ids', []));
 
+        $this->auditSuccess('cleaning_duty_rules.created', 'A cleaning duty rule was created.', $rule, [
+            'assigned_user_ids' => $request->input('assigned_user_ids', []),
+        ]);
+
         return redirect()
             ->route('cleaning-duty-rules.index')
             ->with('status', '掃除当番設定を作成しました。');
@@ -81,6 +85,11 @@ class CleaningDutyRuleController extends Controller
         $cleaningDutyRule->update($this->ruleAttributes($validated));
         $cleaningDutyRule->assignedUsers()->sync($request->input('assigned_user_ids', []));
 
+        $this->auditSuccess('cleaning_duty_rules.updated', 'A cleaning duty rule was updated.', $cleaningDutyRule, [
+            'changed' => array_values(array_diff(array_keys($cleaningDutyRule->getChanges()), ['updated_at'])),
+            'assigned_user_ids' => $request->input('assigned_user_ids', []),
+        ]);
+
         return redirect()
             ->route('cleaning-duty-rules.index')
             ->with('status', '掃除当番設定を更新しました。');
@@ -89,6 +98,8 @@ class CleaningDutyRuleController extends Controller
     public function destroy(Request $request, CleaningDutyRule $cleaningDutyRule): RedirectResponse
     {
         abort_unless($request->user()?->is_admin, 403);
+
+        $this->auditSuccess('cleaning_duty_rules.deleted', 'A cleaning duty rule was deleted.', $cleaningDutyRule);
 
         $cleaningDutyRule->delete();
 

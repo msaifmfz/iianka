@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Concerns\ProfileValidationRules;
 use App\Models\User;
+use App\Services\AuditLogger;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -63,6 +64,17 @@ class CreateAdminUser extends Command
             'email_verified_at' => now(),
             'is_admin' => true,
         ])->save();
+
+        app(AuditLogger::class)->record(
+            event: 'admin.users.created',
+            outcome: 'success',
+            description: 'An administrator user account was created from the console.',
+            subject: $user,
+            metadata: [
+                'source' => 'admin:create-user',
+            ],
+            actorType: 'console',
+        );
 
         $this->components->info("Admin user [{$user->login_id}] created.");
 

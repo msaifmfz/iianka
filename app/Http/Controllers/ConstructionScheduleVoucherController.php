@@ -72,6 +72,10 @@ class ConstructionScheduleVoucherController extends Controller
             'voucher_checked_by_user_id' => $voucherChecked ? $request->user()?->id : null,
         ]);
 
+        $this->auditSuccess('construction_schedules.voucher_updated', 'A construction schedule voucher confirmation was updated.', $constructionSchedule, [
+            'voucher_checked' => $voucherChecked,
+        ]);
+
         return back()->with('status', '伝票確認を更新しました。');
     }
 

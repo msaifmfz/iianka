@@ -38,6 +38,10 @@ class ProfileController extends Controller
 
         $request->user()->save();
 
+        $this->auditSuccess('settings.profile.updated', 'A user updated their profile.', $request->user(), [
+            'changed' => array_values(array_diff(array_keys($request->user()->getChanges()), ['updated_at'])),
+        ]);
+
         return to_route('profile.edit');
     }
 
@@ -49,6 +53,8 @@ class ProfileController extends Controller
         $user = $request->user();
 
         Auth::logout();
+
+        $this->auditSuccess('settings.profile.deleted', 'A user deleted their own profile.', $user, actor: $user);
 
         $user->delete();
 

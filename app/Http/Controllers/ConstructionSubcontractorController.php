@@ -12,6 +12,8 @@ class ConstructionSubcontractorController extends Controller
     {
         abort_unless($request->user()?->is_admin, 403);
 
+        $this->auditSuccess('construction_subcontractors.deleted', 'A construction subcontractor was deleted.', $constructionSubcontractor);
+
         $constructionSubcontractor->delete();
 
         return back()->with('status', '下請けを削除しました。');

@@ -14,6 +14,8 @@ class SiteGuideFileController extends Controller
     {
         abort_unless($request->user() !== null, 403);
 
+        $this->auditSuccess('site_guide_files.downloaded', 'A site guide file was downloaded.', $siteGuideFile);
+
         return response()->file(
             $siteGuideFile->absolutePath(),
             [

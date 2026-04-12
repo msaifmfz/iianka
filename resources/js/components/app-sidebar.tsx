@@ -4,9 +4,11 @@ import {
     CalendarCheck2,
     ClipboardList,
     ClipboardCheck,
+    FileSearch,
     FileText,
     UsersRound,
 } from 'lucide-react';
+import { index as auditLogIndex } from '@/actions/App/Http/Controllers/Admin/AuditLogController';
 import { index as adminUserIndex } from '@/actions/App/Http/Controllers/Admin/UserController';
 import { index as attendanceRecordIndex } from '@/actions/App/Http/Controllers/AttendanceRecordController';
 import { index as cleaningDutyRuleIndex } from '@/actions/App/Http/Controllers/CleaningDutyRuleController';
@@ -76,6 +78,11 @@ export function AppSidebar() {
                   title: 'ユーザー管理',
                   href: adminUserIndex(),
                   icon: UsersRound,
+              },
+              {
+                  title: '監査ログ',
+                  href: auditLogIndex(),
+                  icon: FileSearch,
               },
           ]
         : [

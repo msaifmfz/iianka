@@ -57,6 +57,8 @@ class SecurityController extends Controller implements HasMiddleware
             'password' => $request->password,
         ]);
 
+        $this->auditSuccess('settings.password.updated', 'A user updated their password.', $request->user());
+
         return back();
     }
 
@@ -65,7 +67,15 @@ class SecurityController extends Controller implements HasMiddleware
      */
     public function destroyPasskey(Request $request, string $passkey): RedirectResponse
     {
-        $request->user()->webAuthnCredentials()->whereKey($passkey)->firstOrFail()->delete();
+        $credential = $request->user()->webAuthnCredentials()->whereKey($passkey)->firstOrFail();
+
+        $this->auditSuccess('settings.passkeys.deleted', 'A user removed a passkey.', null, [
+            'passkey_id' => $credential->getKey(),
+            'alias' => $credential->alias,
+            'origin' => $credential->origin,
+        ]);
+
+        $credential->delete();
 
         return back();
     }

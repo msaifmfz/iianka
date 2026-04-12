@@ -36,6 +36,10 @@ class WebAuthnRegisterController extends Controller
 
         $request->save($validated);
 
+        $this->auditSuccess('settings.passkeys.created', 'A user registered a passkey.', null, [
+            'alias' => $validated['alias'] ?? null,
+        ]);
+
         return response()->noContent();
     }
 }

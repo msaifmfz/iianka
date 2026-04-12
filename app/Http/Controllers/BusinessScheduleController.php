@@ -62,6 +62,10 @@ class BusinessScheduleController extends Controller
         $schedule->assignedUsers()->sync($request->input('assigned_user_ids', []));
         $this->rememberGeneralContractor($validated['general_contractor'] ?? null);
 
+        $this->auditSuccess('business_schedules.created', 'A business schedule was created.', $schedule, [
+            'assigned_user_ids' => $request->input('assigned_user_ids', []),
+        ]);
+
         return redirect()
             ->route('construction-schedules.index', [
                 'range' => 'today',
@@ -101,6 +105,11 @@ class BusinessScheduleController extends Controller
         $businessSchedule->assignedUsers()->sync($request->input('assigned_user_ids', []));
         $this->rememberGeneralContractor($validated['general_contractor'] ?? null);
 
+        $this->auditSuccess('business_schedules.updated', 'A business schedule was updated.', $businessSchedule, [
+            'changed' => array_values(array_diff(array_keys($businessSchedule->getChanges()), ['updated_at'])),
+            'assigned_user_ids' => $request->input('assigned_user_ids', []),
+        ]);
+
         return redirect()
             ->route('business-schedules.show', $businessSchedule)
             ->with('status', '業務予定を更新しました。');
@@ -114,12 +123,18 @@ class BusinessScheduleController extends Controller
             'schedule_number' => $request->validated('schedule_number'),
         ]);
 
+        $this->auditSuccess('business_schedules.number_updated', 'A business schedule number was updated.', $businessSchedule, [
+            'schedule_number' => $businessSchedule->schedule_number,
+        ]);
+
         return back()->with('status', '番号を更新しました。');
     }
 
     public function destroy(Request $request, BusinessSchedule $businessSchedule): RedirectResponse
     {
         abort_unless($request->user()?->is_admin, 403);
+
+        $this->auditSuccess('business_schedules.deleted', 'A business schedule was deleted.', $businessSchedule);
 
         $businessSchedule->delete();
 
