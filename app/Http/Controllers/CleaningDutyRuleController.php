@@ -51,9 +51,16 @@ class CleaningDutyRuleController extends Controller
             ->with('status', '掃除当番設定を作成しました。');
     }
 
-    public function show(CleaningDutyRule $cleaningDutyRule): RedirectResponse
+    public function show(Request $request, CleaningDutyRule $cleaningDutyRule): Response
     {
-        return redirect()->route('cleaning-duty-rules.edit', $cleaningDutyRule);
+        $cleaningDutyRule->load('assignedUsers:id,name,email');
+
+        return Inertia::render('cleaning-duty-rules/show', [
+            'rule' => $this->rulePayload(collect([$cleaningDutyRule]))->first(),
+            'canManage' => $request->user()?->is_admin === true,
+            'returnTo' => $this->returnTo($request),
+            'scheduledOn' => $this->scheduledOn($request),
+        ]);
     }
 
     public function edit(Request $request, CleaningDutyRule $cleaningDutyRule): Response
@@ -88,6 +95,24 @@ class CleaningDutyRuleController extends Controller
         return redirect()
             ->route('cleaning-duty-rules.index')
             ->with('status', '掃除当番設定を削除しました。');
+    }
+
+    private function returnTo(Request $request): ?string
+    {
+        $returnTo = $request->query('return_to');
+
+        if (! is_string($returnTo) || ! str_starts_with($returnTo, '/construction-schedules')) {
+            return null;
+        }
+
+        return $returnTo;
+    }
+
+    private function scheduledOn(Request $request): ?string
+    {
+        $scheduledOn = $request->query('scheduled_on');
+
+        return is_string($scheduledOn) ? $scheduledOn : null;
     }
 
     /**

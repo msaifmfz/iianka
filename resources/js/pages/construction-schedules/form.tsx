@@ -235,6 +235,7 @@ export default function ConstructionScheduleForm({
     attendanceLeaveRecords,
 }: Props) {
     const [guideFileSearch, setGuideFileSearch] = useState('');
+    const [subcontractorSearch, setSubcontractorSearch] = useState('');
     const { data, setData, post, processing, progress, errors } =
         useForm<ScheduleForm>({
             _method: schedule ? 'put' : '',
@@ -265,6 +266,17 @@ export default function ConstructionScheduleForm({
         });
 
     const formErrors = errors as Record<string, string | undefined>;
+    const subcontractorSearchTerm = subcontractorSearch
+        .trim()
+        .toLocaleLowerCase();
+    const filteredSubcontractors =
+        subcontractorSearchTerm === ''
+            ? subcontractors
+            : subcontractors.filter((subcontractor) =>
+                  `${subcontractor.name} ${subcontractor.phone ?? ''}`
+                      .toLocaleLowerCase()
+                      .includes(subcontractorSearchTerm),
+              );
     const guideFileSearchTerm = guideFileSearch.trim().toLocaleLowerCase();
     const filteredSiteGuideFiles =
         guideFileSearchTerm === ''
@@ -610,77 +622,103 @@ export default function ConstructionScheduleForm({
                                 )}
                             </div>
 
-                            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                                {subcontractors.map((subcontractor) => {
-                                    const isSelected =
-                                        data.subcontractor_ids.includes(
-                                            subcontractor.id,
-                                        );
+                            <div className="relative mt-3">
+                                <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                                <Input
+                                    value={subcontractorSearch}
+                                    onChange={(event) =>
+                                        setSubcontractorSearch(
+                                            event.target.value,
+                                        )
+                                    }
+                                    className="pl-9"
+                                    placeholder="名前・電話番号で検索"
+                                />
+                            </div>
 
-                                    return (
-                                        <div
-                                            key={subcontractor.id}
-                                            className={cn(
-                                                'flex items-start justify-between gap-3 rounded-xl border p-3 text-sm transition',
-                                                isSelected
-                                                    ? 'border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100'
-                                                    : 'border-neutral-200 hover:bg-muted/50 dark:border-neutral-800',
-                                            )}
-                                        >
-                                            <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-2">
-                                                <input
-                                                    type="checkbox"
-                                                    className="mt-1"
-                                                    checked={isSelected}
-                                                    onChange={() =>
-                                                        setData(
-                                                            'subcontractor_ids',
-                                                            toggleNumber(
-                                                                data.subcontractor_ids,
-                                                                subcontractor.id,
-                                                            ),
-                                                        )
-                                                    }
-                                                />
-                                                <span className="min-w-0">
-                                                    <span className="block truncate font-medium">
-                                                        {subcontractor.name}
-                                                    </span>
-                                                    {subcontractor.phone && (
-                                                        <a
-                                                            href={phoneHref(
-                                                                subcontractor.phone,
-                                                            )}
-                                                            className="mt-1 inline-flex items-center gap-1 text-xs text-sky-700 hover:underline dark:text-sky-300"
-                                                        >
-                                                            <Phone className="size-3.5" />
-                                                            {
-                                                                subcontractor.phone
-                                                            }
-                                                        </a>
+                            <div className="mt-3 max-h-80 overflow-y-auto rounded-lg border dark:border-neutral-800">
+                                <div className="grid gap-2 p-2 sm:grid-cols-2">
+                                    {filteredSubcontractors.map(
+                                        (subcontractor) => {
+                                            const isSelected =
+                                                data.subcontractor_ids.includes(
+                                                    subcontractor.id,
+                                                );
+
+                                            return (
+                                                <div
+                                                    key={subcontractor.id}
+                                                    className={cn(
+                                                        'flex items-start justify-between gap-3 rounded-xl border p-3 text-sm transition',
+                                                        isSelected
+                                                            ? 'border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100'
+                                                            : 'border-neutral-200 hover:bg-muted/50 dark:border-neutral-800',
                                                     )}
-                                                </span>
-                                            </label>
-                                            <button
-                                                type="button"
-                                                className="inline-flex shrink-0 items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                                                onClick={() =>
-                                                    deleteSubcontractor(
-                                                        subcontractor,
-                                                    )
-                                                }
-                                            >
-                                                <Trash2 className="size-3.5" />
-                                                削除
-                                            </button>
-                                        </div>
-                                    );
-                                })}
-                                {subcontractors.length === 0 && (
-                                    <p className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground sm:col-span-2 dark:border-neutral-800">
-                                        登録済みの下請けはまだありません。下の入力から追加できます。
-                                    </p>
-                                )}
+                                                >
+                                                    <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="mt-1"
+                                                            checked={isSelected}
+                                                            onChange={() =>
+                                                                setData(
+                                                                    'subcontractor_ids',
+                                                                    toggleNumber(
+                                                                        data.subcontractor_ids,
+                                                                        subcontractor.id,
+                                                                    ),
+                                                                )
+                                                            }
+                                                        />
+                                                        <span className="min-w-0">
+                                                            <span className="block truncate font-medium">
+                                                                {
+                                                                    subcontractor.name
+                                                                }
+                                                            </span>
+                                                            {subcontractor.phone && (
+                                                                <a
+                                                                    href={phoneHref(
+                                                                        subcontractor.phone,
+                                                                    )}
+                                                                    className="mt-1 inline-flex items-center gap-1 text-xs text-sky-700 hover:underline dark:text-sky-300"
+                                                                >
+                                                                    <Phone className="size-3.5" />
+                                                                    {
+                                                                        subcontractor.phone
+                                                                    }
+                                                                </a>
+                                                            )}
+                                                        </span>
+                                                    </label>
+                                                    <button
+                                                        type="button"
+                                                        className="inline-flex shrink-0 items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                                        onClick={() =>
+                                                            deleteSubcontractor(
+                                                                subcontractor,
+                                                            )
+                                                        }
+                                                    >
+                                                        <Trash2 className="size-3.5" />
+                                                        削除
+                                                    </button>
+                                                </div>
+                                            );
+                                        },
+                                    )}
+                                    {subcontractors.length === 0 && (
+                                        <p className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground sm:col-span-2 dark:border-neutral-800">
+                                            登録済みの下請けはまだありません。下の入力から追加できます。
+                                        </p>
+                                    )}
+                                    {subcontractors.length > 0 &&
+                                        filteredSubcontractors.length === 0 && (
+                                            <p className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground sm:col-span-2 dark:border-neutral-800">
+                                                一致する下請けはありません。
+                                            </p>
+                                        )}
+                                </div>
                             </div>
 
                             {errors.subcontractor_ids && (

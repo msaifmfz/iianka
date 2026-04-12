@@ -106,6 +106,7 @@ test('cleaning duty rules render virtual calendar events without generated sched
             ->where('filters.type', ['cleaning_duty'])
             ->has('mySchedules', 1, fn (Assert $page): Assert => $page
                 ->where('type', 'cleaning_duty')
+                ->where('rule_id', $rule->id)
                 ->where('title', '掃除当番')
                 ->where('scheduled_on', $monday)
                 ->where('weekday_label', '月曜日')
@@ -120,6 +121,41 @@ test('cleaning duty rules render virtual calendar events without generated sched
 
     expect(InternalNotice::query()->count())->toBe(0)
         ->and(ConstructionSchedule::query()->count())->toBe(0);
+});
+
+test('users can open a cleaning duty rule detail page from the schedule', function (): void {
+    $worker = User::factory()->create(['name' => 'Mr.B']);
+
+    $rule = CleaningDutyRule::factory()->create([
+        'weekday' => 1,
+        'label' => '掃除当番',
+        'location' => '事務所',
+        'notes' => 'ゴミ出しと床掃除をお願いします。',
+        'is_active' => true,
+    ]);
+    $rule->assignedUsers()->attach($worker);
+
+    $this->actingAs($worker)
+        ->get(route('cleaning-duty-rules.show', [
+            'cleaning_duty_rule' => $rule,
+            'return_to' => '/construction-schedules?range=week&date=2026-04-06&type=cleaning_duty',
+            'scheduled_on' => '2026-04-06',
+        ]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->component('cleaning-duty-rules/show')
+            ->where('canManage', false)
+            ->where('returnTo', '/construction-schedules?range=week&date=2026-04-06&type=cleaning_duty')
+            ->where('scheduledOn', '2026-04-06')
+            ->has('rule', fn (Assert $page): Assert => $page
+                ->where('id', $rule->id)
+                ->where('label', '掃除当番')
+                ->where('location', '事務所')
+                ->where('notes', 'ゴミ出しと床掃除をお願いします。')
+                ->where('assigned_users.0.name', 'Mr.B')
+                ->etc()
+            )
+        );
 });
 
 test('inactive cleaning duty rules are hidden from the calendar', function (): void {

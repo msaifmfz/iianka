@@ -26,7 +26,10 @@ import {
     show as businessScheduleShow,
     updateNumber as businessScheduleUpdateNumber,
 } from '@/actions/App/Http/Controllers/BusinessScheduleController';
-import { edit as cleaningDutyRuleEdit } from '@/actions/App/Http/Controllers/CleaningDutyRuleController';
+import {
+    edit as cleaningDutyRuleEdit,
+    show as cleaningDutyRuleShow,
+} from '@/actions/App/Http/Controllers/CleaningDutyRuleController';
 import {
     destroy as scheduleDestroy,
     index as scheduleIndex,
@@ -629,7 +632,12 @@ function ScheduleCard({
                           return_to: returnTo,
                       },
                   })
-                : null;
+                : cleaningDutyRuleShow(schedule.rule_id, {
+                      query: {
+                          return_to: returnTo,
+                          scheduled_on: schedule.scheduled_on,
+                      },
+                  });
     const scheduleEditHref =
         schedule.type === 'construction'
             ? scheduleEdit(schedule.id)
@@ -660,8 +668,7 @@ function ScheduleCard({
         schedule.type === 'construction' || schedule.type === 'business'
             ? schedule.location
             : schedule.title;
-    const detailHint =
-        schedule.type === 'cleaning_duty' ? '固定当番' : '詳細を見る';
+    const detailHint = '詳細を見る';
     const typeLabel = {
         construction: '工事',
         business: '業務予定',
