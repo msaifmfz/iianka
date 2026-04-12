@@ -100,10 +100,6 @@ function shortClassName(value: string | null) {
     return value.split('\\').pop() ?? value;
 }
 
-function paginationLabel(label: string) {
-    return label.replace('&laquo;', '前へ').replace('&raquo;', '次へ');
-}
-
 function outcomeVariant(outcome: string) {
     if (outcome === 'success') {
         return 'secondary' as const;
@@ -477,10 +473,10 @@ export default function AuditLogsIndex({ logs, filters, options }: Props) {
                             >
                                 {link.url ? (
                                     <Link href={link.url} preserveScroll>
-                                        {paginationLabel(link.label)}
+                                        {link.label}
                                     </Link>
                                 ) : (
-                                    <span>{paginationLabel(link.label)}</span>
+                                    <span>{link.label}</span>
                                 )}
                             </Button>
                         ))}
