@@ -1394,7 +1394,7 @@ export default function ConstructionSchedulesIndex({
                                             {day.label}
                                             {day.count > 0 && (
                                                 <span
-                                                    className={`absolute top-0.5 right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] leading-none font-bold ${day.isSelected ? 'bg-white text-amber-700' : day.isCurrentMonth ? 'bg-sky-500 text-white' : 'bg-neutral-400 text-white dark:bg-neutral-600'}`}
+                                                    className={`absolute top-0.5 right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] leading-none font-bold ${day.isSelected ? 'bg-white text-amber-700' : day.isCurrentMonth ? 'bg-gray-500 text-white' : 'bg-neutral-400 text-white dark:bg-neutral-600'}`}
                                                 >
                                                     {day.count}
                                                 </span>
