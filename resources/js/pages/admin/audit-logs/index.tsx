@@ -443,6 +443,29 @@ export default function AuditLogsIndex({ logs, filters, options }: Props) {
                                                 {log.ip_address}
                                             </dd>
                                         </div>
+                                        <div>
+                                            <dt className="text-muted-foreground">
+                                                詳細
+                                            </dt>
+                                            <dd>
+                                                <details className="group">
+                                                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm font-medium dark:border-neutral-800 [&::-webkit-details-marker]:hidden">
+                                                        <span>詳細を表示</span>
+                                                        <span className="text-xs text-muted-foreground group-open:hidden">
+                                                            開く
+                                                        </span>
+                                                        <span className="hidden text-xs text-muted-foreground group-open:inline">
+                                                            閉じる
+                                                        </span>
+                                                    </summary>
+                                                    <pre className="mt-2 max-h-72 overflow-auto rounded-md bg-neutral-100 p-3 text-xs break-words whitespace-pre-wrap dark:bg-neutral-900">
+                                                        {metadataPreview(
+                                                            log.metadata,
+                                                        )}
+                                                    </pre>
+                                                </details>
+                                            </dd>
+                                        </div>
                                     </dl>
                                 </article>
                             ))}
