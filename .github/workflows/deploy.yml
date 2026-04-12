@@ -1,0 +1,149 @@
+name: ci-cd
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+  push:
+    branches:
+      - develop
+      - main
+
+concurrency:
+  group: ci-cd-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: CI
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Prepare application
+        run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
+
+      - name: Build frontend assets
+        run: npm run build:ssr
+
+      - name: Run backend tests
+        run: ./vendor/bin/pest --ci
+
+      - name: Check frontend
+        run: npm run lint:check && npm run format:check && npm run types:check
+
+  deploy:
+    name: Deploy ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs:
+      - ci
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+
+    env:
+      DEPLOY_BRANCH: ${{ github.ref_name }}
+      DEPLOY_ENVIRONMENT: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
+      DEPLOY_PRODUCTION_PATH: ${{ vars.DEPLOY_PATH }}
+      DEPLOY_SHA: ${{ github.sha }}
+      DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+      DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+      DEPLOY_STAGING_PATH: ${{ vars.DEPLOY_STAGING_PATH }}
+
+    steps:
+      - name: Configure SSH
+        run: |
+          set -euo pipefail
+
+          : "${DEPLOY_HOST:?Missing DEPLOY_HOST secret}"
+          : "${DEPLOY_SSH_KNOWN_HOSTS:?Missing DEPLOY_SSH_KNOWN_HOSTS secret}"
+          : "${DEPLOY_SSH_PRIVATE_KEY:?Missing DEPLOY_SSH_PRIVATE_KEY secret}"
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/known_hosts ~/.ssh/deploy_key
+
+      - name: Deploy over SSH
+        run: |
+          set -euo pipefail
+
+          DEPLOY_PORT="${DEPLOY_PORT:-22}"
+
+          case "$DEPLOY_ENVIRONMENT" in
+            production)
+              DEPLOY_PATH="${DEPLOY_PRODUCTION_PATH:?Missing production path}"
+              ;;
+            staging)
+              DEPLOY_PATH="${DEPLOY_STAGING_PATH:?Missing staging path}"
+              ;;
+            *)
+              echo "Unsupported deploy environment: $DEPLOY_ENVIRONMENT" >&2
+              exit 1
+              ;;
+          esac
+
+          ssh \
+            -i ~/.ssh/deploy_key \
+            -p "$DEPLOY_PORT" \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            "iianka@$DEPLOY_HOST" \
+            "DEPLOY_BRANCH='$DEPLOY_BRANCH' DEPLOY_PATH='$DEPLOY_PATH' DEPLOY_SHA='$DEPLOY_SHA' bash -se" <<'REMOTE'
+          set -Eeuo pipefail
+
+          cd "$DEPLOY_PATH"
+
+          php artisan down --render="errors::503" --retry=60 || true
+          trap 'php artisan up || true' EXIT
+
+          git pull
+
+          composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+          npm ci
+          npm run build:ssr
+
+          php artisan optimize:clear
+          php artisan migrate --force
+          php artisan config:cache
+          php artisan route:cache
+          php artisan view:cache
+          php artisan event:cache
+          php artisan optimize
+          php artisan queue:restart
+          php artisan reload || true
+
+          php artisan up
+          trap - EXIT
+          REMOTE
