@@ -55,11 +55,12 @@ class AttendanceRecordController extends Controller
     public function store(StoreAttendanceRecordRequest $request): RedirectResponse
     {
         $validated = $request->validated();
+        $workDate = Carbon::parse($validated['work_date'])->startOfDay();
 
         $record = AttendanceRecord::query()->updateOrCreate(
             [
                 'user_id' => $validated['user_id'],
-                'work_date' => $validated['work_date'],
+                'work_date' => $workDate,
             ],
             [
                 'status' => $validated['status'],

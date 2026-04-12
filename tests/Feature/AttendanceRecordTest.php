@@ -98,6 +98,32 @@ test('admins can mark and clear attendance records', function (): void {
     expect(AttendanceRecord::query()->exists())->toBeFalse();
 });
 
+test('admins can edit an existing attendance record', function (): void {
+    $admin = User::factory()->admin()->create();
+    $worker = User::factory()->create();
+    $record = AttendanceRecord::factory()->leave()->create([
+        'user_id' => $worker->id,
+        'work_date' => '2026-05-04',
+        'note' => '午前休',
+    ]);
+
+    $this->actingAs($admin)
+        ->post(route('attendance-records.store'), [
+            'user_id' => $worker->id,
+            'work_date' => '2026-05-04',
+            'status' => AttendanceRecord::STATUS_WORKING,
+            'note' => '出勤に変更',
+        ])
+        ->assertRedirect();
+
+    expect(AttendanceRecord::query()->count())->toBe(1);
+
+    $record->refresh();
+
+    expect($record->status)->toBe(AttendanceRecord::STATUS_WORKING)
+        ->and($record->note)->toBe('出勤に変更');
+});
+
 test('editors can mark attendance records', function (): void {
     $editor = User::factory()->editor()->create();
     $worker = User::factory()->create();
