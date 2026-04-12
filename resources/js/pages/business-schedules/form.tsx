@@ -233,8 +233,9 @@ export default function BusinessScheduleForm({
             assigned_user_ids:
                 schedule?.assigned_users.map((user) => user.id) ?? [],
         });
-    const [rememberedContentOptions, setRememberedContentOptions] =
-        useState<string[]>(loadRememberedContentOptions);
+    const [rememberedContentOptions, setRememberedContentOptions] = useState<
+        string[]
+    >(loadRememberedContentOptions);
     const busySchedules = matchingBusySchedules(
         scheduleAvailability,
         data.scheduled_on,

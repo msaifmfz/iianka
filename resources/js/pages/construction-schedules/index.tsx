@@ -15,8 +15,8 @@ import {
     Plus,
     Users,
 } from 'lucide-react';
-import { useEffect, useRef, useState  } from 'react';
-import type {RefObject} from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { RefObject } from 'react';
 import {
     create as businessScheduleCreate,
     edit as businessScheduleEdit,
@@ -1532,7 +1532,7 @@ export default function ConstructionSchedulesIndex({
                                     <button
                                         type="button"
                                         onClick={scrollToMySchedule}
-                                        className="group rounded-2xl border border-amber-200 bg-linear-to-br from-amber-50 via-white to-sky-50 p-4 text-left text-neutral-950 shadow-md ring-1 ring-amber-200/80 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:ring-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 active:scale-[0.99] dark:border-amber-900/70 dark:from-amber-950/40 dark:via-neutral-900 dark:to-sky-950/30 dark:text-white dark:ring-amber-800/70 dark:hover:ring-amber-700"
+                                        className="group rounded-2xl border border-amber-200 bg-linear-to-br from-amber-50 via-white to-sky-50 p-4 text-left text-neutral-950 shadow-md ring-1 ring-amber-200/80 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:ring-amber-300 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none active:translate-y-0 active:scale-[0.99] dark:border-amber-900/70 dark:from-amber-950/40 dark:via-neutral-900 dark:to-sky-950/30 dark:text-white dark:ring-amber-800/70 dark:hover:ring-amber-700"
                                         aria-label="自分の予定の詳細までスクロール"
                                     >
                                         <div className="flex items-start justify-between gap-3">
@@ -1669,8 +1669,8 @@ export default function ConstructionSchedulesIndex({
                                             <span className="flex size-11 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-200">
                                                 <ActionIcon className="size-5" />
                                             </span>
-                                            <span className="min-w-0 self-stretch space-y-1">
-                                                <span className="block wrap-anywhere font-semibold">
+                                            <span className="min-w-0 space-y-1 self-stretch">
+                                                <span className="block font-semibold wrap-anywhere">
                                                     {action.title}
                                                 </span>
                                             </span>
