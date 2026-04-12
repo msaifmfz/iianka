@@ -6,6 +6,7 @@ export type User = {
     avatar?: string;
     email_verified_at: string | null;
     two_factor_confirmed_at?: string | null;
+    role?: 'admin' | 'editor' | 'viewer';
     is_admin?: boolean;
     two_factor_enabled?: boolean;
     created_at: string;
@@ -15,6 +16,12 @@ export type User = {
 
 export type Auth = {
     user: User;
+    permissions: {
+        manage_users: boolean;
+        manage_content: boolean;
+        view_all_content: boolean;
+        view_audit_logs: boolean;
+    };
 };
 
 export type TwoFactorSetupData = {

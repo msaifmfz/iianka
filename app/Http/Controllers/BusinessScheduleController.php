@@ -46,7 +46,7 @@ class BusinessScheduleController extends Controller
 
     public function create(Request $request): Response
     {
-        abort_unless($request->user()?->is_admin, 403);
+        abort_unless($request->user()?->canManageContent() === true, 403);
 
         return Inertia::render('business-schedules/form', [
             'schedule' => null,
@@ -81,14 +81,14 @@ class BusinessScheduleController extends Controller
 
         return Inertia::render('business-schedules/show', [
             'schedule' => $this->schedulePayload(collect([$businessSchedule]))->first(),
-            'canManage' => request()->user()?->is_admin === true,
+            'canManage' => request()->user()?->canManageContent() === true,
             'returnTo' => $this->returnTo($request),
         ]);
     }
 
     public function edit(Request $request, BusinessSchedule $businessSchedule): Response
     {
-        abort_unless($request->user()?->is_admin, 403);
+        abort_unless($request->user()?->canManageContent() === true, 403);
 
         $businessSchedule->load('assignedUsers:id,name,email');
 
@@ -132,7 +132,7 @@ class BusinessScheduleController extends Controller
 
     public function destroy(Request $request, BusinessSchedule $businessSchedule): RedirectResponse
     {
-        abort_unless($request->user()?->is_admin, 403);
+        abort_unless($request->user()?->canManageContent() === true, 403);
 
         $this->auditSuccess('business_schedules.deleted', 'A business schedule was deleted.', $businessSchedule);
 

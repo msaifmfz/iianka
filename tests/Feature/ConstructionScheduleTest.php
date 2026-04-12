@@ -8,6 +8,7 @@ use App\Models\GeneralContractor;
 use App\Models\InternalNotice;
 use App\Models\SiteGuideFile;
 use App\Models\User;
+use App\UserRole;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -219,7 +220,7 @@ test('non admin navigation across calendar dates never gains manage access', fun
                 ->component('construction-schedules/index')
                 ->where('filters.date', $selectedDate)
                 ->where('canManage', false)
-                ->where('userOptions', [])
+                ->has('userOptions', 1)
             );
     }
 });
@@ -598,7 +599,7 @@ test('users can open a day with only business schedules', function (): void {
 test('database seeder creates demo schedules across adjacent months', function (): void {
     $this->seed(DatabaseSeeder::class);
 
-    expect(User::query()->where('email', 'admin@example.com')->where('is_admin', true)->exists())->toBeTrue()
+    expect(User::query()->where('email', 'admin@example.com')->where('role', UserRole::Admin->value)->exists())->toBeTrue()
         ->and(ConstructionSchedule::query()->whereDate('scheduled_on', today()->toDateString())->exists())->toBeTrue()
         ->and(ConstructionSchedule::query()->whereDate('scheduled_on', today()->subMonthNoOverflow()->startOfMonth()->addDays(9)->toDateString())->exists())->toBeTrue()
         ->and(ConstructionSchedule::query()->whereDate('scheduled_on', today()->addMonthNoOverflow()->startOfMonth()->addDays(4)->toDateString())->exists())->toBeTrue()

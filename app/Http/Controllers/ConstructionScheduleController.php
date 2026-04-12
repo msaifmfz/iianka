@@ -88,7 +88,7 @@ class ConstructionScheduleController extends Controller
         $calendarEnd = $monthEnd->copy()->addDays(6 - $monthEnd->dayOfWeek);
 
         $user = $request->user();
-        $canManage = $user->is_admin === true;
+        $canManage = $user->canManageContent();
         $selectedUserIds = $this->selectedUserIds($request, $user);
         $calendarDays = $this->calendarDays($calendarStart, $calendarEnd, $types);
         $myCalendarDays = $this->calendarDays($calendarStart, $calendarEnd, $types, $user);
@@ -171,7 +171,7 @@ class ConstructionScheduleController extends Controller
                     ))
                     ->count(),
             ],
-            'userOptions' => $canManage ? User::query()
+            'userOptions' => $user->canViewAllContent() ? User::query()
                 ->visibleToWorkers()
                 ->orderBy('name')
                 ->get(['id', 'name', 'email', 'is_hidden_from_workers']) : [],
@@ -181,7 +181,7 @@ class ConstructionScheduleController extends Controller
 
     public function create(Request $request): Response
     {
-        abort_unless($request->user()?->is_admin, 403);
+        abort_unless($request->user()?->canManageContent() === true, 403);
 
         return Inertia::render('construction-schedules/form', [
             'schedule' => null,
@@ -219,14 +219,14 @@ class ConstructionScheduleController extends Controller
 
         return Inertia::render('construction-schedules/show', [
             'schedule' => $this->schedulePayload(collect([$constructionSchedule]))->first(),
-            'canManage' => request()->user()?->is_admin === true,
+            'canManage' => request()->user()?->canManageContent() === true,
             'returnTo' => $this->returnTo($request),
         ]);
     }
 
     public function edit(Request $request, ConstructionSchedule $constructionSchedule): Response
     {
-        abort_unless($request->user()?->is_admin, 403);
+        abort_unless($request->user()?->canManageContent() === true, 403);
 
         $constructionSchedule->load(['assignedUsers:id,name,email,is_hidden_from_workers', 'subcontractors:id,name,phone', 'voucherCheckedBy:id,name,email,is_hidden_from_workers', 'selectedGuideFiles']);
 
@@ -274,7 +274,7 @@ class ConstructionScheduleController extends Controller
 
     public function destroy(Request $request, ConstructionSchedule $constructionSchedule): RedirectResponse
     {
-        abort_unless($request->user()?->is_admin, 403);
+        abort_unless($request->user()?->canManageContent() === true, 403);
 
         $this->auditSuccess('construction_schedules.deleted', 'A construction schedule was deleted.', $constructionSchedule);
 
@@ -301,7 +301,7 @@ class ConstructionScheduleController extends Controller
      */
     private function selectedUserIds(Request $request, User $user): Collection
     {
-        if ($user->is_admin !== true) {
+        if (! $user->canViewAllContent()) {
             return collect();
         }
 

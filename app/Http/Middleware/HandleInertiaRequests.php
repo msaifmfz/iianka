@@ -49,6 +49,12 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'auth' => [
                 'user' => $request->user(),
+                'permissions' => [
+                    'manage_users' => $request->user()?->canManageUsers() === true,
+                    'manage_content' => $request->user()?->canManageContent() === true,
+                    'view_all_content' => $request->user()?->canViewAllContent() === true,
+                    'view_audit_logs' => $request->user()?->canViewAuditLogs() === true,
+                ],
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'attention' => $this->attention($request),
@@ -74,7 +80,7 @@ class HandleInertiaRequests extends Middleware
         $today = today()->toDateString();
         $weekday = Carbon::today()->dayOfWeek;
 
-        if ($user->is_admin) {
+        if ($user->canViewAllContent()) {
             return [
                 'schedule_count' => ConstructionSchedule::query()->whereDate('scheduled_on', $today)->count()
                     + BusinessSchedule::query()->whereDate('scheduled_on', $today)->count()

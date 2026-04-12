@@ -7,6 +7,7 @@ namespace Database\Seeders;
 use App\Models\BusinessSchedule;
 use App\Models\ConstructionSchedule;
 use App\Models\User;
+use App\UserRole;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -22,6 +23,7 @@ class DatabaseSeeder extends Seeder
             'login_id' => 'worker-0001',
             'password' => 'password',
             'email_verified_at' => now(),
+            'role' => UserRole::Viewer,
             'is_admin' => false,
         ])->save();
 
@@ -31,6 +33,7 @@ class DatabaseSeeder extends Seeder
             'login_id' => 'admin-0001',
             'password' => 'password',
             'email_verified_at' => now(),
+            'role' => UserRole::Admin,
             'is_admin' => true,
         ])->save();
 

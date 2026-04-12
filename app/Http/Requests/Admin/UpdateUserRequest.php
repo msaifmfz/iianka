@@ -4,8 +4,10 @@ namespace App\Http\Requests\Admin;
 
 use App\Concerns\ProfileValidationRules;
 use App\Models\User;
+use App\UserRole;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\Validator;
 
@@ -18,7 +20,7 @@ class UpdateUserRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->user()?->is_admin === true;
+        return $this->user()?->canManageUsers() === true;
     }
 
     /**
@@ -33,7 +35,7 @@ class UpdateUserRequest extends FormRequest
         return [
             ...$this->accountRules($user instanceof User ? $user->id : null),
             'password' => ['nullable', 'string', Password::default(), 'confirmed'],
-            'is_admin' => ['required', 'boolean'],
+            'role' => ['required', Rule::enum(UserRole::class)],
             'is_hidden_from_workers' => ['required', 'boolean'],
         ];
     }
@@ -51,8 +53,8 @@ class UpdateUserRequest extends FormRequest
                     return;
                 }
 
-                if ($this->boolean('is_admin') !== true) {
-                    $validator->errors()->add('is_admin', '自分自身の管理者権限は解除できません。');
+                if ($this->input('role') !== UserRole::Admin->value) {
+                    $validator->errors()->add('role', '自分自身の管理者権限は解除できません。');
                 }
             },
         ];

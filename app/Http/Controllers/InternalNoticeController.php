@@ -23,7 +23,7 @@ class InternalNoticeController extends Controller
 
     public function create(Request $request): Response
     {
-        abort_unless($request->user()?->is_admin, 403);
+        abort_unless($request->user()?->canManageContent() === true, 403);
 
         return Inertia::render('internal-notices/form', [
             'notice' => null,
@@ -56,14 +56,14 @@ class InternalNoticeController extends Controller
 
         return Inertia::render('internal-notices/show', [
             'notice' => $this->noticePayload(collect([$internalNotice]))->first(),
-            'canManage' => request()->user()?->is_admin === true,
+            'canManage' => request()->user()?->canManageContent() === true,
             'returnTo' => $this->returnTo($request),
         ]);
     }
 
     public function edit(Request $request, InternalNotice $internalNotice): Response
     {
-        abort_unless($request->user()?->is_admin, 403);
+        abort_unless($request->user()?->canManageContent() === true, 403);
 
         $internalNotice->load('assignedUsers:id,name,email');
 
@@ -91,7 +91,7 @@ class InternalNoticeController extends Controller
 
     public function destroy(Request $request, InternalNotice $internalNotice): RedirectResponse
     {
-        abort_unless($request->user()?->is_admin, 403);
+        abort_unless($request->user()?->canManageContent() === true, 403);
 
         $this->auditSuccess('internal_notices.deleted', 'An internal notice was deleted.', $internalNotice);
 

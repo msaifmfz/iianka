@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Concerns\ProfileValidationRules;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\UserRole;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -62,6 +63,7 @@ class CreateAdminUser extends Command
             'email' => $data['email'],
             'password' => $data['password'],
             'email_verified_at' => now(),
+            'role' => UserRole::Admin,
             'is_admin' => true,
         ])->save();
 

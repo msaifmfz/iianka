@@ -6,8 +6,10 @@ namespace App\Http\Requests\Admin;
 
 use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
+use App\UserRole;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreUserRequest extends FormRequest
 {
@@ -18,7 +20,7 @@ class StoreUserRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->user()?->is_admin === true;
+        return $this->user()?->canManageUsers() === true;
     }
 
     /**
@@ -31,7 +33,7 @@ class StoreUserRequest extends FormRequest
         return [
             ...$this->accountRules(),
             'password' => $this->passwordRules(),
-            'is_admin' => ['required', 'boolean'],
+            'role' => ['required', Rule::enum(UserRole::class)],
             'is_hidden_from_workers' => ['required', 'boolean'],
         ];
     }

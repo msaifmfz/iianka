@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\UserRole;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -38,10 +39,36 @@ class User extends Authenticatable implements WebAuthnAuthenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'role' => UserRole::class,
             'is_admin' => 'boolean',
             'is_hidden_from_workers' => 'boolean',
             'two_factor_confirmed_at' => 'datetime',
         ];
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === UserRole::Admin;
+    }
+
+    public function canManageUsers(): bool
+    {
+        return $this->isAdmin();
+    }
+
+    public function canManageContent(): bool
+    {
+        return in_array($this->role, [UserRole::Admin, UserRole::Editor], true);
+    }
+
+    public function canViewAllContent(): bool
+    {
+        return in_array($this->role, [UserRole::Admin, UserRole::Editor, UserRole::Viewer], true);
+    }
+
+    public function canViewAuditLogs(): bool
+    {
+        return $this->isAdmin();
     }
 
     #[Scope]

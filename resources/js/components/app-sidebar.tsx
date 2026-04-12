@@ -53,54 +53,45 @@ const emptyAttention = {
 export function AppSidebar() {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { auth, attention = emptyAttention } = usePage().props;
-    const navigationItems = auth.user.is_admin
-        ? [
-              {
-                  ...mainNavItems[0],
-                  // badge: attention.schedule_count || null,
-              },
-              {
-                  ...mainNavItems[1],
-                  // badge: attention.pending_voucher_count || null,
-              },
-              mainNavItems[2],
-              {
-                  title: '出勤管理',
-                  href: attendanceRecordIndex(),
-                  icon: CalendarCheck2,
-              },
-              {
-                  title: '掃除当番設定',
-                  href: cleaningDutyRuleIndex(),
-                  icon: ClipboardList,
-              },
-              {
-                  title: 'ユーザー管理',
-                  href: adminUserIndex(),
-                  icon: UsersRound,
-              },
-              {
-                  title: '監査ログ',
-                  href: auditLogIndex(),
-                  icon: FileSearch,
-              },
-          ]
-        : [
-              {
-                  ...mainNavItems[0],
-                  // badge: attention.schedule_count || null,
-              },
-              {
-                  ...mainNavItems[1],
-                  // badge: attention.pending_voucher_count || null,
-              },
-              mainNavItems[2],
-              {
-                  title: '出勤管理',
-                  href: attendanceRecordIndex(),
-                  icon: CalendarCheck2,
-              },
-          ];
+    const navigationItems = [
+        {
+            ...mainNavItems[0],
+            // badge: attention.schedule_count || null,
+        },
+        {
+            ...mainNavItems[1],
+            // badge: attention.pending_voucher_count || null,
+        },
+        mainNavItems[2],
+        {
+            title: '出勤管理',
+            href: attendanceRecordIndex(),
+            icon: CalendarCheck2,
+        },
+        {
+            title: '掃除当番設定',
+            href: cleaningDutyRuleIndex(),
+            icon: ClipboardList,
+        },
+        ...(auth.permissions.manage_users
+            ? [
+                  {
+                      title: 'ユーザー管理',
+                      href: adminUserIndex(),
+                      icon: UsersRound,
+                  },
+              ]
+            : []),
+        ...(auth.permissions.view_audit_logs
+            ? [
+                  {
+                      title: '監査ログ',
+                      href: auditLogIndex(),
+                      icon: FileSearch,
+                  },
+              ]
+            : []),
+    ];
 
     return (
         <Sidebar collapsible="icon" variant="inset">

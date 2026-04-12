@@ -1018,9 +1018,10 @@ export default function ConstructionSchedulesIndex({
 }: Props) {
     const page = usePage();
     const {
-        auth: { user },
+        auth: { permissions, user },
     } = page.props;
-    const canManage = user.is_admin === true;
+    const canManage = permissions.manage_content;
+    const canViewAllContent = permissions.view_all_content;
     const returnTo = page.url;
     const myScheduleSectionRef = useRef<HTMLElement | null>(null);
     const calendarAreaRef = useRef<HTMLDivElement | null>(null);
@@ -1062,7 +1063,8 @@ export default function ConstructionSchedulesIndex({
         year: 'numeric',
         month: 'long',
     }).format(new Date(`${filters.date}T00:00:00`));
-    const hasSelectedUserFilter = canManage && filters.user_ids.length > 0;
+    const hasSelectedUserFilter =
+        canViewAllContent && filters.user_ids.length > 0;
     const filteredMySchedules = sortSchedulesByPriority(
         filterSchedulesByType(mySchedules, filters.type),
     );
@@ -1759,7 +1761,7 @@ export default function ConstructionSchedulesIndex({
                             </section>
                         )}
 
-                        {canManage && (
+                        {canViewAllContent && (
                             <UserFilterPanel
                                 users={userOptions}
                                 filters={filters}

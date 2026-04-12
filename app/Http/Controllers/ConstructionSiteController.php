@@ -22,13 +22,13 @@ class ConstructionSiteController extends Controller
 
         return Inertia::render('construction-sites/index', [
             'guideFiles' => $this->guideFilePayload($guideFiles),
-            'canManage' => $request->user()?->is_admin === true,
+            'canManage' => $request->user()?->canManageContent() === true,
         ]);
     }
 
     public function create(Request $request): Response
     {
-        abort_unless($request->user()?->is_admin, 403);
+        abort_unless($request->user()?->canManageContent() === true, 403);
 
         return Inertia::render('construction-sites/form', [
             'guideFile' => null,
@@ -63,13 +63,13 @@ class ConstructionSiteController extends Controller
     {
         return Inertia::render('construction-sites/show', [
             'guideFile' => $this->guideFilePayload(collect([$siteGuideFile]))->first(),
-            'canManage' => request()->user()?->is_admin === true,
+            'canManage' => request()->user()?->canManageContent() === true,
         ]);
     }
 
     public function edit(Request $request, SiteGuideFile $siteGuideFile): Response
     {
-        abort_unless($request->user()?->is_admin, 403);
+        abort_unless($request->user()?->canManageContent() === true, 403);
 
         return Inertia::render('construction-sites/form', [
             'guideFile' => $this->guideFilePayload(collect([$siteGuideFile]))->first(),
@@ -106,7 +106,7 @@ class ConstructionSiteController extends Controller
 
     public function destroy(Request $request, SiteGuideFile $siteGuideFile): RedirectResponse
     {
-        abort_unless($request->user()?->is_admin, 403);
+        abort_unless($request->user()?->canManageContent() === true, 403);
 
         $this->auditSuccess('site_guide_files.deleted', 'A site guide file was deleted.', $siteGuideFile);
 

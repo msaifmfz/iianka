@@ -12,9 +12,10 @@ import type { CleaningDutyRule } from '@/types';
 
 type Props = {
     rules: CleaningDutyRule[];
+    canManage: boolean;
 };
 
-export default function CleaningDutyRuleIndex({ rules }: Props) {
+export default function CleaningDutyRuleIndex({ rules, canManage }: Props) {
     return (
         <>
             <Head title="掃除当番設定" />
@@ -33,12 +34,14 @@ export default function CleaningDutyRuleIndex({ rules }: Props) {
                                 予定表へ戻る
                             </Link>
                         </Button>
-                        <Button asChild>
-                            <Link href={cleaningDutyRuleCreate()}>
-                                <Plus className="size-4" />
-                                新規設定
-                            </Link>
-                        </Button>
+                        {canManage && (
+                            <Button asChild>
+                                <Link href={cleaningDutyRuleCreate()}>
+                                    <Plus className="size-4" />
+                                    新規設定
+                                </Link>
+                            </Button>
+                        )}
                     </div>
                 </div>
 
@@ -66,20 +69,22 @@ export default function CleaningDutyRuleIndex({ rules }: Props) {
                                         >
                                             {rule.is_active ? '有効' : '無効'}
                                         </span>
-                                        <Button
-                                            asChild
-                                            variant="outline"
-                                            size="sm"
-                                        >
-                                            <Link
-                                                href={cleaningDutyRuleEdit(
-                                                    rule.id,
-                                                )}
+                                        {canManage && (
+                                            <Button
+                                                asChild
+                                                variant="outline"
+                                                size="sm"
                                             >
-                                                <Pencil className="size-4" />
-                                                編集
-                                            </Link>
-                                        </Button>
+                                                <Link
+                                                    href={cleaningDutyRuleEdit(
+                                                        rule.id,
+                                                    )}
+                                                >
+                                                    <Pencil className="size-4" />
+                                                    編集
+                                                </Link>
+                                            </Button>
+                                        )}
                                     </div>
                                 </CardHeader>
                                 <CardContent className="space-y-3 text-sm">

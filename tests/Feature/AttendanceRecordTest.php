@@ -98,7 +98,26 @@ test('admins can mark and clear attendance records', function (): void {
     expect(AttendanceRecord::query()->exists())->toBeFalse();
 });
 
-test('non admins cannot edit attendance records', function (): void {
+test('editors can mark attendance records', function (): void {
+    $editor = User::factory()->editor()->create();
+    $worker = User::factory()->create();
+
+    $this->actingAs($editor)
+        ->post(route('attendance-records.store'), [
+            'user_id' => $worker->id,
+            'work_date' => '2026-05-04',
+            'status' => AttendanceRecord::STATUS_WORKING,
+        ])
+        ->assertRedirect();
+
+    expect(AttendanceRecord::query()
+        ->where('user_id', $worker->id)
+        ->whereDate('work_date', '2026-05-04')
+        ->where('status', AttendanceRecord::STATUS_WORKING)
+        ->exists())->toBeTrue();
+});
+
+test('viewers cannot edit attendance records', function (): void {
     $user = User::factory()->create();
     $worker = User::factory()->create();
     $record = AttendanceRecord::factory()->leave()->create([

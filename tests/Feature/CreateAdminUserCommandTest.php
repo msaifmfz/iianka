@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use App\UserRole;
 use Illuminate\Support\Facades\Hash;
 
 test('it creates an admin user with a nullable email address', function (): void {
@@ -18,6 +19,7 @@ test('it creates an admin user with a nullable email address', function (): void
     expect($user)->not->toBeNull()
         ->and($user->name)->toBe('Admin User')
         ->and($user->email)->toBeNull()
+        ->and($user->role)->toBe(UserRole::Admin)
         ->and($user->is_admin)->toBeTrue()
         ->and($user->email_verified_at)->not->toBeNull()
         ->and(Hash::check('password', $user->password))->toBeTrue();

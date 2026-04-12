@@ -61,6 +61,26 @@ test('admins can open the site guide create form', function (): void {
         );
 });
 
+test('editors can open the site guide create form', function (): void {
+    $editor = User::factory()->editor()->create();
+
+    $this->actingAs($editor)
+        ->get(route('construction-sites.create'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->component('construction-sites/form')
+            ->where('guideFile', null)
+        );
+});
+
+test('viewers cannot open the site guide create form', function (): void {
+    $viewer = User::factory()->create();
+
+    $this->actingAs($viewer)
+        ->get(route('construction-sites.create'))
+        ->assertForbidden();
+});
+
 test('admins can open the site guide edit form', function (): void {
     $admin = User::factory()->admin()->create();
     $guideFile = SiteGuideFile::factory()->create([

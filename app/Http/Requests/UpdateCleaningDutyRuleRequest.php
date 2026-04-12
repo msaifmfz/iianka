@@ -33,7 +33,7 @@ class UpdateCleaningDutyRuleRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->user()?->is_admin === true;
+        return $this->user()?->canManageContent() === true;
     }
 
     /**

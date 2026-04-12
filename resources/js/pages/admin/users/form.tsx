@@ -1,5 +1,12 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, EyeOff, ShieldCheck, UserRound } from 'lucide-react';
+import {
+    ArrowLeft,
+    EyeOff,
+    Pencil,
+    ShieldCheck,
+    UserRound,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import {
     index as userIndex,
     store as userStore,
@@ -15,7 +22,7 @@ type ManagedUser = {
     name: string;
     login_id: string;
     email: string | null;
-    is_admin: boolean;
+    role: UserRole;
     is_hidden_from_workers: boolean;
     is_current_user: boolean;
 };
@@ -31,9 +38,37 @@ type UserForm = {
     email: string;
     password: string;
     password_confirmation: string;
-    is_admin: boolean;
+    role: UserRole;
     is_hidden_from_workers: boolean;
 };
+
+type UserRole = 'admin' | 'editor' | 'viewer';
+
+const roleOptions: {
+    value: UserRole;
+    label: string;
+    description: string;
+    icon: LucideIcon;
+}[] = [
+    {
+        value: 'admin',
+        label: '管理者',
+        description: 'すべての操作、ユーザー管理、監査ログを利用できます。',
+        icon: ShieldCheck,
+    },
+    {
+        value: 'editor',
+        label: '編集者',
+        description: '予定、出勤、案内図などを管理できます。',
+        icon: Pencil,
+    },
+    {
+        value: 'viewer',
+        label: '閲覧者',
+        description: 'すべての業務データを閲覧できます。編集はできません。',
+        icon: UserRound,
+    },
+];
 
 function Field({
     label,
@@ -61,7 +96,7 @@ export default function AdminUserForm({ managedUser }: Props) {
         email: managedUser?.email ?? '',
         password: '',
         password_confirmation: '',
-        is_admin: managedUser?.is_admin ?? false,
+        role: managedUser?.role ?? 'viewer',
         is_hidden_from_workers: managedUser?.is_hidden_from_workers ?? false,
     });
 
@@ -183,46 +218,49 @@ export default function AdminUserForm({ managedUser }: Props) {
                                 <CardTitle>権限</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                <label
-                                    className={`flex items-start gap-3 rounded-2xl border p-4 text-sm transition dark:border-neutral-800 ${data.is_admin ? 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30' : ''}`}
-                                >
-                                    <input
-                                        type="checkbox"
-                                        checked={data.is_admin}
-                                        disabled={
-                                            managedUser?.is_current_user ===
-                                            true
-                                        }
-                                        onChange={(event) =>
-                                            setData(
-                                                'is_admin',
-                                                event.target.checked,
-                                            )
-                                        }
-                                        className="mt-1"
-                                    />
-                                    <span>
-                                        <span className="flex items-center gap-2 font-semibold">
-                                            {data.is_admin ? (
-                                                <ShieldCheck className="size-4 text-amber-600" />
-                                            ) : (
-                                                <UserRound className="size-4" />
-                                            )}
-                                            管理者として設定
-                                        </span>
-                                        <span className="mt-1 block text-muted-foreground">
-                                            予定、案内図、ユーザーを管理できます。
-                                        </span>
-                                    </span>
-                                </label>
+                                {roleOptions.map((role) => {
+                                    const RoleIcon = role.icon;
+                                    const selected = data.role === role.value;
+                                    const disabled =
+                                        managedUser?.is_current_user === true &&
+                                        role.value !== 'admin';
+
+                                    return (
+                                        <label
+                                            key={role.value}
+                                            className={`flex items-start gap-3 rounded-lg border p-4 text-sm transition dark:border-neutral-800 ${selected ? 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30' : ''} ${disabled ? 'opacity-60' : ''}`}
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="role"
+                                                value={role.value}
+                                                checked={selected}
+                                                disabled={disabled}
+                                                onChange={() =>
+                                                    setData('role', role.value)
+                                                }
+                                                className="mt-1"
+                                            />
+                                            <span>
+                                                <span className="flex items-center gap-2 font-semibold">
+                                                    <RoleIcon className="size-4 text-amber-600" />
+                                                    {role.label}
+                                                </span>
+                                                <span className="mt-1 block text-muted-foreground">
+                                                    {role.description}
+                                                </span>
+                                            </span>
+                                        </label>
+                                    );
+                                })}
                                 {managedUser?.is_current_user && (
                                     <p className="text-xs text-muted-foreground">
                                         自分自身の管理者権限はここでは解除できません。
                                     </p>
                                 )}
-                                {errors.is_admin && (
+                                {errors.role && (
                                     <p className="text-xs text-destructive">
-                                        {errors.is_admin}
+                                        {errors.role}
                                     </p>
                                 )}
                             </CardContent>

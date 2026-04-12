@@ -28,7 +28,8 @@ type ManagedUser = {
     email: string | null;
     email_verified_at: string | null;
     two_factor_confirmed_at: string | null;
-    is_admin: boolean;
+    role: UserRole;
+    role_label: string;
     is_hidden_from_workers: boolean;
     created_at: string | null;
     updated_at: string | null;
@@ -62,15 +63,19 @@ type Props = {
     stats: {
         total: number;
         admins: number;
-        members: number;
+        editors: number;
+        viewers: number;
         secured: number;
     };
 };
 
+type UserRole = 'admin' | 'editor' | 'viewer';
+
 const roleFilters = [
     { label: 'すべて', value: 'all' },
     { label: '管理者', value: 'admin' },
-    { label: '一般ユーザー', value: 'member' },
+    { label: '編集者', value: 'editor' },
+    { label: '閲覧者', value: 'viewer' },
 ];
 
 function formatDate(value: string | null) {
@@ -153,11 +158,9 @@ function UserIdentity({ user }: { user: ManagedUser }) {
 }
 
 function UserRoleBadge({ user }: { user: ManagedUser }) {
-    return (
-        <Badge variant={user.is_admin ? 'default' : 'outline'}>
-            {user.is_admin ? '管理者' : '一般ユーザー'}
-        </Badge>
-    );
+    const variant = user.role === 'admin' ? 'default' : 'outline';
+
+    return <Badge variant={variant}>{user.role_label}</Badge>;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

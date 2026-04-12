@@ -2,6 +2,7 @@
 
 use App\Models\AuditLog;
 use App\Models\User;
+use App\UserRole;
 use Inertia\Testing\AssertableInertia as Assert;
 
 test('successful and failed password logins are audited', function (): void {
@@ -71,7 +72,7 @@ test('admins can view and filter audit logs', function (): void {
 });
 
 test('non admins cannot view audit logs and the denial is audited', function (): void {
-    $user = User::factory()->create();
+    $user = User::factory()->editor()->create();
 
     $this->actingAs($user)
         ->get(route('admin.audit-logs.index'))
@@ -94,7 +95,7 @@ test('admin user mutations are audited', function (): void {
             'email' => null,
             'password' => 'password',
             'password_confirmation' => 'password',
-            'is_admin' => false,
+            'role' => UserRole::Viewer->value,
             'is_hidden_from_workers' => true,
         ])
         ->assertRedirect(route('admin.users.index'));

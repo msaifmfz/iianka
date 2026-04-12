@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\User;
+use App\UserRole;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -34,6 +35,7 @@ class UserFactory extends Factory
             'two_factor_secret' => null,
             'two_factor_recovery_codes' => null,
             'two_factor_confirmed_at' => null,
+            'role' => UserRole::Viewer,
             'is_hidden_from_workers' => false,
         ];
     }
@@ -54,7 +56,19 @@ class UserFactory extends Factory
     public function admin(): static
     {
         return $this->state(fn (array $attributes): array => [
+            'role' => UserRole::Admin,
             'is_admin' => true,
+        ]);
+    }
+
+    /**
+     * Indicate that the user can manage content but not users.
+     */
+    public function editor(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'role' => UserRole::Editor,
+            'is_admin' => false,
         ]);
     }
 

@@ -16,7 +16,7 @@ class CleaningDutyRuleController extends Controller
 {
     public function index(Request $request): Response
     {
-        abort_unless($request->user()?->is_admin, 403);
+        abort_unless($request->user()?->canViewAllContent() === true, 403);
 
         $rules = CleaningDutyRule::query()
             ->with('assignedUsers:id,name,email')
@@ -27,12 +27,13 @@ class CleaningDutyRuleController extends Controller
 
         return Inertia::render('cleaning-duty-rules/index', [
             'rules' => $this->rulePayload($rules),
+            'canManage' => $request->user()?->canManageContent() === true,
         ]);
     }
 
     public function create(Request $request): Response
     {
-        abort_unless($request->user()?->is_admin, 403);
+        abort_unless($request->user()?->canManageContent() === true, 403);
 
         return Inertia::render('cleaning-duty-rules/form', [
             'rule' => null,
@@ -61,7 +62,7 @@ class CleaningDutyRuleController extends Controller
 
         return Inertia::render('cleaning-duty-rules/show', [
             'rule' => $this->rulePayload(collect([$cleaningDutyRule]))->first(),
-            'canManage' => $request->user()?->is_admin === true,
+            'canManage' => $request->user()?->canManageContent() === true,
             'returnTo' => $this->returnTo($request),
             'scheduledOn' => $this->scheduledOn($request),
         ]);
@@ -69,7 +70,7 @@ class CleaningDutyRuleController extends Controller
 
     public function edit(Request $request, CleaningDutyRule $cleaningDutyRule): Response
     {
-        abort_unless($request->user()?->is_admin, 403);
+        abort_unless($request->user()?->canManageContent() === true, 403);
 
         $cleaningDutyRule->load('assignedUsers:id,name,email');
 
@@ -97,7 +98,7 @@ class CleaningDutyRuleController extends Controller
 
     public function destroy(Request $request, CleaningDutyRule $cleaningDutyRule): RedirectResponse
     {
-        abort_unless($request->user()?->is_admin, 403);
+        abort_unless($request->user()?->canManageContent() === true, 403);
 
         $this->auditSuccess('cleaning_duty_rules.deleted', 'A cleaning duty rule was deleted.', $cleaningDutyRule);
 

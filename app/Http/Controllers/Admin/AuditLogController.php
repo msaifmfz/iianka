@@ -101,7 +101,7 @@ class AuditLogController extends Controller
 
     public function index(Request $request): Response
     {
-        abort_unless($request->user()?->is_admin === true, 403);
+        abort_unless($request->user()?->canViewAuditLogs() === true, 403);
 
         $filters = [
             'search' => $request->string('search')->trim()->toString(),

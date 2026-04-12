@@ -55,7 +55,7 @@ class ConstructionScheduleVoucherController extends Controller
                 'unchecked' => $schedules->whereNull('voucher_checked_at')->count(),
             ],
             'schedules' => $this->schedulePayload($schedules),
-            'canManage' => $request->user()?->is_admin === true,
+            'canManage' => $request->user()?->canManageContent() === true,
         ]);
     }
 

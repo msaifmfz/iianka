@@ -19,7 +19,7 @@ class AttendanceRecordController extends Controller
         $month = Carbon::parse($request->query('month', today()->toDateString()))->startOfMonth();
         $startsOn = $month->copy()->startOfMonth();
         $endsOn = $month->copy()->endOfMonth();
-        $canManage = $request->user()?->is_admin === true;
+        $canManage = $request->user()?->canManageContent() === true;
 
         $users = User::query()
             ->visibleToWorkers()
@@ -78,7 +78,7 @@ class AttendanceRecordController extends Controller
 
     public function destroy(Request $request, AttendanceRecord $attendanceRecord): RedirectResponse
     {
-        abort_unless($request->user()?->is_admin === true, 403);
+        abort_unless($request->user()?->canManageContent() === true, 403);
 
         $this->auditSuccess('attendance_records.deleted', 'An attendance record was deleted.', $attendanceRecord, [
             'user_id' => $attendanceRecord->user_id,

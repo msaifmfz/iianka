@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use App\UserRole;
 use Inertia\Testing\AssertableInertia as Assert;
 
 test('admins can view the user management page', function (): void {
@@ -14,15 +15,18 @@ test('admins can view the user management page', function (): void {
             ->component('admin/users/index')
             ->where('stats.total', 2)
             ->where('stats.admins', 1)
+            ->where('stats.viewers', 1)
             ->has('users.data', 2)
             ->where('users.data', fn ($users): bool => collect($users)->contains(
-                fn (array $user): bool => $user['id'] === $member->id && $user['name'] === 'Member User'
+                fn (array $user): bool => $user['id'] === $member->id
+                    && $user['name'] === 'Member User'
+                    && $user['role'] === UserRole::Viewer->value
             ))
         );
 });
 
 test('non admins cannot view user management', function (): void {
-    $user = User::factory()->create();
+    $user = User::factory()->editor()->create();
 
     $this->actingAs($user)
         ->get(route('admin.users.index'))
@@ -39,19 +43,19 @@ test('admins can create users', function (): void {
             'email' => null,
             'password' => 'password',
             'password_confirmation' => 'password',
-            'is_admin' => false,
+            'role' => UserRole::Editor->value,
             'is_hidden_from_workers' => true,
         ])
         ->assertRedirect(route('admin.users.index'));
 
-    expect(User::query()->where('login_id', 'new-member')->where('is_admin', false)->exists())->toBeTrue()
+    expect(User::query()->where('login_id', 'new-member')->where('role', UserRole::Editor->value)->exists())->toBeTrue()
         ->and(User::query()->where('login_id', 'new-member')->value('email'))->toBeNull()
         ->and(User::query()->where('login_id', 'new-member')->value('is_hidden_from_workers'))->toBeTrue();
 });
 
 test('admins can update user roles', function (): void {
     $admin = User::factory()->admin()->create();
-    $member = User::factory()->create(['is_admin' => false]);
+    $member = User::factory()->create();
 
     $this->actingAs($admin)
         ->put(route('admin.users.update', $member), [
@@ -60,7 +64,7 @@ test('admins can update user roles', function (): void {
             'email' => $member->email,
             'password' => null,
             'password_confirmation' => null,
-            'is_admin' => true,
+            'role' => UserRole::Admin->value,
             'is_hidden_from_workers' => true,
         ])
         ->assertRedirect(route('admin.users.index'));
@@ -68,6 +72,7 @@ test('admins can update user roles', function (): void {
     $member->refresh();
 
     expect($member->name)->toBe('Promoted Member')
+        ->and($member->role)->toBe(UserRole::Admin)
         ->and($member->is_admin)->toBeTrue()
         ->and($member->is_hidden_from_workers)->toBeTrue();
 });
@@ -82,12 +87,13 @@ test('admins cannot remove their own admin role', function (): void {
             'email' => $admin->email,
             'password' => null,
             'password_confirmation' => null,
-            'is_admin' => false,
+            'role' => UserRole::Editor->value,
             'is_hidden_from_workers' => false,
         ])
-        ->assertSessionHasErrors('is_admin');
+        ->assertSessionHasErrors('role');
 
-    expect($admin->refresh()->is_admin)->toBeTrue();
+    expect($admin->refresh()->role)->toBe(UserRole::Admin)
+        ->and($admin->is_admin)->toBeTrue();
 });
 
 test('admins cannot assign duplicate login ids', function (): void {
@@ -101,7 +107,7 @@ test('admins cannot assign duplicate login ids', function (): void {
             'email' => null,
             'password' => 'password',
             'password_confirmation' => 'password',
-            'is_admin' => false,
+            'role' => UserRole::Viewer->value,
             'is_hidden_from_workers' => false,
         ])
         ->assertSessionHasErrors('login_id');
