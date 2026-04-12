@@ -128,9 +128,7 @@ jobs:
           php artisan down --render="errors::503" --retry=60 || true
           trap 'php artisan up || true' EXIT
 
-          git fetch --prune origin "$DEPLOY_BRANCH"
-          git checkout --force "$DEPLOY_SHA"
-          test "$(git rev-parse HEAD)" = "$DEPLOY_SHA"
+          git pull
 
           composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
           npm ci
@@ -138,13 +136,11 @@ jobs:
 
           php artisan optimize:clear
           php artisan migrate --force
-          # php artisan storage:link --force
           php artisan config:cache
           php artisan route:cache
           php artisan view:cache
           php artisan event:cache
           php artisan optimize
-          php artisan inertia:stop-ssr || true
           php artisan queue:restart
           php artisan reload || true
 
