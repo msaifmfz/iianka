@@ -72,7 +72,7 @@ class HandleInertiaRequests extends Middleware
         }
 
         $today = today()->toDateString();
-        $weekday = Carbon::today()->dayOfWeekIso;
+        $weekday = Carbon::today()->dayOfWeek;
 
         if ($user->is_admin) {
             return [

@@ -195,7 +195,7 @@ test('worker dashboard shares attention counts and worker summary', function ():
     $notice->assignedUsers()->attach($worker);
 
     $cleaningDutyRule = CleaningDutyRule::factory()->create([
-        'weekday' => today()->dayOfWeekIso,
+        'weekday' => today()->dayOfWeek,
         'is_active' => true,
     ]);
     $cleaningDutyRule->assignedUsers()->attach($worker);
