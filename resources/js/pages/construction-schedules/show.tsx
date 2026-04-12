@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { FileText, MapPin, Pencil, Users } from 'lucide-react';
+import { FileText, MapPin, Pencil, Phone, Users } from 'lucide-react';
 import {
     edit as scheduleEdit,
     index as scheduleIndex,
@@ -30,6 +30,10 @@ function Detail({ label, value }: { label: string; value: React.ReactNode }) {
             <div className="mt-1 font-medium">{value || '未設定'}</div>
         </div>
     );
+}
+
+function phoneHref(phone: string) {
+    return `tel:${phone.replace(/[^\d+]/g, '')}`;
 }
 
 export default function ConstructionScheduleShow({
@@ -130,6 +134,35 @@ export default function ConstructionScheduleShow({
                                 {schedule.assigned_users
                                     .map((user) => user.name)
                                     .join('、')}
+                            </div>
+                        )}
+
+                        {schedule.subcontractors.length > 0 && (
+                            <div className="rounded-2xl border p-4 dark:border-neutral-800">
+                                <p className="text-sm text-muted-foreground">
+                                    下請け
+                                </p>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    {schedule.subcontractors.map(
+                                        (subcontractor) => (
+                                            <a
+                                                key={subcontractor.id}
+                                                href={phoneHref(
+                                                    subcontractor.phone,
+                                                )}
+                                                className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition hover:bg-muted hover:text-sky-700 dark:border-neutral-800 dark:hover:text-sky-300"
+                                            >
+                                                <Phone className="size-4 text-muted-foreground" />
+                                                <span>
+                                                    {subcontractor.name}
+                                                </span>
+                                                <span className="text-xs text-muted-foreground">
+                                                    {subcontractor.phone}
+                                                </span>
+                                            </a>
+                                        ),
+                                    )}
+                                </div>
                             </div>
                         )}
 

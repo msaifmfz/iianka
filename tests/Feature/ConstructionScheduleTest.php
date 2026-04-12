@@ -3,6 +3,7 @@
 use App\Models\BusinessSchedule;
 use App\Models\CleaningDutyRule;
 use App\Models\ConstructionSchedule;
+use App\Models\ConstructionSubcontractor;
 use App\Models\GeneralContractor;
 use App\Models\InternalNotice;
 use App\Models\SiteGuideFile;
@@ -558,6 +559,10 @@ test('admins can create schedules with assigned users and guide files', function
 
     $admin = User::factory()->admin()->create();
     $worker = User::factory()->create();
+    $subcontractor = ConstructionSubcontractor::factory()->create([
+        'name' => '既存 下請け',
+        'phone' => '090-1111-2222',
+    ]);
     $siteGuide = SiteGuideFile::factory()->create([
         'name' => '東京タワー_搬入口.pdf',
     ]);
@@ -578,6 +583,17 @@ test('admins can create schedules with assigned users and guide files', function
             'content' => '足場点検と資材搬入',
             'navigation_address' => '東京都港区芝公園4丁目2-8',
             'assigned_user_ids' => [$worker->id],
+            'subcontractor_ids' => [$subcontractor->id],
+            'new_subcontractors' => [
+                [
+                    'name' => '新規 下請けA',
+                    'phone' => '090-3333-4444',
+                ],
+                [
+                    'name' => '新規 下請けB',
+                    'phone' => '090-5555-6666',
+                ],
+            ],
             'site_guide_file_ids' => [$siteGuide->id],
             'guide_files' => [
                 UploadedFile::fake()->create('現場全体図.pdf', 100, 'application/pdf'),
@@ -594,6 +610,9 @@ test('admins can create schedules with assigned users and guide files', function
         ->first();
 
     expect($schedule->assignedUsers()->whereKey($worker)->exists())->toBeTrue();
+    expect($schedule->subcontractors()->whereKey($subcontractor)->exists())->toBeTrue();
+    expect($schedule->subcontractors()->where('name', '新規 下請けA')->where('phone', '090-3333-4444')->exists())->toBeTrue();
+    expect($schedule->subcontractors()->where('name', '新規 下請けB')->where('phone', '090-5555-6666')->exists())->toBeTrue();
     expect($schedule->schedule_number)->toBe(7);
     expect($schedule->selectedGuideFiles()->whereKey($siteGuide)->exists())->toBeTrue();
     expect($uploadedGuide)->not->toBeNull();
@@ -601,6 +620,80 @@ test('admins can create schedules with assigned users and guide files', function
     expect(GeneralContractor::query()->where('name', '山田建設')->exists())->toBeTrue();
 
     Storage::disk('local')->assertExists($uploadedGuide->path);
+});
+
+test('construction schedule payloads include subcontractor phone numbers', function (): void {
+    $user = User::factory()->create();
+    $subcontractor = ConstructionSubcontractor::factory()->create([
+        'name' => '田中 下請け',
+        'phone' => '090-7777-8888',
+    ]);
+    $schedule = ConstructionSchedule::factory()
+        ->scheduledToday()
+        ->create(['location' => '電話確認現場']);
+
+    $schedule->subcontractors()->attach($subcontractor);
+
+    $this->actingAs($user)
+        ->get(route('construction-schedules.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->component('construction-schedules/index')
+            ->where('teamSchedules.0.location', '電話確認現場')
+            ->where('teamSchedules.0.subcontractors.0.name', '田中 下請け')
+            ->where('teamSchedules.0.subcontractors.0.phone', '090-7777-8888')
+        );
+
+    $this->actingAs($user)
+        ->get(route('construction-schedules.show', $schedule))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->component('construction-schedules/show')
+            ->where('schedule.subcontractors.0.name', '田中 下請け')
+            ->where('schedule.subcontractors.0.phone', '090-7777-8888')
+            ->etc()
+        );
+});
+
+test('admins can update schedule subcontractors separately from assigned users', function (): void {
+    $admin = User::factory()->admin()->create();
+    $worker = User::factory()->create();
+    $oldSubcontractor = ConstructionSubcontractor::factory()->create(['name' => '旧 下請け']);
+    $newSubcontractor = ConstructionSubcontractor::factory()->create(['name' => '新 下請け']);
+    $schedule = ConstructionSchedule::factory()->create([
+        'location' => '更新対象現場',
+    ]);
+
+    $schedule->assignedUsers()->attach($worker);
+    $schedule->subcontractors()->attach($oldSubcontractor);
+
+    $this->actingAs($admin)
+        ->put(route('construction-schedules.update', $schedule), [
+            'scheduled_on' => $schedule->scheduled_on->toDateString(),
+            'starts_at' => '08:00',
+            'ends_at' => '17:00',
+            'status' => ConstructionSchedule::STATUS_CONFIRMED,
+            'meeting_place' => '正面ゲート',
+            'location' => '更新対象現場',
+            'content' => '作業内容',
+            'navigation_address' => '東京都千代田区1-1',
+            'assigned_user_ids' => [$worker->id],
+            'subcontractor_ids' => [$newSubcontractor->id],
+            'new_subcontractors' => [
+                [
+                    'name' => '追加 下請け',
+                    'phone' => '090-9999-0000',
+                ],
+            ],
+        ])
+        ->assertRedirect(route('construction-schedules.show', $schedule));
+
+    $schedule->refresh();
+
+    expect($schedule->assignedUsers()->whereKey($worker)->exists())->toBeTrue();
+    expect($schedule->subcontractors()->whereKey($oldSubcontractor)->exists())->toBeFalse();
+    expect($schedule->subcontractors()->whereKey($newSubcontractor)->exists())->toBeTrue();
+    expect($schedule->subcontractors()->where('name', '追加 下請け')->where('phone', '090-9999-0000')->exists())->toBeTrue();
 });
 
 test('uploaded guide files from a schedule become standalone library files on edit', function (): void {
@@ -722,6 +815,60 @@ test('schedule edit form includes only selected users hidden from workers', func
                     || collect($schedule['user_names'])->contains('未選択 非表示')
             ))
         );
+});
+
+test('deleted subcontractors are hidden from new schedules but kept on existing schedules', function (): void {
+    $admin = User::factory()->admin()->create();
+    $subcontractor = ConstructionSubcontractor::factory()->create([
+        'name' => '削除予定 下請け',
+        'phone' => '090-1212-3434',
+    ]);
+    $schedule = ConstructionSchedule::factory()->create([
+        'location' => '既存利用現場',
+    ]);
+    $schedule->subcontractors()->attach($subcontractor);
+
+    $this->actingAs($admin)
+        ->delete(route('construction-subcontractors.destroy', $subcontractor))
+        ->assertRedirect();
+
+    $this->assertSoftDeleted($subcontractor);
+
+    $this->actingAs($admin)
+        ->get(route('construction-schedules.create'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->component('construction-schedules/form')
+            ->where('subcontractors', fn ($subcontractors): bool => ! collect($subcontractors)->contains(
+                fn (array $subcontractor): bool => $subcontractor['name'] === '削除予定 下請け'
+            ))
+            ->etc()
+        );
+
+    $this->actingAs($admin)
+        ->get(route('construction-schedules.edit', $schedule))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->component('construction-schedules/form')
+            ->where('subcontractors', fn ($subcontractors): bool => collect($subcontractors)->contains(
+                fn (array $subcontractor): bool => $subcontractor['name'] === '削除予定 下請け'
+                    && $subcontractor['phone'] === '090-1212-3434'
+            ))
+            ->where('schedule.subcontractors.0.name', '削除予定 下請け')
+            ->where('schedule.subcontractors.0.phone', '090-1212-3434')
+            ->etc()
+        );
+});
+
+test('non admins cannot delete subcontractors', function (): void {
+    $user = User::factory()->create();
+    $subcontractor = ConstructionSubcontractor::factory()->create();
+
+    $this->actingAs($user)
+        ->delete(route('construction-subcontractors.destroy', $subcontractor))
+        ->assertForbidden();
+
+    expect($subcontractor->fresh())->not->toBeNull();
 });
 
 test('admins can update a construction schedule number from the index flow', function (): void {

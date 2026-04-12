@@ -5,6 +5,8 @@ import {
     ExternalLink,
     Files,
     FileText,
+    Phone,
+    Plus,
     Search,
     Trash2,
     UploadCloud,
@@ -15,6 +17,7 @@ import {
     store as scheduleStore,
     update as scheduleUpdate,
 } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
+import { destroy as subcontractorDestroy } from '@/actions/App/Http/Controllers/ConstructionSubcontractorController';
 import { FloatingBackButton } from '@/components/floating-back-button';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +26,7 @@ import { dashboard } from '@/routes';
 import type {
     ConstructionSchedule,
     ConstructionScheduleStatus,
+    ConstructionSubcontractor,
     ConstructionUser,
     AttendanceLeaveRecord,
     ScheduleAvailability,
@@ -32,6 +36,7 @@ import type {
 type Props = {
     schedule: ConstructionSchedule | null;
     users: ConstructionUser[];
+    subcontractors: ConstructionSubcontractor[];
     siteGuideFiles: SiteGuideFile[];
     generalContractorOptions: string[];
     scheduleAvailability: ScheduleAvailability[];
@@ -54,6 +59,11 @@ type ScheduleForm = {
     content: string;
     navigation_address: string;
     assigned_user_ids: number[];
+    subcontractor_ids: number[];
+    new_subcontractors: {
+        name: string;
+        phone: string;
+    }[];
     site_guide_file_ids: number[];
     guide_files: File[];
     guide_file_names: string[];
@@ -102,6 +112,10 @@ function toggleNumber(values: number[], value: number) {
     return values.includes(value)
         ? values.filter((item) => item !== value)
         : [...values, value];
+}
+
+function phoneHref(phone: string) {
+    return `tel:${phone.replace(/[^\d+]/g, '')}`;
 }
 
 function guideFileTypeLabel(file: SiteGuideFile) {
@@ -214,6 +228,7 @@ function availableTimeSlots(schedules: ScheduleAvailability[]) {
 export default function ConstructionScheduleForm({
     schedule,
     users,
+    subcontractors,
     siteGuideFiles,
     generalContractorOptions,
     scheduleAvailability,
@@ -239,6 +254,10 @@ export default function ConstructionScheduleForm({
             navigation_address: schedule?.navigation_address ?? '',
             assigned_user_ids:
                 schedule?.assigned_users.map((user) => user.id) ?? [],
+            subcontractor_ids:
+                schedule?.subcontractors.map((subcontractor) => subcontractor.id) ??
+                [],
+            new_subcontractors: [],
             site_guide_file_ids: schedule?.selected_site_guide_file_ids ?? [],
             guide_files: [],
             guide_file_names: [],
@@ -317,6 +336,63 @@ export default function ConstructionScheduleForm({
                 (_name, nameIndex) => nameIndex !== index,
             ),
         }));
+    }
+
+    function addNewSubcontractor() {
+        setData((values) => ({
+            ...values,
+            new_subcontractors: [
+                ...values.new_subcontractors,
+                { name: '', phone: '' },
+            ],
+        }));
+    }
+
+    function updateNewSubcontractor(
+        index: number,
+        field: 'name' | 'phone',
+        value: string,
+    ) {
+        setData((values) => ({
+            ...values,
+            new_subcontractors: values.new_subcontractors.map(
+                (subcontractor, subcontractorIndex) =>
+                    subcontractorIndex === index
+                        ? { ...subcontractor, [field]: value }
+                        : subcontractor,
+            ),
+        }));
+    }
+
+    function removeNewSubcontractor(index: number) {
+        setData((values) => ({
+            ...values,
+            new_subcontractors: values.new_subcontractors.filter(
+                (_subcontractor, subcontractorIndex) =>
+                    subcontractorIndex !== index,
+            ),
+        }));
+    }
+
+    function deleteSubcontractor(subcontractor: ConstructionSubcontractor) {
+        if (!confirm(`${subcontractor.name} を今後の選択肢から削除しますか？`)) {
+            return;
+        }
+
+        router.delete(subcontractorDestroy.url(subcontractor.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                if (!schedule) {
+                    setData(
+                        'subcontractor_ids',
+                        data.subcontractor_ids.filter(
+                            (subcontractorId) =>
+                                subcontractorId !== subcontractor.id,
+                        ),
+                    );
+                }
+            },
+        });
     }
 
     function updateGuideUploadName(index: number, name: string) {
@@ -515,6 +591,197 @@ export default function ConstructionScheduleForm({
                                     </p>
                                 </div>
                             )}
+                        </div>
+                        <div className="rounded-2xl border p-4 md:col-span-3 dark:border-neutral-800">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                    <h2 className="font-semibold">下請け</h2>
+                                    <p className="mt-1 text-xs text-muted-foreground">
+                                        工事予定に入る下請けを選択し、電話番号をすぐ確認できます。
+                                    </p>
+                                </div>
+                                {(data.subcontractor_ids.length > 0 ||
+                                    data.new_subcontractors.length > 0) && (
+                                    <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-semibold text-neutral-700 dark:bg-neutral-900 dark:text-neutral-200">
+                                        選択 {data.subcontractor_ids.length} /
+                                        追加 {data.new_subcontractors.length}
+                                    </span>
+                                )}
+                            </div>
+
+                            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                {subcontractors.map((subcontractor) => {
+                                    const isSelected =
+                                        data.subcontractor_ids.includes(
+                                            subcontractor.id,
+                                        );
+
+                                    return (
+                                        <div
+                                            key={subcontractor.id}
+                                            className={cn(
+                                                'flex items-start justify-between gap-3 rounded-xl border p-3 text-sm transition',
+                                                isSelected
+                                                    ? 'border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100'
+                                                    : 'border-neutral-200 hover:bg-muted/50 dark:border-neutral-800',
+                                            )}
+                                        >
+                                            <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-2">
+                                                <input
+                                                    type="checkbox"
+                                                    className="mt-1"
+                                                    checked={isSelected}
+                                                    onChange={() =>
+                                                        setData(
+                                                            'subcontractor_ids',
+                                                            toggleNumber(
+                                                                data.subcontractor_ids,
+                                                                subcontractor.id,
+                                                            ),
+                                                        )
+                                                    }
+                                                />
+                                                <span className="min-w-0">
+                                                    <span className="block truncate font-medium">
+                                                        {subcontractor.name}
+                                                    </span>
+                                                    <a
+                                                        href={phoneHref(
+                                                            subcontractor.phone,
+                                                        )}
+                                                        className="mt-1 inline-flex items-center gap-1 text-xs text-sky-700 hover:underline dark:text-sky-300"
+                                                    >
+                                                        <Phone className="size-3.5" />
+                                                        {subcontractor.phone}
+                                                    </a>
+                                                </span>
+                                            </label>
+                                            <button
+                                                type="button"
+                                                className="inline-flex shrink-0 items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                                onClick={() =>
+                                                    deleteSubcontractor(
+                                                        subcontractor,
+                                                    )
+                                                }
+                                            >
+                                                <Trash2 className="size-3.5" />
+                                                削除
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                                {subcontractors.length === 0 && (
+                                    <p className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground sm:col-span-2 dark:border-neutral-800">
+                                        登録済みの下請けはまだありません。下の入力から追加できます。
+                                    </p>
+                                )}
+                            </div>
+
+                            {errors.subcontractor_ids && (
+                                <p className="mt-2 text-xs text-destructive">
+                                    {errors.subcontractor_ids}
+                                </p>
+                            )}
+
+                            <div className="mt-4 grid gap-3 rounded-lg border bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900/40">
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <p className="text-sm font-medium">
+                                        新しく追加する下請け
+                                    </p>
+                                    <button
+                                        type="button"
+                                        className="inline-flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm font-medium transition hover:bg-muted"
+                                        onClick={addNewSubcontractor}
+                                    >
+                                        <Plus className="size-4" />
+                                        行を追加
+                                    </button>
+                                </div>
+
+                                {data.new_subcontractors.length > 0 ? (
+                                    <div className="grid gap-2">
+                                        {data.new_subcontractors.map(
+                                            (subcontractor, index) => (
+                                                <div
+                                                    key={index}
+                                                    className="grid gap-2 rounded-lg border bg-background p-3 dark:border-neutral-800"
+                                                >
+                                                    <div className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
+                                                        <Input
+                                                            value={
+                                                                subcontractor.name
+                                                            }
+                                                            onChange={(event) =>
+                                                                updateNewSubcontractor(
+                                                                    index,
+                                                                    'name',
+                                                                    event.target
+                                                                        .value,
+                                                                )
+                                                            }
+                                                            placeholder="名前"
+                                                        />
+                                                        <Input
+                                                            value={
+                                                                subcontractor.phone
+                                                            }
+                                                            onChange={(event) =>
+                                                                updateNewSubcontractor(
+                                                                    index,
+                                                                    'phone',
+                                                                    event.target
+                                                                        .value,
+                                                                )
+                                                            }
+                                                            placeholder="電話番号"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            className="inline-flex items-center justify-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                                            onClick={() =>
+                                                                removeNewSubcontractor(
+                                                                    index,
+                                                                )
+                                                            }
+                                                        >
+                                                            <Trash2 className="size-3.5" />
+                                                            削除
+                                                        </button>
+                                                    </div>
+                                                    {(formErrors[
+                                                        `new_subcontractors.${index}.name`
+                                                    ] ||
+                                                        formErrors[
+                                                            `new_subcontractors.${index}.phone`
+                                                        ]) && (
+                                                        <div className="grid gap-1 text-xs text-destructive md:grid-cols-2">
+                                                            <span>
+                                                                {
+                                                                    formErrors[
+                                                                        `new_subcontractors.${index}.name`
+                                                                    ]
+                                                                }
+                                                            </span>
+                                                            <span>
+                                                                {
+                                                                    formErrors[
+                                                                        `new_subcontractors.${index}.phone`
+                                                                    ]
+                                                                }
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ),
+                                        )}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">
+                                        複数の下請けをまとめて追加できます。
+                                    </p>
+                                )}
+                            </div>
                         </div>
                         <Field label="開始時間" error={errors.starts_at}>
                             <Input

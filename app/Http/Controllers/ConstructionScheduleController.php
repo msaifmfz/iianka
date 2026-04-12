@@ -9,6 +9,7 @@ use App\Models\AttendanceRecord;
 use App\Models\BusinessSchedule;
 use App\Models\CleaningDutyRule;
 use App\Models\ConstructionSchedule;
+use App\Models\ConstructionSubcontractor;
 use App\Models\GeneralContractor;
 use App\Models\InternalNotice;
 use App\Models\SiteGuideFile;
@@ -49,7 +50,7 @@ class ConstructionScheduleController extends Controller
 
         if ($types->contains('construction')) {
             $constructionSchedules = ConstructionSchedule::query()
-                ->with(['assignedUsers:id,name,email,is_hidden_from_workers', 'voucherCheckedBy:id,name,email,is_hidden_from_workers', 'selectedGuideFiles'])
+                ->with(['assignedUsers:id,name,email,is_hidden_from_workers', 'subcontractors:id,name,phone', 'voucherCheckedBy:id,name,email,is_hidden_from_workers', 'selectedGuideFiles'])
                 ->whereDate('scheduled_on', '>=', $startsOn->toDateString())
                 ->whereDate('scheduled_on', '<=', $endsOn->toDateString())
                 ->orderBy('scheduled_on')
@@ -190,6 +191,7 @@ class ConstructionScheduleController extends Controller
         $schedule = ConstructionSchedule::create($this->scheduleAttributes($validated));
 
         $schedule->assignedUsers()->sync($request->input('assigned_user_ids', []));
+        $this->syncSubcontractors($schedule, $validated);
         $schedule->selectedGuideFiles()->sync($request->input('site_guide_file_ids', []));
         $this->storeGuideFiles($schedule, $request->file('guide_files', []), $validated['guide_file_names'] ?? []);
         $this->rememberGeneralContractor($validated['general_contractor'] ?? null);
@@ -204,7 +206,7 @@ class ConstructionScheduleController extends Controller
 
     public function show(Request $request, ConstructionSchedule $constructionSchedule): Response
     {
-        $constructionSchedule->load(['assignedUsers:id,name,email,is_hidden_from_workers', 'voucherCheckedBy:id,name,email,is_hidden_from_workers', 'selectedGuideFiles']);
+        $constructionSchedule->load(['assignedUsers:id,name,email,is_hidden_from_workers', 'subcontractors:id,name,phone', 'voucherCheckedBy:id,name,email,is_hidden_from_workers', 'selectedGuideFiles']);
 
         return Inertia::render('construction-schedules/show', [
             'schedule' => $this->schedulePayload(collect([$constructionSchedule]))->first(),
@@ -217,7 +219,7 @@ class ConstructionScheduleController extends Controller
     {
         abort_unless($request->user()?->is_admin, 403);
 
-        $constructionSchedule->load(['assignedUsers:id,name,email,is_hidden_from_workers', 'voucherCheckedBy:id,name,email,is_hidden_from_workers', 'selectedGuideFiles']);
+        $constructionSchedule->load(['assignedUsers:id,name,email,is_hidden_from_workers', 'subcontractors:id,name,phone', 'voucherCheckedBy:id,name,email,is_hidden_from_workers', 'selectedGuideFiles']);
 
         return Inertia::render('construction-schedules/form', [
             'schedule' => $this->schedulePayload(collect([$constructionSchedule]))->first(),
@@ -230,6 +232,7 @@ class ConstructionScheduleController extends Controller
         $validated = $request->validated();
         $constructionSchedule->update($this->scheduleAttributes($validated));
         $constructionSchedule->assignedUsers()->sync($request->input('assigned_user_ids', []));
+        $this->syncSubcontractors($constructionSchedule, $validated);
         $constructionSchedule->selectedGuideFiles()->sync($request->input('site_guide_file_ids', []));
         $this->storeGuideFiles($constructionSchedule, $request->file('guide_files', []), $validated['guide_file_names'] ?? []);
         $this->rememberGeneralContractor($validated['general_contractor'] ?? null);
@@ -451,12 +454,38 @@ class ConstructionScheduleController extends Controller
     }
 
     /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function syncSubcontractors(ConstructionSchedule $schedule, array $validated): void
+    {
+        $existingSubcontractorIds = collect($validated['subcontractor_ids'] ?? [])
+            ->map(fn (int|string $id): int => (int) $id);
+
+        $newSubcontractorIds = collect($validated['new_subcontractors'] ?? [])
+            ->map(fn (array $subcontractor): int => ConstructionSubcontractor::query()->create([
+                'name' => trim((string) $subcontractor['name']),
+                'phone' => trim((string) $subcontractor['phone']),
+            ])->id);
+
+        $schedule->subcontractors()->sync(
+            $existingSubcontractorIds
+                ->merge($newSubcontractorIds)
+                ->unique()
+                ->values()
+                ->all()
+        );
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function formOptions(?ConstructionSchedule $ignoredSchedule): array
     {
         $selectedUserIds = $ignoredSchedule instanceof ConstructionSchedule
             ? $ignoredSchedule->assignedUsers->pluck('id')
+            : collect();
+        $selectedSubcontractorIds = $ignoredSchedule instanceof ConstructionSchedule
+            ? $ignoredSchedule->subcontractors->pluck('id')
             : collect();
 
         $users = User::query()
@@ -469,6 +498,14 @@ class ConstructionScheduleController extends Controller
 
         return [
             'users' => $users,
+            'subcontractors' => ConstructionSubcontractor::query()
+                ->withTrashed()
+                ->where(fn ($query) => $query
+                    ->whereNull('deleted_at')
+                    ->when($selectedSubcontractorIds->isNotEmpty(), fn ($query) => $query->orWhereIn('id', $selectedSubcontractorIds))
+                )
+                ->orderBy('name')
+                ->get(['id', 'name', 'phone']),
             'siteGuideFiles' => SiteGuideFile::query()
                 ->orderBy('name')
                 ->get()
@@ -761,6 +798,7 @@ class ConstructionScheduleController extends Controller
             ],
             'voucher_note' => $schedule->voucher_note,
             'assigned_users' => $this->userPayload($schedule->assignedUsers),
+            'subcontractors' => $this->subcontractorPayload($schedule->subcontractors),
             'guide_files' => $this->guideFilePayload($schedule->allGuideFiles()),
             'selected_site_guide_file_ids' => $schedule->selectedGuideFiles->pluck('id')->values(),
         ])->values();
@@ -849,6 +887,21 @@ class ConstructionScheduleController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+            ])
+            ->values();
+    }
+
+    /**
+     * @param  Collection<int, ConstructionSubcontractor>  $subcontractors
+     * @return Collection<int, array{id: int, name: string, phone: string}>
+     */
+    private function subcontractorPayload(Collection $subcontractors): Collection
+    {
+        return $subcontractors
+            ->map(fn (ConstructionSubcontractor $subcontractor): array => [
+                'id' => $subcontractor->id,
+                'name' => $subcontractor->name,
+                'phone' => $subcontractor->phone,
             ])
             ->values();
     }

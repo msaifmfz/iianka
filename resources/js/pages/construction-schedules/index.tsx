@@ -12,6 +12,7 @@ import {
     Megaphone,
     MapPin,
     Pencil,
+    Phone,
     Plus,
     Users,
 } from 'lucide-react';
@@ -151,6 +152,10 @@ function formatDate(date: string) {
 
 function formatInputDate(date: Date) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function phoneHref(phone: string) {
+    return `tel:${phone.replace(/[^\d+]/g, '')}`;
 }
 
 function adjacentMonthDate(selectedDate: string, offset: number) {
@@ -660,6 +665,24 @@ function ScheduleCard({
                     </span>
                 </div>
             )}
+            {schedule.type === 'construction' &&
+                schedule.subcontractors.length > 0 && (
+                    <div className="mb-1 flex flex-wrap items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
+                        <span className="rounded-md bg-neutral-100 px-2 py-0.5 text-xs font-semibold dark:bg-neutral-900">
+                            下請け
+                        </span>
+                        {schedule.subcontractors.map((subcontractor) => (
+                            <a
+                                key={subcontractor.id}
+                                href={phoneHref(subcontractor.phone)}
+                                className="inline-flex items-center gap-1 rounded-md px-1 py-0.5 hover:bg-neutral-100 hover:text-sky-700 dark:hover:bg-neutral-900 dark:hover:text-sky-300"
+                            >
+                                <Phone className="size-3.5" />
+                                {subcontractor.name}
+                            </a>
+                        ))}
+                    </div>
+                )}
             <p className="text-md text-muted-foreground">
                 {formatDate(schedule.scheduled_on)}
             </p>

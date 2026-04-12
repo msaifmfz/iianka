@@ -9,6 +9,7 @@ use App\Http\Controllers\CleaningDutyRuleController;
 use App\Http\Controllers\ConstructionScheduleController;
 use App\Http\Controllers\ConstructionScheduleVoucherController;
 use App\Http\Controllers\ConstructionSiteController;
+use App\Http\Controllers\ConstructionSubcontractorController;
 use App\Http\Controllers\InternalNoticeController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\SiteGuideFileController;
@@ -54,6 +55,8 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
         ->name('business-schedules.number.update');
     Route::get('site-guide-files/{site_guide_file}', [SiteGuideFileController::class, 'show'])
         ->name('site-guide-files.show');
+    Route::delete('construction-subcontractors/{construction_subcontractor}', [ConstructionSubcontractorController::class, 'destroy'])
+        ->name('construction-subcontractors.destroy');
     Route::resource('construction-schedules', ConstructionScheduleController::class);
     Route::resource('business-schedules', BusinessScheduleController::class);
     Route::resource('attendance-records', AttendanceRecordController::class)->only(['index', 'store', 'destroy']);

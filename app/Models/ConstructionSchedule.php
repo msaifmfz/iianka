@@ -72,6 +72,14 @@ class ConstructionSchedule extends Model
     }
 
     /**
+     * @return BelongsToMany<ConstructionSubcontractor, $this>
+     */
+    public function subcontractors(): BelongsToMany
+    {
+        return $this->belongsToMany(ConstructionSubcontractor::class, 'construction_schedule_subcontractor')->withTrashed()->withTimestamps();
+    }
+
+    /**
      * @return BelongsToMany<SiteGuideFile, $this>
      */
     public function selectedGuideFiles(): BelongsToMany

@@ -5,6 +5,12 @@ export type ConstructionUser = {
     is_hidden_from_workers?: boolean;
 };
 
+export type ConstructionSubcontractor = {
+    id: number;
+    name: string;
+    phone: string;
+};
+
 export type SiteGuideFile = {
     id: number;
     name: string;
@@ -41,6 +47,7 @@ export type ConstructionSchedule = {
     voucher_checked_by: ConstructionUser | null;
     voucher_note: string | null;
     assigned_users: ConstructionUser[];
+    subcontractors: ConstructionSubcontractor[];
     guide_files: SiteGuideFile[];
     selected_site_guide_file_ids: number[];
 };
