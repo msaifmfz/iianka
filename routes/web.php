@@ -21,6 +21,10 @@ Route::get('/', fn (Request $request) => $request->user()
     ? redirect()->route('dashboard')
     : redirect()->route('login'))->name('home');
 
+Route::get('robots.txt', fn () => response("User-agent: *\nDisallow: /\n", 200, [
+    'Content-Type' => 'text/plain',
+]))->name('robots');
+
 Route::middleware(['auth', 'verified', 'password.confirm'])->group(function (): void {
     Route::post('webauthn/register/options', [WebAuthnRegisterController::class, 'createChallenge'])
         ->name('webauthn.register.challenge');
