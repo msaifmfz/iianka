@@ -146,7 +146,7 @@ test('admin can filter calendar schedules by multiple users', function (): void 
     $admin = User::factory()->admin()->create();
     $firstWorker = User::factory()->create(['name' => '一番作業員']);
     $secondWorker = User::factory()->create(['name' => '二番作業員']);
-    $hiddenWorker = User::factory()->create(['name' => '非表示作業員']);
+    $hiddenWorker = User::factory()->hiddenFromWorkers()->create(['name' => '非表示作業員']);
     $date = '2026-05-04';
 
     $firstSchedule = ConstructionSchedule::factory()->create([
@@ -179,7 +179,10 @@ test('admin can filter calendar schedules by multiple users', function (): void 
         ->assertOk()
         ->assertInertia(fn (Assert $page): Assert => $page
             ->where('filters.user_ids', [$firstWorker->id, $secondWorker->id])
-            ->has('userOptions', 4)
+            ->has('userOptions', 3)
+            ->where('userOptions', fn ($users): bool => ! collect($users)->contains(
+                fn (array $user): bool => $user['id'] === $hiddenWorker->id || $user['name'] === '非表示作業員'
+            ))
             ->has('selectedUserSchedules', 2)
             ->where('selectedUserSchedules.0.location', '二番作業員の業務')
             ->where('selectedUserSchedules.1.location', '一番作業員の工事')

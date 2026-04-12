@@ -529,6 +529,10 @@ function TypeLink({
     );
 }
 
+function isHiddenUser(user: ConstructionUser) {
+    return user.is_hidden_from_workers === true;
+}
+
 function UserFilterPanel({
     users,
     filters,
@@ -536,7 +540,9 @@ function UserFilterPanel({
     users: ConstructionUser[];
     filters: Filters;
 }) {
-    if (users.length === 0) {
+    const visibleUsers = users.filter((user) => !isHiddenUser(user));
+
+    if (visibleUsers.length === 0) {
         return null;
     }
 
@@ -570,7 +576,7 @@ function UserFilterPanel({
                 )}
             </div>
             <div className="mt-3 grid gap-2">
-                {users.map((user) => {
+                {visibleUsers.map((user) => {
                     const selected = filters.user_ids.includes(user.id);
 
                     return (

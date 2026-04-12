@@ -170,7 +170,10 @@ class ConstructionScheduleController extends Controller
                     ))
                     ->count(),
             ],
-            'userOptions' => $canManage ? User::query()->orderBy('name')->get(['id', 'name', 'email']) : [],
+            'userOptions' => $canManage ? User::query()
+                ->visibleToWorkers()
+                ->orderBy('name')
+                ->get(['id', 'name', 'email', 'is_hidden_from_workers']) : [],
             'canManage' => $canManage,
         ]);
     }
