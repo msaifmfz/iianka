@@ -168,10 +168,12 @@ function VoucherScheduleCard({
                     </CardTitle>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
                         {schedule.general_contractor && (
-                            <span>ゼネコン: {schedule.general_contractor}</span>
+                            <span>
+                                ゼネコン会社: {schedule.general_contractor}
+                            </span>
                         )}
                         {schedule.person_in_charge && (
-                            <span>担当: {schedule.person_in_charge}</span>
+                            <span>現場担当者: {schedule.person_in_charge}</span>
                         )}
                         {schedule.assigned_users.length > 0 && (
                             <span>

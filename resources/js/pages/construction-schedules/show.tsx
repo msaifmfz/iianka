@@ -129,7 +129,7 @@ export default function ConstructionScheduleShow({
                                 value={schedule.general_contractor}
                             />
                             <Detail
-                                label="担当"
+                                label="現場担当者"
                                 value={schedule.person_in_charge}
                             />
                             <Detail

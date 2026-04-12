@@ -387,11 +387,9 @@ export default function BusinessScheduleForm({
                         <div className="rounded-2xl border p-4 md:col-span-3 dark:border-neutral-800">
                             <div className="flex flex-wrap items-center justify-between gap-3">
                                 <div>
-                                    <h2 className="font-semibold">
-                                        担当ユーザー
-                                    </h2>
+                                    <h2 className="font-semibold">スタッフ</h2>
                                     <p className="mt-1 text-xs text-muted-foreground">
-                                        選択した担当ユーザーの予定をもとに空き時間を表示します。
+                                        選択したスタッフの予定をもとに空き時間を表示します。
                                     </p>
                                 </div>
                                 {data.assigned_user_ids.length > 0 && (
@@ -488,8 +486,8 @@ export default function BusinessScheduleForm({
                                     </h2>
                                     <p className="mt-1 text-xs text-muted-foreground">
                                         {data.assigned_user_ids.length === 0
-                                            ? '担当ユーザーを選択すると、その日の重複予定を確認できます。'
-                                            : `${data.scheduled_on} の選択ユーザーの予定を表示しています。`}
+                                            ? 'スタッフを選択すると、その日の重複予定を確認できます。'
+                                            : `${data.scheduled_on} の選択スタッフの予定を表示しています。`}
                                     </p>
                                 </div>
                                 {data.assigned_user_ids.length > 0 &&
@@ -535,7 +533,7 @@ export default function BusinessScheduleForm({
                             ) : (
                                 data.assigned_user_ids.length > 0 && (
                                     <p className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
-                                        この日の選択ユーザーには時間指定の予定がありません。
+                                        この日の選択スタッフには時間指定の予定がありません。
                                     </p>
                                 )
                             )}

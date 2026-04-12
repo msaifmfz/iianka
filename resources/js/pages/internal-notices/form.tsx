@@ -151,6 +151,43 @@ export default function InternalNoticeForm({ notice, users }: Props) {
                         </Field>
                     </section>
 
+                    <div className="rounded-2xl border p-4 dark:border-neutral-800">
+                        <h2 className="font-semibold">スタッフ</h2>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                            選択したスタッフの「自分の予定」に表示されます。
+                        </p>
+                        <div className="mt-3 grid gap-2 md:grid-cols-2">
+                            {users.map((user) => (
+                                <label
+                                    key={user.id}
+                                    className="flex items-center gap-2 text-sm"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={data.assigned_user_ids.includes(
+                                            user.id,
+                                        )}
+                                        onChange={() =>
+                                            setData(
+                                                'assigned_user_ids',
+                                                toggleNumber(
+                                                    data.assigned_user_ids,
+                                                    user.id,
+                                                ),
+                                            )
+                                        }
+                                    />
+                                    {user.name}
+                                </label>
+                            ))}
+                        </div>
+                        {errors.assigned_user_ids && (
+                            <p className="mt-2 text-xs text-destructive">
+                                {errors.assigned_user_ids}
+                            </p>
+                        )}
+                    </div>
+
                     <section className="grid gap-4 md:grid-cols-2">
                         <Field label="件名" error={errors.title}>
                             <Input
@@ -192,43 +229,6 @@ export default function InternalNoticeForm({ notice, users }: Props) {
                             }
                         />
                     </Field>
-
-                    <div className="rounded-2xl border p-4 dark:border-neutral-800">
-                        <h2 className="font-semibold">対象ユーザー</h2>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                            選択したユーザーの「自分の予定」に表示されます。
-                        </p>
-                        <div className="mt-3 grid gap-2 md:grid-cols-2">
-                            {users.map((user) => (
-                                <label
-                                    key={user.id}
-                                    className="flex items-center gap-2 text-sm"
-                                >
-                                    <input
-                                        type="checkbox"
-                                        checked={data.assigned_user_ids.includes(
-                                            user.id,
-                                        )}
-                                        onChange={() =>
-                                            setData(
-                                                'assigned_user_ids',
-                                                toggleNumber(
-                                                    data.assigned_user_ids,
-                                                    user.id,
-                                                ),
-                                            )
-                                        }
-                                    />
-                                    {user.name}
-                                </label>
-                            ))}
-                        </div>
-                        {errors.assigned_user_ids && (
-                            <p className="mt-2 text-xs text-destructive">
-                                {errors.assigned_user_ids}
-                            </p>
-                        )}
-                    </div>
 
                     <div className="flex justify-end">
                         <Button type="submit" disabled={processing}>

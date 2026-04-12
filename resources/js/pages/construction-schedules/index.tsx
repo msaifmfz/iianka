@@ -803,7 +803,7 @@ function ScheduleCard({
                     {schedule.type === 'business' &&
                         schedule.person_in_charge && (
                             <span className="rounded-full bg-neutral-100 px-3 py-1 dark:bg-neutral-900">
-                                担当: {schedule.person_in_charge}
+                                現場担当者: {schedule.person_in_charge}
                             </span>
                         )}
                     {(schedule.type === 'internal_notice' ||
@@ -1679,8 +1679,8 @@ export default function ConstructionSchedulesIndex({
                         )}
                         {hasSelectedUserFilter ? (
                             <ScheduleSection
-                                title="選択ユーザーの予定"
-                                empty="この期間に選択ユーザーの予定はありません。"
+                                title="選択スタッフの予定"
+                                empty="この期間に選択スタッフの予定はありません。"
                                 schedules={filteredSelectedUserSchedules}
                                 canManage={canManage}
                                 currentUserId={user.id}

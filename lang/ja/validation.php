@@ -159,8 +159,8 @@ return [
 
     'attributes' => [
         'address' => '住所',
-        'assigned_user_ids' => '担当ユーザー',
-        'assigned_user_ids.*' => '担当ユーザー',
+        'assigned_user_ids' => 'スタッフ',
+        'assigned_user_ids.*' => 'スタッフ',
         'construction_site_id' => '現場案内図',
         'content' => '内容',
         'current_password' => '現在のパスワード',

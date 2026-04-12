@@ -48,7 +48,7 @@ trait ValidatesAssignedUserScheduleTiming
 
         $validator->errors()->add(
             'starts_at',
-            "選択した担当ユーザーは {$conflict['time']} に {$conflict['title']} の予定があります。重ならない開始時間・終了時間を選択してください。"
+            "選択したスタッフは {$conflict['time']} に {$conflict['title']} の予定があります。重ならない開始時間・終了時間を選択してください。"
         );
     }
 

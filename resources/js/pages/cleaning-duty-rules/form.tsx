@@ -186,9 +186,9 @@ export default function CleaningDutyRuleForm({
                     </Field>
 
                     <div className="rounded-2xl border p-4 dark:border-neutral-800">
-                        <h2 className="font-semibold">担当ユーザー</h2>
+                        <h2 className="font-semibold">スタッフ</h2>
                         <p className="mt-1 text-sm text-muted-foreground">
-                            選択したユーザーの「自分の予定」に自動表示されます。
+                            選択したスタッフの「自分の予定」に自動表示されます。
                         </p>
                         <div className="mt-3 grid gap-2 md:grid-cols-2">
                             {users.map((user) => (
