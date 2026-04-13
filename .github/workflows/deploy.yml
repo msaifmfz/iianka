@@ -118,16 +118,19 @@ jobs:
           git pull
 
           composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
-          npm ci
-          npm run build:ssr
 
-          php artisan optimize:clear
           php artisan migrate --force
+          php artisan optimize:clear
           php artisan config:cache
           php artisan route:cache
           php artisan view:cache
           php artisan event:cache
           php artisan optimize
+          php artisan wayfinder:generate
+
+          npm ci
+          npm run build:ssr
+
           php artisan queue:restart
           php artisan reload || true
 
