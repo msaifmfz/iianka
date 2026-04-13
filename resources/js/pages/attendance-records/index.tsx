@@ -55,6 +55,16 @@ type AttendanceForm = {
     note: string;
 };
 
+const japaneseWeekdayLabels: Record<string, string> = {
+    日: '日',
+    月: '月',
+    火: '火',
+    水: '水',
+    木: '木',
+    金: '金',
+    土: '土',
+};
+
 const statusLabels: Record<AttendanceStatus, string> = {
     working: '出勤',
     leave: '休み',
@@ -79,6 +89,15 @@ function shortDateLabel(date: string) {
     }).format(new Date(date));
 }
 
+function japaneseWeekdayName(day: AttendanceDay): string {
+    return (
+        japaneseWeekdayLabels[day.weekday] ??
+        new Intl.DateTimeFormat('ja-JP', {
+            weekday: 'long',
+        }).format(new Date(`${day.date}T00:00:00`))
+    );
+}
+
 function statusClass(status: AttendanceStatus | undefined) {
     if (status === 'leave') {
         return 'border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-100';
@@ -100,6 +119,7 @@ function AttendanceCell({
     day,
     record,
     canManage,
+    showWeekday = false,
     onSelect,
     onClear,
 }: {
@@ -107,6 +127,7 @@ function AttendanceCell({
     day: AttendanceDay;
     record?: AttendanceRecord;
     canManage: boolean;
+    showWeekday?: boolean;
     onSelect: (
         user: ConstructionUser,
         day: AttendanceDay,
@@ -117,6 +138,11 @@ function AttendanceCell({
     const content = (
         <>
             <span className="text-xs font-semibold">{day.day}</span>
+            {showWeekday ? (
+                <span className="text-[10px] leading-none font-medium text-current opacity-75">
+                    {japaneseWeekdayName(day)}
+                </span>
+            ) : null}
             <span className="text-[11px]">
                 {record ? statusLabels[record.status] : '未'}
             </span>
@@ -126,7 +152,7 @@ function AttendanceCell({
     if (!canManage) {
         return (
             <div
-                className={`grid h-14 place-items-center rounded-md border px-1 text-center ${statusClass(record?.status)}`}
+                className={`grid ${showWeekday ? 'h-16' : 'h-14'} place-items-center content-center gap-0.5 rounded-md border px-1 text-center ${statusClass(record?.status)}`}
                 title={record?.note ?? undefined}
             >
                 {content}
@@ -138,7 +164,7 @@ function AttendanceCell({
         <div className="relative">
             <button
                 type="button"
-                className={`grid h-14 w-full place-items-center rounded-md border px-1 text-center transition ${statusClass(record?.status)}`}
+                className={`grid ${showWeekday ? 'h-16' : 'h-14'} w-full place-items-center content-center gap-0.5 rounded-md border px-1 text-center transition ${statusClass(record?.status)}`}
                 onClick={() => onSelect(user, day, record)}
                 title={record?.note ?? undefined}
             >
@@ -361,13 +387,16 @@ export default function AttendanceRecordIndex({
                                     <div
                                         className={
                                             day.is_today
-                                                ? 'rounded-md bg-amber-100 py-1 text-amber-950 dark:bg-amber-950 dark:text-amber-100'
-                                                : ''
+                                                ? 'grid justify-items-center rounded-md bg-amber-100 py-1 text-amber-950 dark:bg-amber-950 dark:text-amber-100'
+                                                : 'grid justify-items-center'
                                         }
                                     >
-                                        {day.day}
-                                        <br />
-                                        {day.weekday}
+                                        <span className="text-sm leading-none">
+                                            {day.day}
+                                        </span>
+                                        <span className="mt-1 text-[10px] leading-none font-medium">
+                                            {japaneseWeekdayName(day)}
+                                        </span>
                                     </div>
                                 </div>
                             ))}
@@ -428,6 +457,7 @@ export default function AttendanceRecordIndex({
                                                 recordKey(user.id, day.date),
                                             )}
                                             canManage={canManage}
+                                            showWeekday
                                             onSelect={openEditor}
                                             onClear={clearRecord}
                                         />
