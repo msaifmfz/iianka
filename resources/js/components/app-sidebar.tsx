@@ -28,7 +28,7 @@ import type { NavItem } from '@/types';
 const mainNavItems: NavItem[] = [
     {
         title: '予定表',
-        href: scheduleIndex(),
+        href: scheduleIndex({ query: { range: 'today' } }),
         icon: CalendarDays,
     },
     {
@@ -50,12 +50,24 @@ const emptyAttention = {
     internal_notice_count: 0,
 };
 
+function todayDate() {
+    const date = new Date();
+
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 export function AppSidebar() {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { auth, attention = emptyAttention } = usePage().props;
     const navigationItems = [
         {
             ...mainNavItems[0],
+            href: scheduleIndex({
+                query: {
+                    range: 'today',
+                    date: todayDate(),
+                },
+            }),
             // badge: attention.schedule_count || null,
         },
         {
