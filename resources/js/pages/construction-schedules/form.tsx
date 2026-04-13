@@ -5,11 +5,14 @@ import {
     ExternalLink,
     Files,
     FileText,
+    Pencil,
     Phone,
     Plus,
+    Save,
     Search,
     Trash2,
     UploadCloud,
+    X,
 } from 'lucide-react';
 import { useState } from 'react';
 import {
@@ -17,7 +20,10 @@ import {
     store as scheduleStore,
     update as scheduleUpdate,
 } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
-import { destroy as subcontractorDestroy } from '@/actions/App/Http/Controllers/ConstructionSubcontractorController';
+import {
+    destroy as subcontractorDestroy,
+    update as subcontractorUpdate,
+} from '@/actions/App/Http/Controllers/ConstructionSubcontractorController';
 import { FloatingBackButton } from '@/components/floating-back-button';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -67,6 +73,11 @@ type ScheduleForm = {
     site_guide_file_ids: number[];
     guide_files: File[];
     guide_file_names: string[];
+};
+
+type ExistingSubcontractorForm = {
+    name: string;
+    phone: string;
 };
 
 const statuses: { value: ConstructionScheduleStatus; label: string }[] = [
@@ -236,6 +247,9 @@ export default function ConstructionScheduleForm({
 }: Props) {
     const [guideFileSearch, setGuideFileSearch] = useState('');
     const [subcontractorSearch, setSubcontractorSearch] = useState('');
+    const [editingSubcontractorId, setEditingSubcontractorId] = useState<
+        number | null
+    >(null);
     const { data, setData, post, processing, progress, errors } =
         useForm<ScheduleForm>({
             _method: schedule ? 'put' : '',
@@ -264,6 +278,18 @@ export default function ConstructionScheduleForm({
             guide_files: [],
             guide_file_names: [],
         });
+    const {
+        data: editingSubcontractorData,
+        setData: setEditingSubcontractorData,
+        patch: patchSubcontractor,
+        processing: processingSubcontractorUpdate,
+        errors: subcontractorErrors,
+        clearErrors: clearSubcontractorErrors,
+        reset: resetEditingSubcontractor,
+    } = useForm<ExistingSubcontractorForm>({
+        name: '',
+        phone: '',
+    });
 
     const formErrors = errors as Record<string, string | undefined>;
     const subcontractorSearchTerm = subcontractorSearch
@@ -385,6 +411,31 @@ export default function ConstructionScheduleForm({
                     subcontractorIndex !== index,
             ),
         }));
+    }
+
+    function editSubcontractor(subcontractor: ConstructionSubcontractor) {
+        clearSubcontractorErrors();
+        setEditingSubcontractorId(subcontractor.id);
+        setEditingSubcontractorData({
+            name: subcontractor.name,
+            phone: subcontractor.phone ?? '',
+        });
+    }
+
+    function cancelSubcontractorEdit() {
+        clearSubcontractorErrors();
+        setEditingSubcontractorId(null);
+        resetEditingSubcontractor();
+    }
+
+    function saveSubcontractorEdit(subcontractor: ConstructionSubcontractor) {
+        patchSubcontractor(subcontractorUpdate.url(subcontractor.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                setEditingSubcontractorId(null);
+                resetEditingSubcontractor();
+            },
+        });
     }
 
     function deleteSubcontractor(subcontractor: ConstructionSubcontractor) {
@@ -644,6 +695,9 @@ export default function ConstructionScheduleForm({
                                                 data.subcontractor_ids.includes(
                                                     subcontractor.id,
                                                 );
+                                            const isEditing =
+                                                editingSubcontractorId ===
+                                                subcontractor.id;
 
                                             return (
                                                 <div
@@ -653,56 +707,158 @@ export default function ConstructionScheduleForm({
                                                         isSelected
                                                             ? 'border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100'
                                                             : 'border-neutral-200 hover:bg-muted/50 dark:border-neutral-800',
+                                                        isEditing &&
+                                                            'border-sky-300 bg-sky-50 text-sky-950 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-100',
                                                     )}
                                                 >
-                                                    <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-2">
-                                                        <input
-                                                            type="checkbox"
-                                                            className="mt-1"
-                                                            checked={isSelected}
-                                                            onChange={() =>
-                                                                setData(
-                                                                    'subcontractor_ids',
-                                                                    toggleNumber(
-                                                                        data.subcontractor_ids,
-                                                                        subcontractor.id,
-                                                                    ),
-                                                                )
-                                                            }
-                                                        />
-                                                        <span className="min-w-0">
-                                                            <span className="block truncate font-medium">
-                                                                {
-                                                                    subcontractor.name
-                                                                }
-                                                            </span>
-                                                            {subcontractor.phone && (
-                                                                <a
-                                                                    href={phoneHref(
-                                                                        subcontractor.phone,
-                                                                    )}
-                                                                    className="mt-1 inline-flex items-center gap-1 text-xs text-sky-700 hover:underline dark:text-sky-300"
-                                                                >
-                                                                    <Phone className="size-3.5" />
-                                                                    {
-                                                                        subcontractor.phone
+                                                    {isEditing ? (
+                                                        <div className="grid min-w-0 flex-1 gap-2">
+                                                            <div className="grid gap-2 sm:grid-cols-2">
+                                                                <Input
+                                                                    value={
+                                                                        editingSubcontractorData.name
                                                                     }
-                                                                </a>
+                                                                    onChange={(
+                                                                        event,
+                                                                    ) =>
+                                                                        setEditingSubcontractorData(
+                                                                            'name',
+                                                                            event
+                                                                                .target
+                                                                                .value,
+                                                                        )
+                                                                    }
+                                                                    placeholder="名前"
+                                                                    autoFocus
+                                                                />
+                                                                <Input
+                                                                    value={
+                                                                        editingSubcontractorData.phone
+                                                                    }
+                                                                    onChange={(
+                                                                        event,
+                                                                    ) =>
+                                                                        setEditingSubcontractorData(
+                                                                            'phone',
+                                                                            event
+                                                                                .target
+                                                                                .value,
+                                                                        )
+                                                                    }
+                                                                    placeholder="電話番号（任意）"
+                                                                />
+                                                            </div>
+                                                            {(subcontractorErrors.name ||
+                                                                subcontractorErrors.phone) && (
+                                                                <div className="grid gap-1 text-xs text-destructive sm:grid-cols-2">
+                                                                    <span>
+                                                                        {
+                                                                            subcontractorErrors.name
+                                                                        }
+                                                                    </span>
+                                                                    <span>
+                                                                        {
+                                                                            subcontractorErrors.phone
+                                                                        }
+                                                                    </span>
+                                                                </div>
                                                             )}
-                                                        </span>
-                                                    </label>
-                                                    <button
-                                                        type="button"
-                                                        className="inline-flex shrink-0 items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                                                        onClick={() =>
-                                                            deleteSubcontractor(
-                                                                subcontractor,
-                                                            )
-                                                        }
-                                                    >
-                                                        <Trash2 className="size-3.5" />
-                                                        削除
-                                                    </button>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                <button
+                                                                    type="button"
+                                                                    className="inline-flex items-center gap-1 rounded-md bg-sky-700 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-sky-500 dark:text-sky-950 dark:hover:bg-sky-400"
+                                                                    onClick={() =>
+                                                                        saveSubcontractorEdit(
+                                                                            subcontractor,
+                                                                        )
+                                                                    }
+                                                                    disabled={
+                                                                        processingSubcontractorUpdate
+                                                                    }
+                                                                >
+                                                                    <Save className="size-3.5" />
+                                                                    保存
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    className="inline-flex items-center gap-1 rounded-md border bg-background px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                                                    onClick={
+                                                                        cancelSubcontractorEdit
+                                                                    }
+                                                                >
+                                                                    <X className="size-3.5" />
+                                                                    キャンセル
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-2">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className="mt-1"
+                                                                    checked={
+                                                                        isSelected
+                                                                    }
+                                                                    onChange={() =>
+                                                                        setData(
+                                                                            'subcontractor_ids',
+                                                                            toggleNumber(
+                                                                                data.subcontractor_ids,
+                                                                                subcontractor.id,
+                                                                            ),
+                                                                        )
+                                                                    }
+                                                                />
+                                                                <span className="min-w-0">
+                                                                    <span className="block truncate font-medium">
+                                                                        {
+                                                                            subcontractor.name
+                                                                        }
+                                                                    </span>
+                                                                    {subcontractor.phone && (
+                                                                        <a
+                                                                            href={phoneHref(
+                                                                                subcontractor.phone,
+                                                                            )}
+                                                                            className="mt-1 inline-flex items-center gap-1 text-xs text-sky-700 hover:underline dark:text-sky-300"
+                                                                        >
+                                                                            <Phone className="size-3.5" />
+                                                                            {
+                                                                                subcontractor.phone
+                                                                            }
+                                                                        </a>
+                                                                    )}
+                                                                </span>
+                                                            </label>
+                                                            <div className="flex shrink-0 flex-col gap-2">
+                                                                <button
+                                                                    type="button"
+                                                                    className="inline-flex items-center justify-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                                                    onClick={() =>
+                                                                        editSubcontractor(
+                                                                            subcontractor,
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    <Pencil className="size-3.5" />
+                                                                    編集
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    className="inline-flex items-center justify-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                                                    onClick={() =>
+                                                                        deleteSubcontractor(
+                                                                            subcontractor,
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    <Trash2 className="size-3.5" />
+                                                                    削除
+                                                                </button>
+                                                            </div>
+                                                        </>
+                                                    )}
                                                 </div>
                                             );
                                         },
