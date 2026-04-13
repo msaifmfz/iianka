@@ -951,6 +951,45 @@ test('non admins cannot delete subcontractors', function (): void {
     expect($subcontractor->fresh())->not->toBeNull();
 });
 
+test('admins can update subcontractors from schedule forms', function (): void {
+    $admin = User::factory()->admin()->create();
+    $subcontractor = ConstructionSubcontractor::factory()->create([
+        'name' => '更新前 下請け',
+        'phone' => '090-1111-2222',
+    ]);
+
+    $this->actingAs($admin)
+        ->from(route('construction-schedules.create'))
+        ->patch(route('construction-subcontractors.update', $subcontractor), [
+            'name' => '更新後 下請け',
+            'phone' => '090-3333-4444',
+        ])
+        ->assertRedirect(route('construction-schedules.create'));
+
+    expect($subcontractor->refresh())
+        ->name->toBe('更新後 下請け')
+        ->phone->toBe('090-3333-4444');
+});
+
+test('non admins cannot update subcontractors', function (): void {
+    $user = User::factory()->create();
+    $subcontractor = ConstructionSubcontractor::factory()->create([
+        'name' => '変更不可 下請け',
+        'phone' => '090-1111-2222',
+    ]);
+
+    $this->actingAs($user)
+        ->patch(route('construction-subcontractors.update', $subcontractor), [
+            'name' => '不正 更新',
+            'phone' => '090-3333-4444',
+        ])
+        ->assertForbidden();
+
+    expect($subcontractor->refresh())
+        ->name->toBe('変更不可 下請け')
+        ->phone->toBe('090-1111-2222');
+});
+
 test('admins can delete construction schedules', function (): void {
     $admin = User::factory()->admin()->create();
     $schedule = ConstructionSchedule::factory()->create([

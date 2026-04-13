@@ -60,6 +60,7 @@ class AuditLogController extends Controller
         'construction_schedules.number_updated' => '工事予定番号更新',
         'construction_schedules.voucher_updated' => '伝票確認更新',
         'construction_schedules.deleted' => '工事予定削除',
+        'construction_subcontractors.updated' => '下請け更新',
         'construction_subcontractors.deleted' => '下請け削除',
         'internal_notices.created' => '業務連絡作成',
         'internal_notices.updated' => '業務連絡更新',
