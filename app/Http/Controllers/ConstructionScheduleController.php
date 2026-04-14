@@ -571,6 +571,7 @@ class ConstructionScheduleController extends Controller
             ->whereNotNull('ends_at')
             ->whereHas('assignedUsers')
             ->get()
+            ->toBase()
             ->map(fn (ConstructionSchedule $schedule): array => [
                 'id' => $schedule->id,
                 'type' => 'construction',
@@ -589,6 +590,7 @@ class ConstructionScheduleController extends Controller
             ->whereNotNull('ends_at')
             ->whereHas('assignedUsers')
             ->get()
+            ->toBase()
             ->map(fn (BusinessSchedule $schedule): array => [
                 'id' => $schedule->id,
                 'type' => 'business',
@@ -607,6 +609,7 @@ class ConstructionScheduleController extends Controller
             ->whereNotNull('ends_at')
             ->whereHas('assignedUsers')
             ->get()
+            ->toBase()
             ->map(fn (InternalNotice $notice): array => [
                 'id' => $notice->id,
                 'type' => 'internal_notice',
