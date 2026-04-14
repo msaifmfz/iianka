@@ -2,20 +2,21 @@
 
 use App\Models\ConstructionSchedule;
 use App\Models\User;
+use App\Services\BusinessDate;
 use Inertia\Testing\AssertableInertia as Assert;
 
 test('users can view voucher confirmations for construction schedules', function (): void {
     $user = User::factory()->create();
     $admin = User::factory()->admin()->create();
     $checkedSchedule = ConstructionSchedule::factory()->create([
-        'scheduled_on' => today()->toDateString(),
+        'scheduled_on' => BusinessDate::today()->toDateString(),
         'location' => '確認済み現場',
         'voucher_note' => '日付を確認済み',
         'voucher_checked_at' => now(),
         'voucher_checked_by_user_id' => $admin->id,
     ]);
     $uncheckedSchedule = ConstructionSchedule::factory()->create([
-        'scheduled_on' => today()->toDateString(),
+        'scheduled_on' => BusinessDate::today()->toDateString(),
         'location' => '未確認現場',
     ]);
 
@@ -152,7 +153,7 @@ test('voucher confirmation page filters checked state for the selected month', f
 test('editing construction schedule details does not reset voucher confirmation', function (): void {
     $admin = User::factory()->admin()->create();
     $schedule = ConstructionSchedule::factory()->create([
-        'scheduled_on' => today()->toDateString(),
+        'scheduled_on' => BusinessDate::today()->toDateString(),
         'voucher_note' => '確認済みメモ',
         'voucher_checked_at' => now(),
         'voucher_checked_by_user_id' => $admin->id,
@@ -160,7 +161,7 @@ test('editing construction schedule details does not reset voucher confirmation'
 
     $this->actingAs($admin)
         ->put(route('construction-schedules.update', $schedule), [
-            'scheduled_on' => today()->addDay()->toDateString(),
+            'scheduled_on' => BusinessDate::today()->addDay()->toDateString(),
             'starts_at' => '09:00',
             'ends_at' => '18:00',
             'time_note' => null,

@@ -55,6 +55,7 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { businessDateString } from '@/lib/dates';
 import { dashboard } from '@/routes';
 import type {
     ConstructionSchedule,
@@ -161,7 +162,7 @@ function formatDate(date: string) {
 }
 
 function formatInputDate(date: Date) {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    return businessDateString(date);
 }
 
 function phoneHref(phone: string) {
