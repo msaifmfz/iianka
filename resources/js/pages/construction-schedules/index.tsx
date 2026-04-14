@@ -586,7 +586,7 @@ function UserFilterPanel({
                     </Link>
                 )}
             </div>
-            <div className="mt-3 grid gap-2">
+            <div className="mt-3 flex flex-wrap gap-2">
                 {visibleUsers.map((user) => {
                     const selected = filters.user_ids.includes(user.id);
 
@@ -598,7 +598,7 @@ function UserFilterPanel({
                                     user_ids: toggleUser(user.id),
                                 }),
                             })}
-                            className={`rounded-xl border px-3 py-2 text-sm transition ${selected ? 'border-amber-300 bg-amber-50 font-semibold text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100' : 'border-neutral-200 hover:bg-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-900'}`}
+                            className={`inline-flex w-fit items-center rounded-full border px-3 py-1.5 text-sm transition ${selected ? 'border-amber-300 bg-amber-50 font-semibold text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100' : 'border-neutral-200 hover:bg-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-900'}`}
                             preserveScroll
                         >
                             {user.name}
