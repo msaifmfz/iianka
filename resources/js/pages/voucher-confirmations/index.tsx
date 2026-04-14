@@ -15,6 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { businessDateString } from '@/lib/dates';
 import { dashboard } from '@/routes';
 import type { VoucherConfirmationSchedule } from '@/types';
 
@@ -72,7 +73,7 @@ function adjacentMonthDate(date: string, offset: number) {
     const value = new Date(`${date}T00:00:00`);
     value.setMonth(value.getMonth() + offset);
 
-    return value.toISOString().slice(0, 10);
+    return businessDateString(value);
 }
 
 function filterQuery(

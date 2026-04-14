@@ -23,6 +23,7 @@ import {
     SidebarContent,
     SidebarFooter,
 } from '@/components/ui/sidebar';
+import { businessDateString } from '@/lib/dates';
 import type { NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [
@@ -50,12 +51,6 @@ const emptyAttention = {
     internal_notice_count: 0,
 };
 
-function todayDate() {
-    const date = new Date();
-
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
 export function AppSidebar() {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { auth, attention = emptyAttention } = usePage().props;
@@ -65,7 +60,7 @@ export function AppSidebar() {
             href: scheduleIndex({
                 query: {
                     range: 'today',
-                    date: todayDate(),
+                    date: businessDateString(),
                 },
             }),
             // badge: attention.schedule_count || null,

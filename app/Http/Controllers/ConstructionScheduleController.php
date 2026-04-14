@@ -14,6 +14,7 @@ use App\Models\GeneralContractor;
 use App\Models\InternalNotice;
 use App\Models\SiteGuideFile;
 use App\Models\User;
+use App\Services\BusinessDate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -40,7 +41,7 @@ class ConstructionScheduleController extends Controller
             ? $request->query('range')
             : 'today';
         $types = $this->selectedScheduleTypes($request);
-        $date = Carbon::parse($request->query('date', today()->toDateString()));
+        $date = Carbon::parse($request->query('date', BusinessDate::today()->toDateString()));
         [$startsOn, $endsOn] = $this->rangeBounds($range, $date);
 
         $constructionSchedules = collect();
@@ -144,7 +145,7 @@ class ConstructionScheduleController extends Controller
                 'ends_on' => $endsOn->toDateString(),
                 'user_ids' => $selectedUserIds->values(),
             ],
-            'todayDate' => today()->toDateString(),
+            'todayDate' => BusinessDate::today()->toDateString(),
             'calendarDays' => $calendarDays,
             'myCalendarDays' => $myCalendarDays,
             'scheduleNavigation' => [

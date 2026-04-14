@@ -7,6 +7,7 @@ import {
 import { FloatingBackButton } from '@/components/floating-back-button';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { businessDateString } from '@/lib/dates';
 import { dashboard } from '@/routes';
 import type { ConstructionUser, InternalNotice } from '@/types';
 
@@ -56,8 +57,7 @@ export default function InternalNoticeForm({ notice, users }: Props) {
     const { data, setData, post, processing, errors } =
         useForm<InternalNoticeForm>({
             _method: notice ? 'put' : '',
-            scheduled_on:
-                notice?.scheduled_on ?? new Date().toISOString().slice(0, 10),
+            scheduled_on: notice?.scheduled_on ?? businessDateString(),
             starts_at: notice?.starts_at?.slice(0, 5) ?? '',
             ends_at: notice?.ends_at?.slice(0, 5) ?? '',
             time_note: notice?.time_note ?? '',

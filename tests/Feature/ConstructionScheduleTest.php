@@ -8,6 +8,7 @@ use App\Models\GeneralContractor;
 use App\Models\InternalNotice;
 use App\Models\SiteGuideFile;
 use App\Models\User;
+use App\Services\BusinessDate;
 use App\UserRole;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Http\UploadedFile;
@@ -230,7 +231,7 @@ test('users can browse schedules in the requested month', function (): void {
     $currentMonthSchedule = ConstructionSchedule::factory()
         ->scheduledToday()
         ->create(['location' => '今月の現場']);
-    $nextMonthDate = today()->addMonthNoOverflow()->startOfMonth()->addDays(4)->toDateString();
+    $nextMonthDate = BusinessDate::today()->addMonthNoOverflow()->startOfMonth()->addDays(4)->toDateString();
     $nextMonthSchedule = ConstructionSchedule::factory()
         ->create([
             'scheduled_on' => $nextMonthDate,
@@ -259,7 +260,7 @@ test('users can browse schedules in the requested month', function (): void {
 
 test('index shares today date separately from the selected date', function (): void {
     $user = User::factory()->create();
-    $selectedDate = today()->addMonthNoOverflow()->startOfMonth()->addDays(4)->toDateString();
+    $selectedDate = BusinessDate::today()->addMonthNoOverflow()->startOfMonth()->addDays(4)->toDateString();
 
     $this->actingAs($user)
         ->get(route('construction-schedules.index', [
@@ -270,13 +271,13 @@ test('index shares today date separately from the selected date', function (): v
         ->assertInertia(fn (Assert $page): Assert => $page
             ->component('construction-schedules/index')
             ->where('filters.date', $selectedDate)
-            ->where('todayDate', today()->toDateString())
+            ->where('todayDate', BusinessDate::today()->toDateString())
         );
 });
 
 test('index keeps the selected date across day week and month ranges', function (): void {
     $user = User::factory()->create();
-    $selectedDate = today()->addMonthNoOverflow()->startOfMonth()->addDays(4)->toDateString();
+    $selectedDate = BusinessDate::today()->addMonthNoOverflow()->startOfMonth()->addDays(4)->toDateString();
 
     $this->actingAs($user);
 
@@ -600,10 +601,10 @@ test('database seeder creates demo schedules across adjacent months', function (
     $this->seed(DatabaseSeeder::class);
 
     expect(User::query()->where('email', 'admin@example.com')->where('role', UserRole::Admin->value)->exists())->toBeTrue()
-        ->and(ConstructionSchedule::query()->whereDate('scheduled_on', today()->toDateString())->exists())->toBeTrue()
-        ->and(ConstructionSchedule::query()->whereDate('scheduled_on', today()->subMonthNoOverflow()->startOfMonth()->addDays(9)->toDateString())->exists())->toBeTrue()
-        ->and(ConstructionSchedule::query()->whereDate('scheduled_on', today()->addMonthNoOverflow()->startOfMonth()->addDays(4)->toDateString())->exists())->toBeTrue()
-        ->and(BusinessSchedule::query()->whereDate('scheduled_on', today()->addDays(2)->toDateString())->exists())->toBeTrue();
+        ->and(ConstructionSchedule::query()->whereDate('scheduled_on', BusinessDate::today()->toDateString())->exists())->toBeTrue()
+        ->and(ConstructionSchedule::query()->whereDate('scheduled_on', BusinessDate::today()->subMonthNoOverflow()->startOfMonth()->addDays(9)->toDateString())->exists())->toBeTrue()
+        ->and(ConstructionSchedule::query()->whereDate('scheduled_on', BusinessDate::today()->addMonthNoOverflow()->startOfMonth()->addDays(4)->toDateString())->exists())->toBeTrue()
+        ->and(BusinessSchedule::query()->whereDate('scheduled_on', BusinessDate::today()->addDays(2)->toDateString())->exists())->toBeTrue();
 });
 
 test('admins can create schedules with assigned users and guide files', function (): void {
@@ -621,7 +622,7 @@ test('admins can create schedules with assigned users and guide files', function
 
     $this->actingAs($admin)
         ->post(route('construction-schedules.store'), [
-            'scheduled_on' => today()->toDateString(),
+            'scheduled_on' => BusinessDate::today()->toDateString(),
             'schedule_number' => 7,
             'starts_at' => '08:00',
             'ends_at' => '17:00',
@@ -712,7 +713,7 @@ test('admins can create new subcontractors without phone numbers', function (): 
 
     $this->actingAs($admin)
         ->post(route('construction-schedules.store'), [
-            'scheduled_on' => today()->toDateString(),
+            'scheduled_on' => BusinessDate::today()->toDateString(),
             'status' => ConstructionSchedule::STATUS_SCHEDULED,
             'location' => '下請け電話未定現場',
             'new_subcontractors' => [
@@ -783,7 +784,7 @@ test('uploaded guide files from a schedule become standalone library files on ed
 
     $this->actingAs($admin)
         ->post(route('construction-schedules.store'), [
-            'scheduled_on' => today()->toDateString(),
+            'scheduled_on' => BusinessDate::today()->toDateString(),
             'status' => ConstructionSchedule::STATUS_SCHEDULED,
             'meeting_place' => '南口',
             'location' => '品川南口工区',
@@ -1209,7 +1210,7 @@ test('blank general contractor names are not remembered', function (): void {
 
     $this->actingAs($admin)
         ->post(route('construction-schedules.store'), [
-            'scheduled_on' => today()->toDateString(),
+            'scheduled_on' => BusinessDate::today()->toDateString(),
             'status' => ConstructionSchedule::STATUS_SCHEDULED,
             'meeting_place' => '正面ゲート',
             'location' => '東京現場',
@@ -1227,7 +1228,7 @@ test('admins can create construction schedules without optional details', functi
 
     $this->actingAs($admin)
         ->post(route('construction-schedules.store'), [
-            'scheduled_on' => today()->toDateString(),
+            'scheduled_on' => BusinessDate::today()->toDateString(),
             'status' => ConstructionSchedule::STATUS_SCHEDULED,
             'location' => '東京現場',
         ])
@@ -1243,7 +1244,7 @@ test('admins can create construction schedules without optional details', functi
 test('construction schedule times cannot overlap selected users existing schedules', function (): void {
     $admin = User::factory()->admin()->create();
     $worker = User::factory()->create();
-    $scheduledOn = today()->toDateString();
+    $scheduledOn = BusinessDate::today()->toDateString();
 
     $existingSchedule = ConstructionSchedule::factory()->create([
         'scheduled_on' => $scheduledOn,
@@ -1272,7 +1273,7 @@ test('construction schedule times cannot overlap selected users existing schedul
 test('construction schedule times can start when selected users previous schedules end', function (): void {
     $admin = User::factory()->admin()->create();
     $worker = User::factory()->create();
-    $scheduledOn = today()->toDateString();
+    $scheduledOn = BusinessDate::today()->toDateString();
 
     $existingSchedule = ConstructionSchedule::factory()->create([
         'scheduled_on' => $scheduledOn,
@@ -1302,7 +1303,7 @@ test('admins can create business schedules with assigned users', function (): vo
 
     $this->actingAs($admin)
         ->post(route('business-schedules.store'), [
-            'scheduled_on' => today()->toDateString(),
+            'scheduled_on' => BusinessDate::today()->toDateString(),
             'schedule_number' => 4,
             'starts_at' => '10:00',
             'ends_at' => '11:30',
@@ -1317,7 +1318,7 @@ test('admins can create business schedules with assigned users', function (): vo
         ])
         ->assertRedirect(route('construction-schedules.index', [
             'range' => 'today',
-            'date' => today()->toDateString(),
+            'date' => BusinessDate::today()->toDateString(),
             'type' => 'business',
         ]));
 
@@ -1331,7 +1332,7 @@ test('admins can create business schedules with assigned users', function (): vo
 test('business schedule times cannot overlap selected users existing schedules', function (): void {
     $admin = User::factory()->admin()->create();
     $worker = User::factory()->create();
-    $scheduledOn = today()->toDateString();
+    $scheduledOn = BusinessDate::today()->toDateString();
 
     $existingSchedule = ConstructionSchedule::factory()->create([
         'scheduled_on' => $scheduledOn,
@@ -1360,7 +1361,7 @@ test('business schedule times cannot overlap selected users existing schedules',
 test('business schedule create form includes schedule availability for assigned user conflict ux', function (): void {
     $admin = User::factory()->admin()->create();
     $worker = User::factory()->create(['name' => '山田太郎']);
-    $scheduledOn = today()->toDateString();
+    $scheduledOn = BusinessDate::today()->toDateString();
 
     $constructionSchedule = ConstructionSchedule::factory()->create([
         'scheduled_on' => $scheduledOn,
@@ -1388,7 +1389,7 @@ test('business schedule create form includes schedule availability for assigned 
 test('business schedule edit form excludes the current schedule from availability data', function (): void {
     $admin = User::factory()->admin()->create();
     $worker = User::factory()->create(['name' => '山田太郎']);
-    $scheduledOn = today()->toDateString();
+    $scheduledOn = BusinessDate::today()->toDateString();
 
     $currentSchedule = BusinessSchedule::factory()->create([
         'scheduled_on' => $scheduledOn,
@@ -1454,7 +1455,7 @@ test('business schedule form includes remembered content options', function (): 
 test('schedule numbers cannot overlap on the same day for the same assigned user across construction and business schedules', function (): void {
     $admin = User::factory()->admin()->create();
     $worker = User::factory()->create();
-    $scheduledOn = today()->toDateString();
+    $scheduledOn = BusinessDate::today()->toDateString();
 
     $existingSchedule = ConstructionSchedule::factory()->create([
         'scheduled_on' => $scheduledOn,
@@ -1482,7 +1483,7 @@ test('schedule numbers can overlap on the same day for different assigned users'
     $admin = User::factory()->admin()->create();
     $firstWorker = User::factory()->create();
     $secondWorker = User::factory()->create();
-    $scheduledOn = today()->toDateString();
+    $scheduledOn = BusinessDate::today()->toDateString();
 
     $existingSchedule = ConstructionSchedule::factory()->create([
         'scheduled_on' => $scheduledOn,
@@ -1507,7 +1508,7 @@ test('schedule numbers can overlap on the same day for different assigned users'
 test('schedule number conflicts include hidden assigned users', function (): void {
     $admin = User::factory()->admin()->create();
     $hiddenUser = User::factory()->hiddenFromWorkers()->create();
-    $scheduledOn = today()->toDateString();
+    $scheduledOn = BusinessDate::today()->toDateString();
 
     $existingSchedule = ConstructionSchedule::factory()->create([
         'scheduled_on' => $scheduledOn,
@@ -1546,7 +1547,7 @@ test('non admins cannot create schedules', function (): void {
 
     $this->actingAs($user)
         ->post(route('construction-schedules.store'), [
-            'scheduled_on' => today()->toDateString(),
+            'scheduled_on' => BusinessDate::today()->toDateString(),
             'status' => ConstructionSchedule::STATUS_SCHEDULED,
             'meeting_place' => '正面ゲート',
             'location' => '東京現場',
@@ -1574,7 +1575,7 @@ test('schedule guide uploads must be pdfs or images', function (): void {
     $this->actingAs($admin)
         ->from(route('construction-schedules.create'))
         ->post(route('construction-schedules.store'), [
-            'scheduled_on' => today()->toDateString(),
+            'scheduled_on' => BusinessDate::today()->toDateString(),
             'status' => ConstructionSchedule::STATUS_SCHEDULED,
             'meeting_place' => '正面ゲート',
             'location' => '東京現場',
@@ -1595,7 +1596,7 @@ test('schedule guide uploads may be smartphone photo formats up to 50 megabytes'
 
     $this->actingAs($admin)
         ->post(route('construction-schedules.store'), [
-            'scheduled_on' => today()->toDateString(),
+            'scheduled_on' => BusinessDate::today()->toDateString(),
             'status' => ConstructionSchedule::STATUS_SCHEDULED,
             'meeting_place' => '正面ゲート',
             'location' => 'スマートフォン写真現場',
@@ -1627,7 +1628,7 @@ test('schedule guide uploads may not exceed 50 megabytes', function (): void {
     $this->actingAs($admin)
         ->from(route('construction-schedules.create'))
         ->post(route('construction-schedules.store'), [
-            'scheduled_on' => today()->toDateString(),
+            'scheduled_on' => BusinessDate::today()->toDateString(),
             'status' => ConstructionSchedule::STATUS_SCHEDULED,
             'meeting_place' => '正面ゲート',
             'location' => '東京現場',
@@ -1652,7 +1653,7 @@ test('schedule guide uploads require display names', function (): void {
     $this->actingAs($admin)
         ->from(route('construction-schedules.create'))
         ->post(route('construction-schedules.store'), [
-            'scheduled_on' => today()->toDateString(),
+            'scheduled_on' => BusinessDate::today()->toDateString(),
             'status' => ConstructionSchedule::STATUS_SCHEDULED,
             'meeting_place' => '正面ゲート',
             'location' => '東京現場',
@@ -1680,7 +1681,7 @@ test('schedule guide upload display names must be unique', function (): void {
     $this->actingAs($admin)
         ->from(route('construction-schedules.create'))
         ->post(route('construction-schedules.store'), [
-            'scheduled_on' => today()->toDateString(),
+            'scheduled_on' => BusinessDate::today()->toDateString(),
             'status' => ConstructionSchedule::STATUS_SCHEDULED,
             'meeting_place' => '正面ゲート',
             'location' => '東京現場',
@@ -1707,7 +1708,7 @@ test('schedule guide upload display names must be distinct in the same request',
     $this->actingAs($admin)
         ->from(route('construction-schedules.create'))
         ->post(route('construction-schedules.store'), [
-            'scheduled_on' => today()->toDateString(),
+            'scheduled_on' => BusinessDate::today()->toDateString(),
             'status' => ConstructionSchedule::STATUS_SCHEDULED,
             'meeting_place' => '正面ゲート',
             'location' => '東京現場',

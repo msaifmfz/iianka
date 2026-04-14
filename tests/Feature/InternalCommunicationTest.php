@@ -5,6 +5,7 @@ use App\Models\CleaningDutyRule;
 use App\Models\ConstructionSchedule;
 use App\Models\InternalNotice;
 use App\Models\User;
+use App\Services\BusinessDate;
 use Inertia\Testing\AssertableInertia as Assert;
 
 test('admins can create internal notices with assigned users', function (): void {
@@ -209,7 +210,7 @@ test('admins can open cleaning duty settings index', function (): void {
 
 test('worker dashboard shares attention counts and worker summary', function (): void {
     $worker = User::factory()->create(['name' => 'Worker A']);
-    $today = today()->toDateString();
+    $today = BusinessDate::today()->toDateString();
 
     $constructionSchedule = ConstructionSchedule::factory()->create([
         'scheduled_on' => $today,
@@ -231,7 +232,7 @@ test('worker dashboard shares attention counts and worker summary', function ():
     $notice->assignedUsers()->attach($worker);
 
     $cleaningDutyRule = CleaningDutyRule::factory()->create([
-        'weekday' => today()->dayOfWeek,
+        'weekday' => BusinessDate::today()->dayOfWeek,
         'is_active' => true,
     ]);
     $cleaningDutyRule->assignedUsers()->attach($worker);
