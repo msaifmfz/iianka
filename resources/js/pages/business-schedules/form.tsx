@@ -9,6 +9,7 @@ import { index as scheduleIndex } from '@/actions/App/Http/Controllers/Construct
 import { FloatingBackButton } from '@/components/floating-back-button';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { businessDateString } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import type {
@@ -218,8 +219,7 @@ export default function BusinessScheduleForm({
     const { data, setData, post, processing, errors } =
         useForm<BusinessScheduleForm>({
             _method: schedule ? 'put' : '',
-            scheduled_on:
-                schedule?.scheduled_on ?? new Date().toISOString().slice(0, 10),
+            scheduled_on: schedule?.scheduled_on ?? businessDateString(),
             schedule_number: schedule?.schedule_number?.toString() ?? '',
             starts_at: schedule?.starts_at?.slice(0, 5) ?? '',
             ends_at: schedule?.ends_at?.slice(0, 5) ?? '',

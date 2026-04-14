@@ -16,6 +16,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { businessDateString } from '@/lib/dates';
 import { dashboard } from '@/routes';
 import type {
     AttendanceRecord,
@@ -237,10 +238,9 @@ export default function AttendanceRecordIndex({
             ]),
         );
     }, [visibleRecords]);
+    const today = businessDateString();
     const leaveToday = visibleRecords.filter(
-        (record) =>
-            record.status === 'leave' &&
-            record.work_date === new Date().toISOString().slice(0, 10),
+        (record) => record.status === 'leave' && record.work_date === today,
     );
 
     function openEditor(
@@ -386,7 +386,7 @@ export default function AttendanceRecordIndex({
                                 >
                                     <div
                                         className={
-                                            day.is_today
+                                            day.date === today
                                                 ? 'grid justify-items-center rounded-md bg-amber-100 py-1 text-amber-950 dark:bg-amber-950 dark:text-amber-100'
                                                 : 'grid justify-items-center'
                                         }

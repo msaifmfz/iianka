@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\UpdateConstructionScheduleVoucherRequest;
 use App\Models\ConstructionSchedule;
 use App\Models\User;
+use App\Services\BusinessDate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -19,7 +20,7 @@ class ConstructionScheduleVoucherController extends Controller
         $checked = in_array($request->query('checked'), ['all', 'unchecked', 'checked'], true)
             ? $request->query('checked')
             : 'all';
-        $date = Carbon::parse($request->query('date', today()->toDateString()));
+        $date = Carbon::parse($request->query('date', BusinessDate::today()->toDateString()));
         $startsOn = $date->copy()->startOfMonth();
         $endsOn = $date->copy()->endOfMonth();
 

@@ -7,6 +7,7 @@ namespace Database\Seeders;
 use App\Models\BusinessSchedule;
 use App\Models\ConstructionSchedule;
 use App\Models\User;
+use App\Services\BusinessDate;
 use App\UserRole;
 use Illuminate\Database\Seeder;
 
@@ -38,10 +39,10 @@ class DatabaseSeeder extends Seeder
         ])->save();
 
         $dates = [
-            today()->subMonthNoOverflow()->startOfMonth()->addDays(9),
-            today(),
-            today()->addDays(6),
-            today()->addMonthNoOverflow()->startOfMonth()->addDays(4),
+            BusinessDate::today()->subMonthNoOverflow()->startOfMonth()->addDays(9),
+            BusinessDate::today(),
+            BusinessDate::today()->addDays(6),
+            BusinessDate::today()->addMonthNoOverflow()->startOfMonth()->addDays(4),
         ];
 
         $schedules = [
@@ -96,7 +97,7 @@ class DatabaseSeeder extends Seeder
 
         $businessSchedule = BusinessSchedule::query()->updateOrCreate(
             [
-                'scheduled_on' => today()->addDays(2)->toDateString(),
+                'scheduled_on' => BusinessDate::today()->addDays(2)->toDateString(),
                 'location' => 'デモ会議室',
             ],
             [

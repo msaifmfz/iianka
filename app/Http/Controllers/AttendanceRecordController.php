@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreAttendanceRecordRequest;
 use App\Models\AttendanceRecord;
 use App\Models\User;
+use App\Services\BusinessDate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -16,7 +17,7 @@ class AttendanceRecordController extends Controller
 {
     public function index(Request $request): Response
     {
-        $month = Carbon::parse($request->query('month', today()->toDateString()))->startOfMonth();
+        $month = Carbon::parse($request->query('month', BusinessDate::today()->toDateString()))->startOfMonth();
         $startsOn = $month->copy()->startOfMonth();
         $endsOn = $month->copy()->endOfMonth();
         $canManage = $request->user()?->canManageContent() === true;
@@ -97,10 +98,11 @@ class AttendanceRecordController extends Controller
     private function days(Carbon $startsOn, Carbon $endsOn): Collection
     {
         $weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+        $today = BusinessDate::today()->toDateString();
 
         return collect()
             ->range(0, (int) $startsOn->diffInDays($endsOn))
-            ->map(function (int $offset) use ($startsOn, $weekdays): array {
+            ->map(function (int $offset) use ($startsOn, $today, $weekdays): array {
                 $date = $startsOn->copy()->addDays($offset);
 
                 return [
@@ -108,7 +110,7 @@ class AttendanceRecordController extends Controller
                     'day' => $date->day,
                     'weekday' => $weekdays[$date->dayOfWeek],
                     'is_weekend' => $date->isWeekend(),
-                    'is_today' => $date->isToday(),
+                    'is_today' => $date->toDateString() === $today,
                 ];
             });
     }

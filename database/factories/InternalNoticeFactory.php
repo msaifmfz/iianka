@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\InternalNotice;
+use App\Services\BusinessDate;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -32,7 +33,7 @@ class InternalNoticeFactory extends Factory
     public function scheduledToday(): static
     {
         return $this->state(fn (array $attributes): array => [
-            'scheduled_on' => today()->toDateString(),
+            'scheduled_on' => BusinessDate::today()->toDateString(),
         ]);
     }
 }
