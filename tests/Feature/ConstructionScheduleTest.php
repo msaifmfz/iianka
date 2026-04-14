@@ -898,6 +898,45 @@ test('schedule edit form includes only selected users hidden from workers', func
         );
 });
 
+test('construction schedule form includes mixed schedule availability records', function (): void {
+    $admin = User::factory()->admin()->create();
+    $worker = User::factory()->create(['name' => '山田太郎']);
+    $scheduledOn = BusinessDate::today()->toDateString();
+
+    $constructionSchedule = ConstructionSchedule::factory()->create([
+        'scheduled_on' => $scheduledOn,
+        'starts_at' => '09:00',
+        'ends_at' => '11:00',
+        'location' => '既存工事',
+    ]);
+    $constructionSchedule->assignedUsers()->attach($worker);
+
+    $businessSchedule = BusinessSchedule::factory()->create([
+        'scheduled_on' => $scheduledOn,
+        'starts_at' => '13:00',
+        'ends_at' => '15:00',
+        'location' => '別の業務予定',
+    ]);
+    $businessSchedule->assignedUsers()->attach($worker);
+
+    $this->actingAs($admin)
+        ->get(route('construction-schedules.create'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->component('construction-schedules/form')
+            ->has('scheduleAvailability', 2)
+            ->where('scheduleAvailability.0.type', 'construction')
+            ->where('scheduleAvailability.0.title', '既存工事')
+            ->where('scheduleAvailability.0.scheduled_on', $scheduledOn)
+            ->where('scheduleAvailability.0.time', '09:00 - 11:00')
+            ->where('scheduleAvailability.0.user_ids.0', $worker->id)
+            ->where('scheduleAvailability.0.user_names.0', '山田太郎')
+            ->where('scheduleAvailability.1.type', 'business')
+            ->where('scheduleAvailability.1.title', '別の業務予定')
+            ->where('scheduleAvailability.1.time', '13:00 - 15:00')
+        );
+});
+
 test('deleted subcontractors are hidden from new schedules but kept on existing schedules', function (): void {
     $admin = User::factory()->admin()->create();
     $subcontractor = ConstructionSubcontractor::factory()->create([
