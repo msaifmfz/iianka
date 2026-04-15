@@ -6,12 +6,14 @@ use App\Http\Requests\UpdateConstructionScheduleVoucherRequest;
 use App\Models\ConstructionSchedule;
 use App\Models\User;
 use App\Services\BusinessDate;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 class ConstructionScheduleVoucherController extends Controller
 {
@@ -20,9 +22,18 @@ class ConstructionScheduleVoucherController extends Controller
         $checked = in_array($request->query('checked'), ['all', 'unchecked', 'checked'], true)
             ? $request->query('checked')
             : 'all';
-        $date = Carbon::parse($request->query('date', BusinessDate::today()->toDateString()));
+        $today = BusinessDate::today();
+        $requestedDay = $this->dateQuery($request->query('day'));
+        $date = $this->dateQuery($request->query('date'), $requestedDay ?? $today);
         $startsOn = $date->copy()->startOfMonth();
         $endsOn = $date->copy()->endOfMonth();
+        $day = $request->query('day') === 'all'
+            ? 'all'
+            : ($requestedDay ?? $today)->toDateString();
+
+        if ($day !== 'all' && ! Carbon::parse($day)->betweenIncluded($startsOn, $endsOn)) {
+            $day = 'all';
+        }
 
         $monthlyQuery = ConstructionSchedule::query()
             ->whereDate('scheduled_on', '>=', $startsOn->toDateString())
@@ -39,6 +50,10 @@ class ConstructionScheduleVoucherController extends Controller
             $query->whereNull('voucher_checked_at');
         }
 
+        if ($day !== 'all') {
+            $query->whereDate('scheduled_on', $day);
+        }
+
         $schedules = $query
             ->orderBy('scheduled_on')
             ->orderBy('starts_at')
@@ -49,14 +64,17 @@ class ConstructionScheduleVoucherController extends Controller
             'filters' => [
                 'checked' => $checked,
                 'date' => $date->toDateString(),
+                'day' => $day,
                 'starts_on' => $startsOn->toDateString(),
                 'ends_on' => $endsOn->toDateString(),
+                'today' => $today->toDateString(),
             ],
             'summary' => [
                 'total' => (clone $monthlyQuery)->count(),
                 'checked' => (clone $monthlyQuery)->whereNotNull('voucher_checked_at')->count(),
                 'unchecked' => (clone $monthlyQuery)->whereNull('voucher_checked_at')->count(),
             ],
+            'dayOptions' => $this->dayOptions($monthlyQuery),
             'schedules' => $this->schedulePayload($schedules),
             'canManage' => $request->user()?->canManageContent() === true,
         ]);
@@ -111,5 +129,37 @@ class ConstructionScheduleVoucherController extends Controller
                 'email' => $user->email,
             ])->values(),
         ])->values();
+    }
+
+    private function dateQuery(mixed $value, ?Carbon $fallback = null): ?Carbon
+    {
+        if (! is_string($value)) {
+            return $fallback?->copy();
+        }
+
+        try {
+            return Carbon::createFromFormat('Y-m-d', $value, 'Asia/Tokyo')->startOfDay();
+        } catch (Throwable) {
+            return $fallback?->copy();
+        }
+    }
+
+    /**
+     * @return Collection<int, array{date: string, total: int, checked: int, unchecked: int}>
+     */
+    private function dayOptions(Builder $monthlyQuery): Collection
+    {
+        return (clone $monthlyQuery)
+            ->selectRaw('scheduled_on, count(*) as total, sum(case when voucher_checked_at is null then 1 else 0 end) as unchecked, sum(case when voucher_checked_at is not null then 1 else 0 end) as checked')
+            ->groupBy('scheduled_on')
+            ->orderBy('scheduled_on')
+            ->get()
+            ->map(fn (ConstructionSchedule $schedule): array => [
+                'date' => $schedule->scheduled_on->toDateString(),
+                'total' => (int) $schedule->total,
+                'checked' => (int) $schedule->checked,
+                'unchecked' => (int) $schedule->unchecked,
+            ])
+            ->values();
     }
 }

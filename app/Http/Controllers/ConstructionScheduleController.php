@@ -186,6 +186,8 @@ class ConstructionScheduleController extends Controller
 
         return Inertia::render('construction-schedules/form', [
             'schedule' => null,
+            'returnTo' => $this->returnTo($request),
+            ...$this->initialFormValues($request),
             ...$this->formOptions(null),
         ]);
     }
@@ -205,6 +207,13 @@ class ConstructionScheduleController extends Controller
             'assigned_user_ids' => $request->input('assigned_user_ids', []),
             'site_guide_file_ids' => $request->input('site_guide_file_ids', []),
         ]);
+
+        $returnTo = $this->returnTo($request);
+
+        if ($returnTo !== null) {
+            return redirect($returnTo)
+                ->with('status', '予定を作成しました。');
+        }
 
         return redirect()
             ->route('construction-schedules.index', [
@@ -233,6 +242,7 @@ class ConstructionScheduleController extends Controller
 
         return Inertia::render('construction-schedules/form', [
             'schedule' => $this->schedulePayload(collect([$constructionSchedule]))->first(),
+            'returnTo' => $this->returnTo($request),
             ...$this->formOptions($constructionSchedule),
         ]);
     }
@@ -252,6 +262,13 @@ class ConstructionScheduleController extends Controller
             'assigned_user_ids' => $request->input('assigned_user_ids', []),
             'site_guide_file_ids' => $request->input('site_guide_file_ids', []),
         ]);
+
+        $returnTo = $this->returnTo($request);
+
+        if ($returnTo !== null) {
+            return redirect($returnTo)
+                ->with('status', '予定を更新しました。');
+        }
 
         return redirect()
             ->route('construction-schedules.show', $constructionSchedule)
@@ -290,11 +307,38 @@ class ConstructionScheduleController extends Controller
     {
         $returnTo = $request->query('return_to');
 
-        if (! is_string($returnTo) || ! str_starts_with($returnTo, '/construction-schedules')) {
+        if (! is_string($returnTo) || ! $this->isAllowedReturnTo($returnTo)) {
             return null;
         }
 
         return $returnTo;
+    }
+
+    private function isAllowedReturnTo(string $returnTo): bool
+    {
+        return str_starts_with($returnTo, '/construction-schedules')
+            || str_starts_with($returnTo, '/schedule-overview');
+    }
+
+    /**
+     * @return array{initialScheduledOn: string|null, initialStartsAt: string|null, initialEndsAt: string|null, initialAssignedUserIds: list<int>}
+     */
+    private function initialFormValues(Request $request): array
+    {
+        $scheduledOn = $request->query('scheduled_on');
+        $startsAt = $request->query('starts_at');
+        $endsAt = $request->query('ends_at');
+
+        return [
+            'initialScheduledOn' => is_string($scheduledOn) && $scheduledOn !== '' ? $scheduledOn : null,
+            'initialStartsAt' => is_string($startsAt) && $startsAt !== '' ? $startsAt : null,
+            'initialEndsAt' => is_string($endsAt) && $endsAt !== '' ? $endsAt : null,
+            'initialAssignedUserIds' => collect($request->array('assigned_user_ids'))
+                ->filter(fn (mixed $userId): bool => is_numeric($userId))
+                ->map(fn (mixed $userId): int => (int) $userId)
+                ->values()
+                ->all(),
+        ];
     }
 
     /**
