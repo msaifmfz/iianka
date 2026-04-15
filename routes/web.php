@@ -12,6 +12,7 @@ use App\Http\Controllers\ConstructionScheduleVoucherController;
 use App\Http\Controllers\ConstructionSiteController;
 use App\Http\Controllers\ConstructionSubcontractorController;
 use App\Http\Controllers\InternalNoticeController;
+use App\Http\Controllers\ScheduleOverviewController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\SiteGuideFileController;
 use App\Http\Controllers\WebAuthn\WebAuthnLoginController;
@@ -42,10 +43,12 @@ Route::post('webauthn/login', [WebAuthnLoginController::class, 'login'])
     ->name('webauthn.login');
 
 Route::middleware(['auth', 'verified'])->group(function (): void {
-    Route::redirect('dashboard', 'construction-schedules')->name('dashboard');
+    Route::redirect('dashboard', 'schedule-overview')->name('dashboard');
     Route::delete('settings/passkeys/{passkey}', [SecurityController::class, 'destroyPasskey'])
         ->middleware('password.confirm')
         ->name('passkeys.destroy');
+    Route::get('schedule-overview', ScheduleOverviewController::class)
+        ->name('schedule-overview.index');
     Route::get('voucher-confirmations', [ConstructionScheduleVoucherController::class, 'index'])
         ->name('voucher-confirmations.index');
     Route::patch('construction-schedules/{construction_schedule}/voucher-confirmation', [ConstructionScheduleVoucherController::class, 'update'])

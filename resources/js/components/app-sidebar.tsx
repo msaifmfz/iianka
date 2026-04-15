@@ -6,6 +6,7 @@ import {
     ClipboardCheck,
     FileSearch,
     FileText,
+    ListChecks,
     UsersRound,
 } from 'lucide-react';
 import { index as auditLogIndex } from '@/actions/App/Http/Controllers/Admin/AuditLogController';
@@ -24,13 +25,19 @@ import {
     SidebarFooter,
 } from '@/components/ui/sidebar';
 import { businessDateString } from '@/lib/dates';
+import { index as overviewIndex } from '@/routes/schedule-overview';
 import type { NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [
     {
-        title: '予定表',
-        href: scheduleIndex({ query: { range: 'today' } }),
+        title: '予定カレンダー',
+        href: overviewIndex(),
         icon: CalendarDays,
+    },
+    {
+        title: '予定一覧',
+        href: scheduleIndex({ query: { range: 'today' } }),
+        icon: ListChecks,
     },
     {
         title: '伝票確認',
@@ -57,6 +64,14 @@ export function AppSidebar() {
     const navigationItems = [
         {
             ...mainNavItems[0],
+            href: overviewIndex({
+                query: {
+                    date: businessDateString(),
+                },
+            }),
+        },
+        {
+            ...mainNavItems[1],
             href: scheduleIndex({
                 query: {
                     range: 'today',
@@ -66,10 +81,10 @@ export function AppSidebar() {
             // badge: attention.schedule_count || null,
         },
         {
-            ...mainNavItems[1],
+            ...mainNavItems[2],
             // badge: attention.pending_voucher_count || null,
         },
-        mainNavItems[2],
+        mainNavItems[3],
         {
             title: '出勤管理',
             href: attendanceRecordIndex(),
