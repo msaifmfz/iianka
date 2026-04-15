@@ -24,10 +24,12 @@ class ConstructionScheduleVoucherController extends Controller
         $startsOn = $date->copy()->startOfMonth();
         $endsOn = $date->copy()->endOfMonth();
 
-        $query = ConstructionSchedule::query()
-            ->with(['assignedUsers:id,name,email', 'voucherCheckedBy:id,name,email'])
+        $monthlyQuery = ConstructionSchedule::query()
             ->whereDate('scheduled_on', '>=', $startsOn->toDateString())
             ->whereDate('scheduled_on', '<=', $endsOn->toDateString());
+
+        $query = (clone $monthlyQuery)
+            ->with(['assignedUsers:id,name,email', 'voucherCheckedBy:id,name,email']);
 
         if ($checked === 'checked') {
             $query->whereNotNull('voucher_checked_at');
@@ -51,9 +53,9 @@ class ConstructionScheduleVoucherController extends Controller
                 'ends_on' => $endsOn->toDateString(),
             ],
             'summary' => [
-                'total' => $schedules->count(),
-                'checked' => $schedules->whereNotNull('voucher_checked_at')->count(),
-                'unchecked' => $schedules->whereNull('voucher_checked_at')->count(),
+                'total' => (clone $monthlyQuery)->count(),
+                'checked' => (clone $monthlyQuery)->whereNotNull('voucher_checked_at')->count(),
+                'unchecked' => (clone $monthlyQuery)->whereNull('voucher_checked_at')->count(),
             ],
             'schedules' => $this->schedulePayload($schedules),
             'canManage' => $request->user()?->canManageContent() === true,
@@ -96,7 +98,7 @@ class ConstructionScheduleVoucherController extends Controller
             'person_in_charge' => $schedule->person_in_charge,
             'content' => $schedule->content,
             'voucher_checked' => $schedule->voucher_checked_at !== null,
-            'voucher_checked_at' => $schedule->voucher_checked_at?->toDateTimeString(),
+            'voucher_checked_at' => $schedule->voucher_checked_at?->toJSON(),
             'voucher_checked_by' => $schedule->voucherCheckedBy === null ? null : [
                 'id' => $schedule->voucherCheckedBy->id,
                 'name' => $schedule->voucherCheckedBy->name,

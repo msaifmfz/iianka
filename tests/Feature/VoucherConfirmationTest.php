@@ -3,16 +3,18 @@
 use App\Models\ConstructionSchedule;
 use App\Models\User;
 use App\Services\BusinessDate;
+use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
 
 test('users can view voucher confirmations for construction schedules', function (): void {
     $user = User::factory()->create();
     $admin = User::factory()->admin()->create();
+    $checkedAt = Carbon::parse('2026-05-10 00:30:00', 'UTC');
     $checkedSchedule = ConstructionSchedule::factory()->create([
         'scheduled_on' => BusinessDate::today()->toDateString(),
         'location' => '確認済み現場',
         'voucher_note' => '日付を確認済み',
-        'voucher_checked_at' => now(),
+        'voucher_checked_at' => $checkedAt,
         'voucher_checked_by_user_id' => $admin->id,
     ]);
     $uncheckedSchedule = ConstructionSchedule::factory()->create([
@@ -34,6 +36,7 @@ test('users can view voucher confirmations for construction schedules', function
                 fn (array $schedule): bool => $schedule['location'] === '確認済み現場'
                     && $schedule['voucher_checked'] === true
                     && $schedule['voucher_note'] === '日付を確認済み'
+                    && $schedule['voucher_checked_at'] === $checkedAt->toJSON()
                     && $schedule['voucher_checked_by']['name'] === $admin->name
             ) && collect($schedules)->contains(
                 fn (array $schedule): bool => $schedule['location'] === '未確認現場'
@@ -127,6 +130,9 @@ test('voucher confirmation page filters checked state for the selected month', f
         ->assertOk()
         ->assertInertia(fn (Assert $page): Assert => $page
             ->where('filters.checked', 'checked')
+            ->where('summary.total', 2)
+            ->where('summary.checked', 1)
+            ->where('summary.unchecked', 1)
             ->has('schedules', 1, fn (Assert $page): Assert => $page
                 ->where('location', '確認済み現場')
                 ->where('voucher_checked', true)
@@ -142,6 +148,9 @@ test('voucher confirmation page filters checked state for the selected month', f
         ->assertOk()
         ->assertInertia(fn (Assert $page): Assert => $page
             ->where('filters.checked', 'unchecked')
+            ->where('summary.total', 2)
+            ->where('summary.checked', 1)
+            ->where('summary.unchecked', 1)
             ->has('schedules', 1, fn (Assert $page): Assert => $page
                 ->where('location', '未確認現場')
                 ->where('voucher_checked', false)
