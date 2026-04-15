@@ -112,24 +112,83 @@ function overviewQuery(date: string) {
     };
 }
 
-function dayCellClass(day: CalendarCell) {
+function maxScheduleCount(days: CalendarCell[]) {
+    return Math.max(...days.map((day) => day.schedule_count), 0);
+}
+
+function heatLevel(day: CalendarCell, maxCount: number) {
+    if (day.schedule_count <= 0 || maxCount <= 0) {
+        return 0;
+    }
+
+    if (maxCount <= 4) {
+        return Math.min(day.schedule_count, 4);
+    }
+
+    const ratio = day.schedule_count / maxCount;
+
+    if (ratio <= 0.25) {
+        return 1;
+    }
+
+    if (ratio <= 0.5) {
+        return 2;
+    }
+
+    if (ratio <= 0.75) {
+        return 3;
+    }
+
+    return 4;
+}
+
+function heatLabel(level: number) {
+    switch (level) {
+        case 1:
+            return '少なめ';
+        case 2:
+            return '通常';
+        case 3:
+            return '多め';
+        case 4:
+            return '非常に多い';
+        default:
+            return '予定なし';
+    }
+}
+
+function heatCellClass(level: number) {
+    switch (level) {
+        case 1:
+            return 'border-blue-200 bg-blue-50 text-blue-950 hover:border-blue-300 hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-50 dark:hover:border-blue-800 dark:hover:bg-blue-950/50';
+        case 2:
+            return 'border-blue-300 bg-blue-100 text-blue-950 hover:border-blue-400 hover:bg-blue-200/70 dark:border-blue-800 dark:bg-blue-950/50 dark:text-blue-50 dark:hover:border-blue-700 dark:hover:bg-blue-900/50';
+        case 3:
+            return 'border-blue-400 bg-blue-200 text-blue-950 hover:border-blue-500 hover:bg-blue-300/80 dark:border-blue-700 dark:bg-blue-900/60 dark:text-blue-50 dark:hover:border-blue-600 dark:hover:bg-blue-800/60';
+        case 4:
+            return 'border-blue-600 bg-blue-300 text-blue-950 hover:border-blue-700 hover:bg-blue-400/80 dark:border-blue-500 dark:bg-blue-800/70 dark:text-blue-50 dark:hover:border-blue-400 dark:hover:bg-blue-700/70';
+        default:
+            return 'border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:border-neutral-700 dark:hover:bg-neutral-900';
+    }
+}
+
+function dayCellClass(day: CalendarCell, maxCount: number) {
+    const level = heatLevel(day, maxCount);
+    const heatClass = heatCellClass(level);
+
     if (day.isSelected) {
-        return 'border-neutral-950 bg-white shadow-sm ring-2 ring-neutral-950 dark:border-white dark:bg-neutral-950 dark:ring-white';
+        return `${heatClass} border-neutral-200 shadow-md ring-1 ring-neutral-200 dark:border-white dark:ring-white`;
     }
 
     if (!day.isCurrentMonth) {
+        if (level > 0) {
+            return `${heatClass} opacity-65`;
+        }
+
         return 'border-neutral-200 bg-neutral-50 text-neutral-400 hover:border-neutral-300 hover:bg-white dark:border-neutral-800 dark:bg-neutral-950/50 dark:text-neutral-600 dark:hover:border-neutral-700 dark:hover:bg-neutral-950';
     }
 
-    if (day.unconfirmed_voucher_count > 0) {
-        return '';
-    }
-
-    if (day.schedule_count > 0) {
-        return 'border-neutral-300 bg-white hover:border-teal-400 hover:bg-teal-50/70 dark:border-neutral-700 dark:bg-neutral-950 dark:hover:border-teal-700 dark:hover:bg-teal-950/30';
-    }
-
-    return 'border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:border-neutral-700 dark:hover:bg-neutral-900';
+    return heatClass;
 }
 
 function metricTone(tone: 'neutral' | 'danger' = 'neutral') {
@@ -137,7 +196,7 @@ function metricTone(tone: 'neutral' | 'danger' = 'neutral') {
         return 'bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-100';
     }
 
-    return 'bg-neutral-100 text-neutral-800 dark:bg-neutral-900 dark:text-neutral-200';
+    return '';
 }
 
 function MetricPill({
@@ -187,6 +246,7 @@ export default function ScheduleOverviewIndex({
     const selectedDay =
         calendarDays.find((day) => day.date === filters.date) ?? null;
     const cells = calendarCells(filters.date, todayDate, month, calendarDays);
+    const busiestScheduleCount = maxScheduleCount(cells);
     const previousMonthDate = adjacentMonthDate(filters.date, -1);
     const nextMonthDate = adjacentMonthDate(filters.date, 1);
     const selectedDetail = selectedDay ?? {
@@ -269,6 +329,21 @@ export default function ScheduleOverviewIndex({
                                 <h2 className="text-xl font-bold">
                                     {monthTitle(filters.date)}
                                 </h2>
+                                <div
+                                    className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
+                                    aria-label="予定の多さ"
+                                >
+                                    予定の多さ:
+                                    <span>少</span>
+                                    {[0, 1, 2, 3, 4].map((level) => (
+                                        <span
+                                            key={level}
+                                            className={`size-5 rounded-md border ${heatCellClass(level)}`}
+                                            aria-label={heatLabel(level)}
+                                        />
+                                    ))}
+                                    <span>多</span>
+                                </div>
                             </div>
 
                             <div className="mt-4">
@@ -295,24 +370,26 @@ export default function ScheduleOverviewIndex({
                                                 href={overviewIndex(
                                                     overviewQuery(day.date),
                                                 )}
-                                                className={`min-h-[5.75rem] rounded-lg p-1 transition focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none sm:min-h-28 sm:p-2 dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950 ${dayCellClass(day)}`}
+                                                className={`min-h-[5.75rem] rounded-lg p-1 transition focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none sm:min-h-28 sm:p-2 dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950 ${dayCellClass(day, busiestScheduleCount)}`}
                                                 aria-current={
                                                     day.isSelected
                                                         ? 'date'
                                                         : undefined
                                                 }
-                                                aria-label={`${day.date}: 工事${day.construction_count}件、業務予定${day.business_count}件、伝票${voucherConfirmationValue(day)}、未確認伝票${day.unconfirmed_voucher_count}件`}
+                                                aria-label={`${day.date}: 混雑度${heatLabel(heatLevel(day, busiestScheduleCount))}、工事${day.construction_count}件、業務予定${day.business_count}件、伝票${voucherConfirmationValue(day)}、未確認伝票${day.unconfirmed_voucher_count}件`}
                                                 preserveScroll
                                             >
                                                 <span className="flex items-center justify-between gap-1">
                                                     <span
-                                                        className={`flex size-6 items-center justify-center rounded-md text-xs font-bold tabular-nums sm:size-7 sm:text-sm ${day.isToday ? 'bg-neutral-950 text-white dark:bg-white dark:text-neutral-950' : ''}`}
+                                                        className={`flex size-6 items-center justify-center rounded-full text-xs font-bold tabular-nums sm:size-7 sm:text-sm ${day.isToday ? 'bg-neutral-800 text-white dark:bg-white dark:text-neutral-950' : ''}`}
                                                     >
-                                                        {day.label}
+                                                        {day.isToday
+                                                            ? '今'
+                                                            : day.label}
                                                     </span>
                                                 </span>
 
-                                                <span className="mt-2 flex flex-col gap-1 sm:mt-3">
+                                                <span className="flex flex-col sm:mt-3">
                                                     <MetricPill
                                                         label="工"
                                                         value={
