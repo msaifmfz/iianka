@@ -1443,7 +1443,9 @@ function DayTimeline({
                         className="grid border-b border-neutral-200 bg-neutral-50/80 text-xs font-semibold text-muted-foreground dark:border-white/10 dark:bg-white/5 dark:text-neutral-300"
                         style={timelineRowStyle(bounds)}
                     >
-                        <div className="px-3 py-2">担当者</div>
+                        <div className="sticky left-0 z-30 border-r border-neutral-200 bg-neutral-50 px-3 py-2 shadow-[4px_0_10px_-8px_rgb(0_0_0_/_0.45)] dark:border-white/10 dark:bg-neutral-900">
+                            担当者
+                        </div>
                         <div className="px-3 py-2">時間未定</div>
                         <div className="grid" style={timelineGridStyle(bounds)}>
                             {bounds.hours.slice(0, -1).map((hour) => (
@@ -1458,7 +1460,7 @@ function DayTimeline({
                     </div>
 
                     <div className="divide-y divide-neutral-200 dark:divide-white/10">
-                        {rows.map((row) => {
+                        {rows.map((row, rowIndex) => {
                             const rowEvents = eventsForUser(
                                 selectedDayTimeline.events,
                                 row.id,
@@ -1497,7 +1499,9 @@ function DayTimeline({
                                     className="grid min-h-12 odd:bg-white even:bg-neutral-50/50 dark:odd:bg-neutral-950/40 dark:even:bg-white/[0.03]"
                                     style={timelineRowStyle(bounds)}
                                 >
-                                    <div className="flex min-w-0 items-center px-3 py-1.5">
+                                    <div
+                                        className={`sticky left-0 z-20 flex min-w-0 items-center border-r border-neutral-200 px-3 py-1.5 shadow-[4px_0_10px_-8px_rgb(0_0_0_/_0.45)] dark:border-white/10 ${rowIndex % 2 === 0 ? 'bg-white dark:bg-neutral-950' : 'bg-neutral-50 dark:bg-neutral-900'}`}
+                                    >
                                         <span
                                             className={`truncate text-sm font-semibold ${row.muted ? 'text-muted-foreground' : ''}`}
                                         >
