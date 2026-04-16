@@ -1380,11 +1380,21 @@ function DayTimeline({
                     <h2 className="mt-1 text-2xl font-bold">
                         {detailDate(selectedDetail.date)}
                     </h2>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        {canManageSchedules
-                            ? '複数担当の予定を選択すると同じ予定の担当者を確認できます。予定を長押しすると詳細を確認できます。編集は鉛筆アイコンまたは詳細から行えます。空き時間はクリックで1時間、押したまま左右にドラッグで連続した空き時間をまとめて作成できます。'
-                            : '空き時間は白い余白、時間未定は左側の列に表示されます。'}
-                    </p>
+                    {canManageSchedules ? (
+                        <ul className="mt-2 space-y-1 text-sm leading-6 text-muted-foreground">
+                            <li>予定押す → 同一予定の担当者を確認</li>
+                            <li>予定長押し → 詳細表示</li>
+                            <li>編集 → 鉛筆アイコン or 詳細から</li>
+                            <li>
+                                空き時間 →
+                                押すで1時間／ドラッグ(長押し)で連続作成
+                            </li>
+                        </ul>
+                    ) : (
+                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                            空き時間は白い余白、時間未定は左側の列に表示されます。
+                        </p>
+                    )}
                 </div>
                 <div className="flex flex-col gap-3 lg:items-end">
                     <Button
