@@ -1,11 +1,12 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
-    CalendarDays,
+    BriefcaseBusiness,
     ChevronLeft,
     ChevronRight,
+    Megaphone,
+    Hammer,
     Pencil,
     Plus,
-    Users,
 } from 'lucide-react';
 import { useState } from 'react';
 import type { CSSProperties } from 'react';
@@ -24,6 +25,13 @@ import {
     edit as editInternalNotice,
 } from '@/actions/App/Http/Controllers/InternalNoticeController';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { businessDateString } from '@/lib/dates';
 import { index as overviewIndex } from '@/routes/schedule-overview';
 import type { ConstructionUser } from '@/types';
@@ -262,7 +270,7 @@ function MetricPill({
 }) {
     return (
         <span
-            className={`inline-flex min-h-6 items-center justify-between gap-1 rounded-md px-1 py-0.5 text-[10px] leading-none font-semibold sm:min-h-7 sm:gap-2 sm:px-2.5 sm:py-1 sm:text-xs ${metricTone(tone)} ${className}`}
+            className={`inline-flex min-h-2 items-center gap-1 rounded-md px-1 py-0.5 text-[10px] leading-none font-semibold sm:min-h-2 sm:gap-2 sm:px-2.5 sm:py-1 sm:text-xs ${metricTone(tone)} ${className}`}
         >
             {shortLabel ? (
                 <>
@@ -288,7 +296,7 @@ function voucherConfirmationValue(day: CalendarDay) {
 const timelineDefaultStart = 8 * 60;
 const timelineDefaultEnd = 17 * 60;
 const timelineHour = 60;
-const timelineSlotWidth = 88;
+const timelineSlotWidth = 47;
 
 function timeToMinutes(time: string | null) {
     if (time === null) {
@@ -413,9 +421,15 @@ function eventCreateRoute(
 }
 
 function eventNumberLabel(event: TimelineEvent) {
-    return event.schedule_number === null
-        ? null
-        : `番号 ${event.schedule_number}`;
+    return `#${event.schedule_number ?? '?'}`;
+}
+
+function multipleAssignedUsersCountLabel(event: TimelineEvent) {
+    if (event.assigned_users.length <= 1) {
+        return null;
+    }
+
+    return `${event.assigned_users.length}名`;
 }
 
 function timelineGridStyle(
@@ -430,7 +444,7 @@ function timelineRowStyle(
     bounds: ReturnType<typeof timelineBounds>,
 ): CSSProperties {
     return {
-        gridTemplateColumns: `10rem 12rem ${bounds.width}px`,
+        gridTemplateColumns: `7rem 7rem ${bounds.width}px`,
     };
 }
 
@@ -493,35 +507,41 @@ function TimelineSlotLink({
     hour,
     rowName,
     userId,
-    returnTo,
+    onOpenCreateTypeDialog,
 }: {
     date: string;
     hour: number;
     rowName: string;
     userId: number | null;
-    returnTo: string;
+    onOpenCreateTypeDialog: (slot: {
+        date: string;
+        hour: number;
+        rowName: string;
+        userId: number | null;
+    }) => void;
 }) {
     const startsAt = minuteInputValue(hour);
-    const endsAt = minuteInputValue(hour + timelineHour);
-    const assignedUserIds = userId === null ? [] : [userId];
 
     return (
-        <Link
-            href={eventCreateRoute('construction', date, {
-                startsAt,
-                endsAt,
-                assignedUserIds,
-                returnTo,
-            })}
+        <button
+            type="button"
             className="group relative flex items-center justify-center border-l border-neutral-100 text-[10px] font-semibold text-emerald-800 transition hover:bg-emerald-50 focus-visible:z-20 focus-visible:bg-emerald-50 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:border-neutral-900 dark:text-emerald-200 dark:hover:bg-emerald-950/30 dark:focus-visible:bg-emerald-950/30 dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950"
-            aria-label={`${rowName} ${startsAt} から工事予定を追加`}
-            title={`${rowName} ${startsAt} から工事予定を追加`}
+            aria-label={`${rowName} ${startsAt} から予定を追加`}
+            title={`${rowName} ${startsAt} から予定を追加`}
+            onClick={() =>
+                onOpenCreateTypeDialog({
+                    date,
+                    hour,
+                    rowName,
+                    userId,
+                })
+            }
         >
             <span className="inline-flex items-center gap-1 rounded-md border border-dashed border-emerald-300 bg-white/90 px-1.5 py-1 opacity-0 shadow-sm transition group-hover:opacity-100 group-focus-visible:opacity-100 dark:border-emerald-800 dark:bg-neutral-950/90">
                 <Plus className="size-3" />
                 {startsAt}
             </span>
-        </Link>
+        </button>
     );
 }
 
@@ -542,17 +562,19 @@ function TimelineEventBlock({
 }) {
     const hasOpenEnd = event.starts_at !== null && event.ends_at === null;
     const numberLabel = eventNumberLabel(event);
+    const multipleAssignedUsersCount = multipleAssignedUsersCountLabel(event);
     const label = [
         eventTypeLabel(event.type),
         numberLabel,
         event.title,
         event.time,
+        multipleAssignedUsersCount,
         assignedUsersLabel(event),
     ]
         .filter(Boolean)
         .join(' ');
     const hasMultipleAssignedUsers = event.assigned_users.length > 1;
-    const className = `absolute top-2 bottom-2 min-w-24 overflow-hidden rounded-md border text-left shadow-sm transition ${eventTypeClass(event.type)} ${hasOpenEnd ? 'border-dashed' : ''} ${isHighlighted ? 'z-10 ring-2 ring-neutral-950 ring-offset-2 dark:ring-white dark:ring-offset-neutral-950' : ''}`;
+    const className = `absolute top-1 bottom-1 min-w-12 overflow-hidden rounded-md border text-left shadow-sm transition ${eventTypeClass(event.type)} ${hasOpenEnd ? 'border-dashed' : ''} ${isHighlighted ? 'z-10 ring-2 ring-neutral-950 ring-offset-2 dark:ring-white dark:ring-offset-neutral-950' : ''}`;
     const style = {
         ...eventPositionStyle(event, bounds),
         ...(hasOpenEnd
@@ -564,32 +586,15 @@ function TimelineEventBlock({
     };
     const content = (
         <>
-            <div className="flex items-center gap-1 pr-5 text-[10px] leading-none font-bold">
-                {numberLabel && (
-                    <span className="rounded bg-white/70 px-1 py-0.5 text-[10px] dark:bg-black/30">
-                        {numberLabel}
+            <div className="flex min-w-0 items-center gap-1 truncate pr-5 text-[11px] leading-tight font-semibold">
+                <span className="shrink-0 bg-gray-50 p-1 rounded-full">{numberLabel}</span>
+                <span className="min-w-0 truncate">{event.title}</span>
+                {multipleAssignedUsersCount && (
+                    <span className="shrink-0">
+                        {multipleAssignedUsersCount}
                     </span>
                 )}
-                <span>{eventTypeLabel(event.type)}</span>
-                {hasMultipleAssignedUsers && (
-                    <span className="inline-flex items-center gap-0.5 rounded bg-white/70 px-1 py-0.5 text-[10px] dark:bg-black/30">
-                        <Users className="size-3" />
-                        {event.assigned_users.length}名
-                    </span>
-                )}
-                {hasOpenEnd && <span>終了未定</span>}
             </div>
-            <div className="mt-1 truncate pr-5 text-xs font-semibold">
-                {event.title}
-            </div>
-            <div className="truncate pr-5 text-[10px] leading-tight opacity-80">
-                {event.time}
-            </div>
-            {hasMultipleAssignedUsers && isHighlighted && (
-                <div className="mt-1 truncate pr-5 text-[10px] leading-tight font-semibold">
-                    {assignedUsersLabel(event)}
-                </div>
-            )}
         </>
     );
 
@@ -598,7 +603,7 @@ function TimelineEventBlock({
             <div className={className} style={style} title={label}>
                 <button
                     type="button"
-                    className={`h-full w-full px-2 py-2 text-left focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950 ${hasMultipleAssignedUsers ? 'cursor-pointer' : 'cursor-default'}`}
+                    className={`h-full w-full px-1.5 py-1 text-left focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950 ${hasMultipleAssignedUsers ? 'cursor-pointer' : 'cursor-default'}`}
                     aria-label={label}
                     aria-pressed={
                         hasMultipleAssignedUsers ? isHighlighted : undefined
@@ -622,7 +627,7 @@ function TimelineEventBlock({
     return (
         <button
             type="button"
-            className={`${className} px-2 py-2 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950 ${hasMultipleAssignedUsers ? 'cursor-pointer' : 'cursor-default'}`}
+            className={`${className} px-1.5 py-1 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950 ${hasMultipleAssignedUsers ? 'cursor-pointer' : 'cursor-default'}`}
             style={style}
             title={label}
             aria-label={label}
@@ -648,11 +653,13 @@ function UntimedEventChip({
     returnTo: string;
 }) {
     const numberLabel = eventNumberLabel(event);
+    const multipleAssignedUsersCount = multipleAssignedUsersCountLabel(event);
     const label = [
         eventTypeLabel(event.type),
         numberLabel,
         event.title,
         event.time,
+        multipleAssignedUsersCount,
         assignedUsersLabel(event),
     ]
         .filter(Boolean)
@@ -661,17 +668,10 @@ function UntimedEventChip({
     const className = `inline-flex max-w-full items-center gap-1 rounded-md border text-left text-xs font-semibold transition ${eventTypeClass(event.type)} ${isHighlighted ? 'ring-2 ring-neutral-950 ring-offset-2 dark:ring-white dark:ring-offset-neutral-950' : ''}`;
     const content = (
         <>
-            {numberLabel && (
-                <span className="shrink-0 rounded bg-white/70 px-1 text-[10px] dark:bg-black/30">
-                    {numberLabel}
-                </span>
-            )}
-            <span className="shrink-0">{eventTypeLabel(event.type)}</span>
-            <span className="truncate">{event.title}</span>
-            {hasMultipleAssignedUsers && (
-                <span className="shrink-0 rounded bg-white/70 px-1 text-[10px] dark:bg-black/30">
-                    {event.assigned_users.length}名
-                </span>
+            <span className="shrink-0">{numberLabel}</span>
+            <span className="min-w-0 truncate">{event.title}</span>
+            {multipleAssignedUsersCount && (
+                <span className="shrink-0">{multipleAssignedUsersCount}</span>
             )}
         </>
     );
@@ -730,6 +730,12 @@ function DayTimeline({
     const [highlightedEventKey, setHighlightedEventKey] = useState<
         string | null
     >(null);
+    const [createSlot, setCreateSlot] = useState<{
+        date: string;
+        hour: number;
+        rowName: string;
+        userId: number | null;
+    } | null>(null);
     const hasUnassignedEvents = selectedDayTimeline.events.some(
         (event) => event.assigned_users.length === 0,
     );
@@ -752,6 +758,31 @@ function DayTimeline({
         const key = eventKey(event);
         setHighlightedEventKey((currentKey) =>
             currentKey === key ? null : key,
+        );
+    }
+
+    const slotStartsAt =
+        createSlot === null ? null : minuteInputValue(createSlot.hour);
+    const slotEndsAt =
+        createSlot === null
+            ? null
+            : minuteInputValue(createSlot.hour + timelineHour);
+
+    function createFromSlot(type: TimelineEventType) {
+        if (createSlot === null || slotStartsAt === null || slotEndsAt === null) {
+            return;
+        }
+
+        const assignedUserIds =
+            createSlot.userId === null ? [] : [createSlot.userId];
+
+        router.visit(
+            eventCreateRoute(type, createSlot.date, {
+                startsAt: slotStartsAt,
+                endsAt: slotEndsAt,
+                assignedUserIds,
+                returnTo,
+            }),
         );
     }
 
@@ -846,17 +877,17 @@ function DayTimeline({
                             return (
                                 <div
                                     key={row.id ?? 'unassigned'}
-                                    className="grid min-h-24"
+                                    className="grid min-h-12"
                                     style={timelineRowStyle(bounds)}
                                 >
-                                    <div className="flex min-w-0 items-center px-3 py-3">
+                                    <div className="flex min-w-0 items-center px-3 py-1.5">
                                         <span
                                             className={`truncate text-sm font-semibold ${row.muted ? 'text-muted-foreground' : ''}`}
                                         >
                                             {row.name}
                                         </span>
                                     </div>
-                                    <div className="flex min-w-0 flex-wrap content-center gap-1 px-3 py-2">
+                                    <div className="flex min-w-0 flex-wrap content-center gap-1 px-3 py-1">
                                         {untimedEvents.length > 0 ? (
                                             untimedEvents.map((event) => (
                                                 <UntimedEventChip
@@ -881,7 +912,7 @@ function DayTimeline({
                                             </span>
                                         )}
                                     </div>
-                                    <div className="relative min-h-24 bg-white dark:bg-neutral-950">
+                                    <div className="relative min-h-12 bg-white dark:bg-neutral-950">
                                         <div
                                             className="absolute inset-0 grid"
                                             style={timelineGridStyle(bounds)}
@@ -927,8 +958,8 @@ function DayTimeline({
                                                                     row.name
                                                                 }
                                                                 userId={row.id}
-                                                                returnTo={
-                                                                    returnTo
+                                                                onOpenCreateTypeDialog={
+                                                                    setCreateSlot
                                                                 }
                                                             />
                                                         ),
@@ -970,6 +1001,54 @@ function DayTimeline({
                     </div>
                 </div>
             </div>
+            <Dialog
+                open={createSlot !== null}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setCreateSlot(null);
+                    }
+                }}
+            >
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>新規作成</DialogTitle>
+                        <DialogDescription>
+                            {createSlot === null
+                                ? '追加したい内容を選択してください。'
+                                : `${createSlot.rowName} / ${slotStartsAt} - ${slotEndsAt} の予定種別を選択してください。`}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="h-auto justify-start gap-3 rounded-xl px-4 py-3"
+                            onClick={() => createFromSlot('construction')}
+                        >
+                            <Hammer className="size-4" />
+                            工事予定を作成
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="h-auto justify-start gap-3 rounded-xl px-4 py-3"
+                            onClick={() => createFromSlot('business')}
+                        >
+                            <BriefcaseBusiness className="size-4" />
+                            業務予定を作成
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="h-auto justify-start gap-3 rounded-xl px-4 py-3"
+                            onClick={() => createFromSlot('internal_notice')}
+                        >
+                            <Megaphone className="size-4" />
+                            業務連絡を作成
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </section>
     );
 }
@@ -1003,22 +1082,31 @@ export default function ScheduleOverviewIndex({
             <Head title="予定カレンダー" />
             <main className="min-h-screen bg-neutral-100 p-3 text-neutral-950 md:p-6 dark:bg-neutral-950 dark:text-neutral-50">
                 <div className="mx-auto flex max-w-7xl flex-col gap-4">
-                    <header className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                            <div className="flex items-start gap-3">
-                                <span className="rounded-lg bg-teal-100 p-3 text-teal-800 dark:bg-teal-950 dark:text-teal-100">
-                                    <CalendarDays className="size-6" />
-                                </span>
-                                <div>
-                                    <p className="text-sm text-muted-foreground">
-                                        Company Schedule
-                                    </p>
-                                    <h1 className="text-2xl font-bold tracking-normal">
-                                        予定カレンダー
-                                    </h1>
-                                </div>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
+                    {/* <header className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950"> */}
+                    {/*     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"> */}
+                    {/*         <div className="flex items-start gap-3"> */}
+                    {/*             <span className="rounded-lg bg-teal-100 p-3 text-teal-800 dark:bg-teal-950 dark:text-teal-100"> */}
+                    {/*                 <CalendarDays className="size-6" /> */}
+                    {/*             </span> */}
+                    {/*             <div> */}
+                    {/*                 <p className="text-sm text-muted-foreground"> */}
+                    {/*                     Company Schedule */}
+                    {/*                 </p> */}
+                    {/*                 <h1 className="text-2xl font-bold tracking-normal"> */}
+                    {/*                     予定カレンダー */}
+                    {/*                 </h1> */}
+                    {/*             </div> */}
+                    {/*         </div> */}
+                    {/*     </div> */}
+                    {/* </header> */}
+
+                    <div className="flex flex-col gap-4">
+                        <section className="rounded-lg border border-neutral-200 bg-white p-3 md:p-4 dark:border-neutral-800 dark:bg-neutral-950">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <h2 className="text-xl font-bold">
+                                    {monthTitle(filters.date)}
+                                </h2>
+                              <div className="flex flex-wrap gap-2">
                                 <Button
                                     asChild
                                     variant="outline"
@@ -1061,15 +1149,6 @@ export default function ScheduleOverviewIndex({
                                     </Link>
                                 </Button>
                             </div>
-                        </div>
-                    </header>
-
-                    <div className="flex flex-col gap-4">
-                        <section className="rounded-lg border border-neutral-200 bg-white p-3 md:p-4 dark:border-neutral-800 dark:bg-neutral-950">
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                <h2 className="text-xl font-bold">
-                                    {monthTitle(filters.date)}
-                                </h2>
                                 <div
                                     className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
                                     aria-label="予定の多さ"
@@ -1108,53 +1187,94 @@ export default function ScheduleOverviewIndex({
                                         {cells.map((day) => (
                                             <div
                                                 key={day.date}
-                                                className={`relative min-h-[5.75rem] rounded-lg p-1 transition sm:min-h-28 sm:p-2 ${dayCellClass(day, busiestScheduleCount)}`}
+                                                className={`relative min-h-[5.75rem] rounded-lg p-1 transition sm:min-h-28 sm:p-2 border ${dayCellClass(day, busiestScheduleCount)}`}
                                             >
-                                                <Link
-                                                    href={overviewIndex(
-                                                        overviewQuery(day.date),
-                                                    )}
-                                                    className="absolute inset-0 rounded-lg focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950"
-                                                    aria-current={
-                                                        day.isSelected
-                                                            ? 'date'
-                                                            : undefined
-                                                    }
-                                                    aria-label={`${day.date}: 混雑度${heatLabel(heatLevel(day, busiestScheduleCount))}、工事${day.construction_count}件、業務予定${day.business_count}件、業務連絡${day.internal_notice_count}件、伝票${voucherConfirmationValue(day)}、未確認伝票${day.unconfirmed_voucher_count}件`}
-                                                    preserveScroll
-                                                />
-                                                <span className="pointer-events-none relative flex items-center justify-between gap-1">
-                                                    <span
-                                                        className={`flex size-6 items-center justify-center rounded-full text-xs font-bold tabular-nums sm:size-7 sm:text-sm ${day.isToday ? 'bg-neutral-800 text-white dark:bg-white dark:text-neutral-950' : ''}`}
+                                                <span className="relative flex items-center justify-between gap-1">
+                                                    <Link
+                                                        href={overviewIndex(
+                                                            overviewQuery(
+                                                                day.date,
+                                                            ),
+                                                        )}
+                                                        className={`relative z-10 flex size-6 items-center justify-center rounded-full text-lg font-bold tabular-nums sm:size-7 sm:text-lg focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950 ${day.isToday ? 'bg-neutral-800 text-white dark:bg-white dark:text-neutral-950' : ''}`}
+                                                        aria-current={
+                                                            day.isSelected
+                                                                ? 'date'
+                                                                : undefined
+                                                        }
+                                                        aria-label={`${day.date}: 混雑度${heatLabel(heatLevel(day, busiestScheduleCount))}、工事${day.construction_count}件、業務予定${day.business_count}件、業務連絡${day.internal_notice_count}件、伝票${voucherConfirmationValue(day)}、未確認伝票${day.unconfirmed_voucher_count}件`}
+                                                        preserveScroll
                                                     >
                                                         {day.isToday
                                                             ? '今'
                                                             : day.label}
-                                                    </span>
+                                                    </Link>
                                                 </span>
 
-                                                <span className="pointer-events-none relative flex flex-col sm:mt-3">
-                                                    <MetricPill
-                                                        label="工"
-                                                        value={
-                                                            day.construction_count
-                                                        }
-                                                        shortLabel="工"
-                                                    />
-                                                    <MetricPill
-                                                        label="業"
-                                                        value={
-                                                            day.business_count
-                                                        }
-                                                        shortLabel="業"
-                                                    />
-                                                    <MetricPill
-                                                        label="連"
-                                                        value={
-                                                            day.internal_notice_count
-                                                        }
-                                                        shortLabel="連"
-                                                    />
+                                                <span className="relative flex flex-col gap-0.5">
+                                                    <Link
+                                                        href={scheduleIndex({
+                                                            query: {
+                                                                range: 'today',
+                                                                date: day.date,
+                                                                type: [
+                                                                    'construction',
+                                                                ],
+                                                            },
+                                                        })}
+                                                        className="pointer-events-auto relative z-10 flex rounded-md focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950"
+                                                        aria-label={`${day.date} の工事予定を確認`}
+                                                    >
+                                                        <MetricPill
+                                                            label="工"
+                                                            value={
+                                                                day.construction_count
+                                                            }
+                                                            shortLabel="工"
+                                                        />
+                                                    </Link>
+                                                    <Link
+                                                        href={scheduleIndex({
+                                                            query: {
+                                                                range: 'today',
+                                                                date: day.date,
+                                                                type: [
+                                                                    'business',
+                                                                ],
+                                                            },
+                                                        })}
+                                                        className="pointer-events-auto relative z-10 flex rounded-md focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950"
+                                                        aria-label={`${day.date} の業務予定を確認`}
+                                                    >
+                                                        <MetricPill
+                                                            label="業"
+                                                            value={
+                                                                day.business_count
+                                                            }
+                                                            shortLabel="業"
+                                                        />
+                                                    </Link>
+                                                    <Link
+                                                        href={scheduleIndex({
+                                                            query: {
+                                                                range: 'today',
+                                                                date: day.date,
+                                                                type: [
+                                                                    'internal_notice',
+                                                                ],
+                                                            },
+                                                        })}
+                                                        className="pointer-events-auto relative z-10 flex rounded-md focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950"
+                                                        aria-label={`${day.date} の業務連絡を確認`}
+                                                    >
+                                                        <MetricPill
+                                                            label="連"
+                                                            value={
+                                                                day.internal_notice_count
+                                                            }
+                                                            shortLabel="連"
+                                                        />
+                                                    </Link>
                                                     <Link
                                                         href={voucherIndex({
                                                             query: {
