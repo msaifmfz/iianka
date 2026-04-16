@@ -8,7 +8,7 @@ import {
     Pencil,
     Plus,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import {
     create as createBusinessSchedule,
@@ -82,6 +82,35 @@ type TimelineEvent = {
 type SelectedDayTimeline = {
     users: ConstructionUser[];
     events: TimelineEvent[];
+};
+
+type CreateSlot = {
+    date: string;
+    hour: number;
+    endHour: number;
+    rowName: string;
+    userId: number | null;
+};
+
+type DragSelection = {
+    date: string;
+    rowName: string;
+    userId: number | null;
+    anchorHour: number;
+    currentHour: number;
+    pointerId: number;
+};
+
+type PendingDragSelection = {
+    date: string;
+    rowName: string;
+    userId: number | null;
+    anchorHour: number;
+    pointerId: number;
+    startX: number;
+    startY: number;
+    rowElement: HTMLDivElement;
+    timeoutId: number;
 };
 
 type CalendarCell = CalendarDay & {
@@ -294,9 +323,12 @@ function voucherConfirmationValue(day: CalendarDay) {
 }
 
 const timelineDefaultStart = 8 * 60;
-const timelineDefaultEnd = 17 * 60;
+const timelineDefaultEnd = 20 * 60;
 const timelineHour = 60;
 const timelineSlotWidth = 47;
+const touchSelectionDelay = 260;
+const scheduleDetailHoldDelay = 500;
+const touchScrollTolerance = 10;
 
 function timeToMinutes(time: string | null) {
     if (time === null) {
@@ -464,6 +496,20 @@ function eventPositionStyle(
     };
 }
 
+function selectionPositionStyle(
+    selection: DragSelection,
+    bounds: ReturnType<typeof timelineBounds>,
+): CSSProperties {
+    const range = dragSelectionRange(selection);
+    const left = ((range.startsAt - bounds.startsAt) / bounds.duration) * 100;
+    const width = ((range.endsAt - range.startsAt) / bounds.duration) * 100;
+
+    return {
+        left: `${Math.max(left, 0)}%`,
+        width: `${Math.min(Math.max(width, 2), 100 - Math.max(left, 0))}%`,
+    };
+}
+
 function eventsForUser(events: TimelineEvent[], userId: number | null) {
     return events.filter((event) => {
         if (userId === null) {
@@ -480,6 +526,99 @@ function assignedUsersLabel(event: TimelineEvent) {
     }
 
     return event.assigned_users.map((user) => user.name).join('、');
+}
+
+function scheduleDetailRows(event: TimelineEvent) {
+    return [
+        { label: '種別', value: eventTypeLabel(event.type) },
+        { label: '番号', value: eventNumberLabel(event) },
+        { label: '時間', value: event.time },
+        { label: '担当者', value: assignedUsersLabel(event) },
+        { label: '場所', value: event.location },
+        { label: '内容', value: event.content },
+        { label: '補足', value: event.time_note },
+    ].filter((row) => row.value !== null && row.value !== '');
+}
+
+function useScheduleDetailHold(onOpenDetail: (event: TimelineEvent) => void) {
+    const holdTimeoutRef = useRef<number | null>(null);
+    const holdStartedAtRef = useRef<{ x: number; y: number } | null>(null);
+    const didOpenDetailRef = useRef(false);
+
+    function clearHoldTimeout() {
+        if (holdTimeoutRef.current === null) {
+            return;
+        }
+
+        window.clearTimeout(holdTimeoutRef.current);
+        holdTimeoutRef.current = null;
+    }
+
+    useEffect(() => {
+        return () => {
+            if (holdTimeoutRef.current !== null) {
+                window.clearTimeout(holdTimeoutRef.current);
+            }
+        };
+    }, []);
+
+    function startHold(
+        pointerEvent: React.PointerEvent<HTMLElement>,
+        scheduleEvent: TimelineEvent,
+    ) {
+        if (pointerEvent.button !== 0) {
+            return;
+        }
+
+        clearHoldTimeout();
+        didOpenDetailRef.current = false;
+        holdStartedAtRef.current = {
+            x: pointerEvent.clientX,
+            y: pointerEvent.clientY,
+        };
+        holdTimeoutRef.current = window.setTimeout(() => {
+            didOpenDetailRef.current = true;
+            holdTimeoutRef.current = null;
+            onOpenDetail(scheduleEvent);
+        }, scheduleDetailHoldDelay);
+    }
+
+    function updateHold(pointerEvent: React.PointerEvent<HTMLElement>) {
+        const start = holdStartedAtRef.current;
+
+        if (start === null || holdTimeoutRef.current === null) {
+            return;
+        }
+
+        const movedX = Math.abs(pointerEvent.clientX - start.x);
+        const movedY = Math.abs(pointerEvent.clientY - start.y);
+
+        if (movedX > touchScrollTolerance || movedY > touchScrollTolerance) {
+            clearHoldTimeout();
+        }
+    }
+
+    function finishHold() {
+        clearHoldTimeout();
+        holdStartedAtRef.current = null;
+    }
+
+    function consumeClickAfterHold() {
+        if (!didOpenDetailRef.current) {
+            return false;
+        }
+
+        didOpenDetailRef.current = false;
+
+        return true;
+    }
+
+    return {
+        startHold,
+        updateHold,
+        finishHold,
+        consumeClickAfterHold,
+    };
 }
 
 function slotOverlapsEvents(
@@ -502,42 +641,129 @@ function slotOverlapsEvents(
     });
 }
 
+function dragSelectionRange(selection: DragSelection) {
+    const startsAt = Math.min(selection.anchorHour, selection.currentHour);
+    const endsAt =
+        Math.max(selection.anchorHour, selection.currentHour) + timelineHour;
+
+    return { startsAt, endsAt };
+}
+
+function isSameTimelineRow(
+    selection: DragSelection,
+    date: string,
+    rowName: string,
+    userId: number | null,
+) {
+    return (
+        selection.date === date &&
+        selection.rowName === rowName &&
+        selection.userId === userId
+    );
+}
+
+function slotIsSelected(
+    selection: DragSelection | null,
+    date: string,
+    rowName: string,
+    userId: number | null,
+    hour: number,
+) {
+    if (
+        selection === null ||
+        !isSameTimelineRow(selection, date, rowName, userId)
+    ) {
+        return false;
+    }
+
+    const range = dragSelectionRange(selection);
+
+    return hour >= range.startsAt && hour < range.endsAt;
+}
+
+function pointerHourFromPosition(
+    clientX: number,
+    element: HTMLElement,
+    bounds: ReturnType<typeof timelineBounds>,
+) {
+    const rect = element.getBoundingClientRect();
+    const rawRatio = (clientX - rect.left) / rect.width;
+    const ratio = Math.min(Math.max(rawRatio, 0), 0.999999);
+    const slotIndex = Math.min(
+        Math.max(Math.floor(ratio * bounds.slotCount), 0),
+        bounds.slotCount - 1,
+    );
+
+    return bounds.startsAt + slotIndex * timelineHour;
+}
+
+function contiguousSelectionHour(
+    anchorHour: number,
+    targetHour: number,
+    availableHours: Set<number>,
+) {
+    const direction = targetHour >= anchorHour ? timelineHour : -timelineHour;
+    let selectedHour = anchorHour;
+
+    for (
+        let hour = anchorHour;
+        direction > 0 ? hour <= targetHour : hour >= targetHour;
+        hour += direction
+    ) {
+        if (!availableHours.has(hour)) {
+            break;
+        }
+
+        selectedHour = hour;
+    }
+
+    return selectedHour;
+}
+
 function TimelineSlotLink({
     date,
     hour,
+    endHour,
     rowName,
     userId,
+    isSelected,
     onOpenCreateTypeDialog,
 }: {
     date: string;
     hour: number;
+    endHour: number;
     rowName: string;
     userId: number | null;
-    onOpenCreateTypeDialog: (slot: {
-        date: string;
-        hour: number;
-        rowName: string;
-        userId: number | null;
-    }) => void;
+    isSelected: boolean;
+    onOpenCreateTypeDialog: (slot: CreateSlot) => void;
 }) {
     const startsAt = minuteInputValue(hour);
+    const endsAt = minuteInputValue(endHour);
 
     return (
         <button
             type="button"
-            className="group relative flex items-center justify-center border-l border-neutral-100 text-[10px] font-semibold text-emerald-800 transition hover:bg-emerald-50 focus-visible:z-20 focus-visible:bg-emerald-50 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:border-neutral-900 dark:text-emerald-200 dark:hover:bg-emerald-950/30 dark:focus-visible:bg-emerald-950/30 dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950"
-            aria-label={`${rowName} ${startsAt} から予定を追加`}
-            title={`${rowName} ${startsAt} から予定を追加`}
-            onClick={() =>
+            data-timeline-slot-hour={hour}
+            className={`group relative flex touch-auto items-center justify-center border-l border-neutral-100 text-[10px] font-semibold text-emerald-800 transition focus-visible:z-20 focus-visible:bg-emerald-50 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:border-neutral-900 dark:text-emerald-200 dark:focus-visible:bg-emerald-950/30 dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950 ${isSelected ? 'bg-emerald-100 text-emerald-950 ring-1 ring-emerald-500 ring-inset dark:bg-emerald-950/60 dark:text-emerald-50 dark:ring-emerald-500' : 'hover:bg-emerald-50 dark:hover:bg-emerald-950/30'}`}
+            aria-label={`${rowName} ${startsAt} から ${endsAt} まで予定を追加`}
+            title={`${rowName} ${startsAt} - ${endsAt} の予定を追加`}
+            onClick={(event) => {
+                if (event.detail !== 0) {
+                    return;
+                }
+
                 onOpenCreateTypeDialog({
                     date,
                     hour,
+                    endHour,
                     rowName,
                     userId,
-                })
-            }
+                });
+            }}
         >
-            <span className="inline-flex items-center gap-1 rounded-md border border-dashed border-emerald-300 bg-white/90 px-1.5 py-1 opacity-0 shadow-sm transition group-hover:opacity-100 group-focus-visible:opacity-100 dark:border-emerald-800 dark:bg-neutral-950/90">
+            <span
+                className={`inline-flex items-center gap-1 rounded-md border border-dashed border-emerald-300 bg-white/90 px-1.5 py-1 shadow-sm transition group-hover:opacity-100 group-focus-visible:opacity-100 dark:border-emerald-800 dark:bg-neutral-950/90 ${isSelected ? 'opacity-100' : 'opacity-0'}`}
+            >
                 <Plus className="size-3" />
                 {startsAt}
             </span>
@@ -550,6 +776,7 @@ function TimelineEventBlock({
     bounds,
     isHighlighted,
     onToggleHighlight,
+    onOpenDetail,
     canManageSchedules,
     returnTo,
 }: {
@@ -557,9 +784,11 @@ function TimelineEventBlock({
     bounds: ReturnType<typeof timelineBounds>;
     isHighlighted: boolean;
     onToggleHighlight: (event: TimelineEvent) => void;
+    onOpenDetail: (event: TimelineEvent) => void;
     canManageSchedules: boolean;
     returnTo: string;
 }) {
+    const detailHold = useScheduleDetailHold(onOpenDetail);
     const hasOpenEnd = event.starts_at !== null && event.ends_at === null;
     const numberLabel = eventNumberLabel(event);
     const multipleAssignedUsersCount = multipleAssignedUsersCountLabel(event);
@@ -610,7 +839,20 @@ function TimelineEventBlock({
                     aria-pressed={
                         hasMultipleAssignedUsers ? isHighlighted : undefined
                     }
-                    onClick={() => onToggleHighlight(event)}
+                    onPointerDown={(pointerEvent) =>
+                        detailHold.startHold(pointerEvent, event)
+                    }
+                    onPointerMove={detailHold.updateHold}
+                    onPointerUp={detailHold.finishHold}
+                    onPointerCancel={detailHold.finishHold}
+                    onPointerLeave={detailHold.finishHold}
+                    onClick={() => {
+                        if (detailHold.consumeClickAfterHold()) {
+                            return;
+                        }
+
+                        onToggleHighlight(event);
+                    }}
                 >
                     {content}
                 </button>
@@ -634,7 +876,20 @@ function TimelineEventBlock({
             title={label}
             aria-label={label}
             aria-pressed={hasMultipleAssignedUsers ? isHighlighted : undefined}
-            onClick={() => onToggleHighlight(event)}
+            onPointerDown={(pointerEvent) =>
+                detailHold.startHold(pointerEvent, event)
+            }
+            onPointerMove={detailHold.updateHold}
+            onPointerUp={detailHold.finishHold}
+            onPointerCancel={detailHold.finishHold}
+            onPointerLeave={detailHold.finishHold}
+            onClick={() => {
+                if (detailHold.consumeClickAfterHold()) {
+                    return;
+                }
+
+                onToggleHighlight(event);
+            }}
         >
             {content}
         </button>
@@ -645,15 +900,18 @@ function UntimedEventChip({
     event,
     isHighlighted,
     onToggleHighlight,
+    onOpenDetail,
     canManageSchedules,
     returnTo,
 }: {
     event: TimelineEvent;
     isHighlighted: boolean;
     onToggleHighlight: (event: TimelineEvent) => void;
+    onOpenDetail: (event: TimelineEvent) => void;
     canManageSchedules: boolean;
     returnTo: string;
 }) {
+    const detailHold = useScheduleDetailHold(onOpenDetail);
     const numberLabel = eventNumberLabel(event);
     const multipleAssignedUsersCount = multipleAssignedUsersCountLabel(event);
     const label = [
@@ -670,7 +928,7 @@ function UntimedEventChip({
     const className = `inline-flex max-w-full items-center gap-1 rounded-md border text-left text-xs font-semibold transition ${eventTypeClass(event.type)} ${isHighlighted ? 'ring-2 ring-neutral-950 ring-offset-2 dark:ring-white dark:ring-offset-neutral-950' : ''}`;
     const content = (
         <>
-            <span className="shrink-0">{numberLabel}</span>
+            {/* <span className="shrink-0 rounded-full bg-gray-50 p-1">{numberLabel}</span> */}
             <span className="min-w-0 truncate">{event.title}</span>
             {multipleAssignedUsersCount && (
                 <span className="shrink-0">{multipleAssignedUsersCount}</span>
@@ -688,7 +946,20 @@ function UntimedEventChip({
                     aria-pressed={
                         hasMultipleAssignedUsers ? isHighlighted : undefined
                     }
-                    onClick={() => onToggleHighlight(event)}
+                    onPointerDown={(pointerEvent) =>
+                        detailHold.startHold(pointerEvent, event)
+                    }
+                    onPointerMove={detailHold.updateHold}
+                    onPointerUp={detailHold.finishHold}
+                    onPointerCancel={detailHold.finishHold}
+                    onPointerLeave={detailHold.finishHold}
+                    onClick={() => {
+                        if (detailHold.consumeClickAfterHold()) {
+                            return;
+                        }
+
+                        onToggleHighlight(event);
+                    }}
                 >
                     {content}
                 </button>
@@ -710,7 +981,20 @@ function UntimedEventChip({
             className={`${className} px-2 py-1 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950 ${hasMultipleAssignedUsers ? 'cursor-pointer' : 'cursor-default'}`}
             title={label}
             aria-pressed={hasMultipleAssignedUsers ? isHighlighted : undefined}
-            onClick={() => onToggleHighlight(event)}
+            onPointerDown={(pointerEvent) =>
+                detailHold.startHold(pointerEvent, event)
+            }
+            onPointerMove={detailHold.updateHold}
+            onPointerUp={detailHold.finishHold}
+            onPointerCancel={detailHold.finishHold}
+            onPointerLeave={detailHold.finishHold}
+            onClick={() => {
+                if (detailHold.consumeClickAfterHold()) {
+                    return;
+                }
+
+                onToggleHighlight(event);
+            }}
         >
             {content}
         </button>
@@ -735,9 +1019,26 @@ function DayTimeline({
     const [createSlot, setCreateSlot] = useState<{
         date: string;
         hour: number;
+        endHour: number;
         rowName: string;
         userId: number | null;
     } | null>(null);
+    const [detailEvent, setDetailEvent] = useState<TimelineEvent | null>(null);
+    const [dragSelection, setDragSelection] = useState<DragSelection | null>(
+        null,
+    );
+    const dragSelectionRef = useRef<DragSelection | null>(null);
+    const pendingDragSelectionRef = useRef<PendingDragSelection | null>(null);
+
+    useEffect(() => {
+        return () => {
+            const pendingSelection = pendingDragSelectionRef.current;
+
+            if (pendingSelection !== null) {
+                window.clearTimeout(pendingSelection.timeoutId);
+            }
+        };
+    }, []);
     const hasUnassignedEvents = selectedDayTimeline.events.some(
         (event) => event.assigned_users.length === 0,
     );
@@ -766,9 +1067,267 @@ function DayTimeline({
     const slotStartsAt =
         createSlot === null ? null : minuteInputValue(createSlot.hour);
     const slotEndsAt =
-        createSlot === null
-            ? null
-            : minuteInputValue(createSlot.hour + timelineHour);
+        createSlot === null ? null : minuteInputValue(createSlot.endHour);
+
+    function commitDragSelection(selection: DragSelection | null) {
+        dragSelectionRef.current = selection;
+        setDragSelection(selection);
+    }
+
+    function clearPendingDragSelection() {
+        const pendingSelection = pendingDragSelectionRef.current;
+
+        if (pendingSelection === null) {
+            return;
+        }
+
+        window.clearTimeout(pendingSelection.timeoutId);
+        pendingDragSelectionRef.current = null;
+    }
+
+    function safelyCapturePointer(element: HTMLElement, pointerId: number) {
+        try {
+            element.setPointerCapture(pointerId);
+        } catch {
+            return false;
+        }
+
+        return true;
+    }
+
+    function safelyReleasePointer(element: HTMLElement, pointerId: number) {
+        if (!element.hasPointerCapture(pointerId)) {
+            return;
+        }
+
+        element.releasePointerCapture(pointerId);
+    }
+
+    function activatePendingDragSelection(pointerId: number) {
+        const pendingSelection = pendingDragSelectionRef.current;
+
+        if (
+            pendingSelection === null ||
+            pendingSelection.pointerId !== pointerId
+        ) {
+            return;
+        }
+
+        pendingDragSelectionRef.current = null;
+
+        if (
+            !safelyCapturePointer(
+                pendingSelection.rowElement,
+                pendingSelection.pointerId,
+            )
+        ) {
+            return;
+        }
+
+        commitDragSelection({
+            date: pendingSelection.date,
+            rowName: pendingSelection.rowName,
+            userId: pendingSelection.userId,
+            anchorHour: pendingSelection.anchorHour,
+            currentHour: pendingSelection.anchorHour,
+            pointerId: pendingSelection.pointerId,
+        });
+    }
+
+    function startSlotSelection(
+        event: React.PointerEvent<HTMLDivElement>,
+        rowName: string,
+        userId: number | null,
+        availableHours: Set<number>,
+    ) {
+        if (event.button !== 0) {
+            return;
+        }
+
+        const slotButton = (event.target as HTMLElement).closest<HTMLElement>(
+            '[data-timeline-slot-hour]',
+        );
+
+        if (slotButton === null) {
+            return;
+        }
+
+        const hour = Number(slotButton.dataset.timelineSlotHour);
+
+        if (!availableHours.has(hour)) {
+            return;
+        }
+
+        const rowElement = event.currentTarget;
+
+        clearPendingDragSelection();
+
+        if (event.pointerType === 'touch' || event.pointerType === 'pen') {
+            const pointerId = event.pointerId;
+
+            pendingDragSelectionRef.current = {
+                date: selectedDetail.date,
+                rowName,
+                userId,
+                anchorHour: hour,
+                pointerId,
+                startX: event.clientX,
+                startY: event.clientY,
+                rowElement,
+                timeoutId: window.setTimeout(() => {
+                    activatePendingDragSelection(pointerId);
+                }, touchSelectionDelay),
+            };
+
+            return;
+        }
+
+        safelyCapturePointer(rowElement, event.pointerId);
+        event.preventDefault();
+
+        commitDragSelection({
+            date: selectedDetail.date,
+            rowName,
+            userId,
+            anchorHour: hour,
+            currentHour: hour,
+            pointerId: event.pointerId,
+        });
+    }
+
+    function updateSlotSelection(
+        event: React.PointerEvent<HTMLDivElement>,
+        rowName: string,
+        userId: number | null,
+        availableHours: Set<number>,
+    ) {
+        const pendingSelection = pendingDragSelectionRef.current;
+
+        if (
+            pendingSelection !== null &&
+            pendingSelection.pointerId === event.pointerId
+        ) {
+            const movedX = Math.abs(event.clientX - pendingSelection.startX);
+            const movedY = Math.abs(event.clientY - pendingSelection.startY);
+
+            if (
+                movedX > touchScrollTolerance ||
+                movedY > touchScrollTolerance
+            ) {
+                clearPendingDragSelection();
+            }
+
+            return;
+        }
+
+        const activeSelection = dragSelectionRef.current;
+
+        if (
+            activeSelection === null ||
+            activeSelection.pointerId !== event.pointerId ||
+            !isSameTimelineRow(
+                activeSelection,
+                selectedDetail.date,
+                rowName,
+                userId,
+            )
+        ) {
+            return;
+        }
+
+        event.preventDefault();
+
+        const rowElement = event.currentTarget;
+        const clientX = event.clientX;
+
+        setDragSelection((selection) => {
+            if (
+                selection === null ||
+                selection.pointerId !== event.pointerId ||
+                !isSameTimelineRow(
+                    selection,
+                    selectedDetail.date,
+                    rowName,
+                    userId,
+                )
+            ) {
+                return selection;
+            }
+
+            const targetHour = pointerHourFromPosition(
+                clientX,
+                rowElement,
+                bounds,
+            );
+            const currentHour = contiguousSelectionHour(
+                selection.anchorHour,
+                targetHour,
+                availableHours,
+            );
+            const nextSelection = {
+                ...selection,
+                currentHour,
+            };
+
+            dragSelectionRef.current = nextSelection;
+
+            return nextSelection;
+        });
+    }
+
+    function finishSlotSelection(event: React.PointerEvent<HTMLDivElement>) {
+        const pendingSelection = pendingDragSelectionRef.current;
+
+        if (
+            pendingSelection !== null &&
+            pendingSelection.pointerId === event.pointerId
+        ) {
+            clearPendingDragSelection();
+            setCreateSlot({
+                date: pendingSelection.date,
+                hour: pendingSelection.anchorHour,
+                endHour: pendingSelection.anchorHour + timelineHour,
+                rowName: pendingSelection.rowName,
+                userId: pendingSelection.userId,
+            });
+
+            return;
+        }
+
+        const selection = dragSelectionRef.current;
+
+        if (selection === null || selection.pointerId !== event.pointerId) {
+            return;
+        }
+
+        safelyReleasePointer(event.currentTarget, event.pointerId);
+
+        event.preventDefault();
+
+        const range = dragSelectionRange(selection);
+
+        commitDragSelection(null);
+        setCreateSlot({
+            date: selection.date,
+            hour: range.startsAt,
+            endHour: range.endsAt,
+            rowName: selection.rowName,
+            userId: selection.userId,
+        });
+    }
+
+    function cancelSlotSelection(event: React.PointerEvent<HTMLDivElement>) {
+        clearPendingDragSelection();
+
+        if (dragSelectionRef.current !== null) {
+            safelyReleasePointer(
+                event.currentTarget,
+                dragSelectionRef.current.pointerId,
+            );
+        }
+
+        commitDragSelection(null);
+    }
 
     function createFromSlot(type: TimelineEventType) {
         if (
@@ -802,7 +1361,7 @@ function DayTimeline({
                     </h2>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
                         {canManageSchedules
-                            ? '複数担当の予定を選択すると同じ予定の担当者を確認できます。編集は鉛筆アイコンから行えます。空き時間をクリックすると、その担当者と時間で工事予定を作成できます。'
+                            ? '複数担当の予定を選択すると同じ予定の担当者を確認できます。予定を長押しすると詳細を確認できます。編集は鉛筆アイコンまたは詳細から行えます。空き時間はクリックで1時間、押したまま左右にドラッグで連続した空き時間をまとめて作成できます。'
                             : '空き時間は白い余白、時間未定は左側の列に表示されます。'}
                     </p>
                 </div>
@@ -879,6 +1438,27 @@ function DayTimeline({
                             const timedEvents = rowEvents.filter(
                                 (event) => event.starts_at !== null,
                             );
+                            const availableHours = bounds.hours
+                                .slice(0, -1)
+                                .filter(
+                                    (hour) =>
+                                        !slotOverlapsEvents(
+                                            hour,
+                                            bounds,
+                                            timedEvents,
+                                        ),
+                                );
+                            const availableHourSet = new Set(availableHours);
+                            const rowDragSelection =
+                                dragSelection !== null &&
+                                isSameTimelineRow(
+                                    dragSelection,
+                                    selectedDetail.date,
+                                    row.name,
+                                    row.id,
+                                )
+                                    ? dragSelection
+                                    : null;
 
                             return (
                                 <div
@@ -905,6 +1485,9 @@ function DayTimeline({
                                                     }
                                                     onToggleHighlight={
                                                         toggleHighlightedEvent
+                                                    }
+                                                    onOpenDetail={
+                                                        setDetailEvent
                                                     }
                                                     canManageSchedules={
                                                         canManageSchedules
@@ -935,18 +1518,38 @@ function DayTimeline({
                                         </div>
                                         {canManageSchedules && (
                                             <div
-                                                className="absolute inset-0 grid"
+                                                className="absolute inset-0 grid select-none"
                                                 style={timelineGridStyle(
                                                     bounds,
                                                 )}
+                                                onPointerDown={(event) =>
+                                                    startSlotSelection(
+                                                        event,
+                                                        row.name,
+                                                        row.id,
+                                                        availableHourSet,
+                                                    )
+                                                }
+                                                onPointerMove={(event) =>
+                                                    updateSlotSelection(
+                                                        event,
+                                                        row.name,
+                                                        row.id,
+                                                        availableHourSet,
+                                                    )
+                                                }
+                                                onPointerUp={
+                                                    finishSlotSelection
+                                                }
+                                                onPointerCancel={
+                                                    cancelSlotSelection
+                                                }
                                             >
                                                 {bounds.hours
                                                     .slice(0, -1)
                                                     .map((hour) =>
-                                                        slotOverlapsEvents(
+                                                        !availableHourSet.has(
                                                             hour,
-                                                            bounds,
-                                                            timedEvents,
                                                         ) ? (
                                                             <span
                                                                 key={hour}
@@ -960,16 +1563,50 @@ function DayTimeline({
                                                                     selectedDetail.date
                                                                 }
                                                                 hour={hour}
+                                                                endHour={
+                                                                    hour +
+                                                                    timelineHour
+                                                                }
                                                                 rowName={
                                                                     row.name
                                                                 }
                                                                 userId={row.id}
+                                                                isSelected={slotIsSelected(
+                                                                    dragSelection,
+                                                                    selectedDetail.date,
+                                                                    row.name,
+                                                                    row.id,
+                                                                    hour,
+                                                                )}
                                                                 onOpenCreateTypeDialog={
                                                                     setCreateSlot
                                                                 }
                                                             />
                                                         ),
                                                     )}
+                                                {rowDragSelection !== null && (
+                                                    <div
+                                                        className="pointer-events-none absolute top-1 bottom-1 z-10 flex items-center justify-center rounded-md border border-emerald-600 bg-emerald-500/15 px-2 text-[11px] font-bold text-emerald-950 shadow-sm ring-1 ring-white/80 dark:border-emerald-300 dark:bg-emerald-400/20 dark:text-emerald-50 dark:ring-neutral-950/80"
+                                                        style={selectionPositionStyle(
+                                                            rowDragSelection,
+                                                            bounds,
+                                                        )}
+                                                    >
+                                                        <span className="truncate rounded-md bg-white/90 px-1.5 py-0.5 shadow-sm dark:bg-neutral-950/90">
+                                                            {minuteInputValue(
+                                                                dragSelectionRange(
+                                                                    rowDragSelection,
+                                                                ).startsAt,
+                                                            )}
+                                                            {' - '}
+                                                            {minuteInputValue(
+                                                                dragSelectionRange(
+                                                                    rowDragSelection,
+                                                                ).endsAt,
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                         {timedEvents.length > 0 ? (
@@ -984,6 +1621,9 @@ function DayTimeline({
                                                     }
                                                     onToggleHighlight={
                                                         toggleHighlightedEvent
+                                                    }
+                                                    onOpenDetail={
+                                                        setDetailEvent
                                                     }
                                                     canManageSchedules={
                                                         canManageSchedules
@@ -1053,6 +1693,55 @@ function DayTimeline({
                             業務連絡を作成
                         </Button>
                     </div>
+                </DialogContent>
+            </Dialog>
+            <Dialog
+                open={detailEvent !== null}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setDetailEvent(null);
+                    }
+                }}
+            >
+                <DialogContent className="sm:max-w-md">
+                    {detailEvent !== null && (
+                        <>
+                            <DialogHeader>
+                                <DialogTitle>{detailEvent.title}</DialogTitle>
+                                <DialogDescription>
+                                    内容を確認して、必要に応じて編集できます。
+                                </DialogDescription>
+                            </DialogHeader>
+                            <dl className="grid gap-3 text-sm">
+                                {scheduleDetailRows(detailEvent).map((row) => (
+                                    <div
+                                        key={row.label}
+                                        className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-3"
+                                    >
+                                        <dt className="text-muted-foreground">
+                                            {row.label}
+                                        </dt>
+                                        <dd className="min-w-0 font-medium break-words whitespace-pre-wrap">
+                                            {row.value}
+                                        </dd>
+                                    </div>
+                                ))}
+                            </dl>
+                            {canManageSchedules && (
+                                <Button asChild className="w-full rounded-md">
+                                    <Link
+                                        href={eventEditRoute(
+                                            detailEvent,
+                                            returnTo,
+                                        )}
+                                    >
+                                        <Pencil className="size-4" />
+                                        編集ページへ
+                                    </Link>
+                                </Button>
+                            )}
+                        </>
+                    )}
                 </DialogContent>
             </Dialog>
         </section>
@@ -1218,7 +1907,7 @@ export default function ScheduleOverviewIndex({
                                                             : day.label}
                                                     </Link>
                                                 </span>
-
+                                                <hr />
                                                 <span className="relative flex flex-col gap-0.5">
                                                     <Link
                                                         href={scheduleIndex({
@@ -1227,6 +1916,7 @@ export default function ScheduleOverviewIndex({
                                                                 date: day.date,
                                                                 type: [
                                                                     'construction',
+                                                                    'business',
                                                                 ],
                                                             },
                                                         })}
@@ -1247,6 +1937,7 @@ export default function ScheduleOverviewIndex({
                                                                 range: 'today',
                                                                 date: day.date,
                                                                 type: [
+                                                                    'construction',
                                                                     'business',
                                                                 ],
                                                             },
@@ -1268,7 +1959,8 @@ export default function ScheduleOverviewIndex({
                                                                 range: 'today',
                                                                 date: day.date,
                                                                 type: [
-                                                                    'internal_notice',
+                                                                    'construction',
+                                                                    'business',
                                                                 ],
                                                             },
                                                         })}
@@ -1283,6 +1975,7 @@ export default function ScheduleOverviewIndex({
                                                             shortLabel="連"
                                                         />
                                                     </Link>
+                                                    <hr />
                                                     <Link
                                                         href={voucherIndex({
                                                             query: {
