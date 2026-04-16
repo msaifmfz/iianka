@@ -245,15 +245,15 @@ function heatLabel(level: number) {
 function heatCellClass(level: number) {
     switch (level) {
         case 1:
-            return 'border-blue-200 bg-blue-50 text-blue-950 hover:border-blue-300 hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-50 dark:hover:border-blue-800 dark:hover:bg-blue-950/50';
+            return 'border-sky-200 bg-sky-50 text-sky-950 hover:border-sky-300 hover:bg-sky-100 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-50 dark:hover:border-sky-400/50 dark:hover:bg-sky-500/15';
         case 2:
-            return 'border-blue-300 bg-blue-100 text-blue-950 hover:border-blue-400 hover:bg-blue-200/70 dark:border-blue-800 dark:bg-blue-950/50 dark:text-blue-50 dark:hover:border-blue-700 dark:hover:bg-blue-900/50';
+            return 'border-cyan-300 bg-cyan-100 text-cyan-950 hover:border-cyan-400 hover:bg-cyan-200/70 dark:border-cyan-400/35 dark:bg-cyan-500/15 dark:text-cyan-50 dark:hover:border-cyan-300/55 dark:hover:bg-cyan-500/20';
         case 3:
-            return 'border-blue-400 bg-blue-200 text-blue-950 hover:border-blue-500 hover:bg-blue-300/80 dark:border-blue-700 dark:bg-blue-900/60 dark:text-blue-50 dark:hover:border-blue-600 dark:hover:bg-blue-800/60';
+            return 'border-teal-400 bg-teal-200 text-teal-950 hover:border-teal-500 hover:bg-teal-300/80 dark:border-teal-300/45 dark:bg-teal-500/20 dark:text-teal-50 dark:hover:border-teal-200/60 dark:hover:bg-teal-500/25';
         case 4:
-            return 'border-blue-600 bg-blue-300 text-blue-950 hover:border-blue-700 hover:bg-blue-400/80 dark:border-blue-500 dark:bg-blue-800/70 dark:text-blue-50 dark:hover:border-blue-400 dark:hover:bg-blue-700/70';
+            return 'border-amber-500 bg-amber-300 text-amber-950 hover:border-amber-600 hover:bg-amber-400/80 dark:border-amber-300/65 dark:bg-amber-500/25 dark:text-amber-50 dark:hover:border-amber-200/80 dark:hover:bg-amber-500/30';
         default:
-            return 'border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:border-neutral-700 dark:hover:bg-neutral-900';
+            return 'border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-900/70 dark:text-neutral-100 dark:hover:border-white/20 dark:hover:bg-neutral-900';
     }
 }
 
@@ -262,7 +262,7 @@ function dayCellClass(day: CalendarCell, maxCount: number) {
     const heatClass = heatCellClass(level);
 
     if (day.isSelected) {
-        return `${heatClass} border-neutral-200 shadow-md ring-1 ring-neutral-200 dark:border-white dark:ring-white`;
+        return `${heatClass} border-neutral-300 shadow-md ring-2 ring-neutral-900/20 dark:border-amber-300/80 dark:ring-2 dark:ring-amber-300/45`;
     }
 
     if (!day.isCurrentMonth) {
@@ -270,7 +270,7 @@ function dayCellClass(day: CalendarCell, maxCount: number) {
             return `${heatClass} opacity-65`;
         }
 
-        return 'border-neutral-200 bg-neutral-50 text-neutral-400 hover:border-neutral-300 hover:bg-white dark:border-neutral-800 dark:bg-neutral-950/50 dark:text-neutral-600 dark:hover:border-neutral-700 dark:hover:bg-neutral-950';
+        return 'border-neutral-200 bg-neutral-50 text-neutral-400 hover:border-neutral-300 hover:bg-white dark:border-white/5 dark:bg-neutral-950/45 dark:text-neutral-500 dark:hover:border-white/15 dark:hover:bg-neutral-900/70';
     }
 
     return heatClass;
@@ -278,10 +278,10 @@ function dayCellClass(day: CalendarCell, maxCount: number) {
 
 function metricTone(tone: 'neutral' | 'danger' = 'neutral') {
     if (tone === 'danger') {
-        return 'bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-100';
+        return 'bg-red-100 text-red-900 ring-1 ring-red-200/80 dark:bg-red-500/20 dark:text-red-100 dark:ring-red-300/25';
     }
 
-    return '';
+    return 'bg-white/70 text-neutral-800 ring-1 ring-neutral-950/5 dark:bg-white/10 dark:text-neutral-100 dark:ring-white/10';
 }
 
 function MetricPill({
@@ -390,11 +390,11 @@ function eventTypeLabel(type: TimelineEventType) {
 function eventTypeClass(type: TimelineEventType) {
     return {
         construction:
-            'border-orange-300 bg-orange-100 text-orange-950 dark:border-orange-800 dark:bg-orange-950/80 dark:text-orange-100',
+            'border-orange-300 bg-orange-100 text-orange-950 dark:border-orange-300/40 dark:bg-orange-500/20 dark:text-orange-50 dark:shadow-orange-950/20',
         business:
-            'border-violet-300 bg-violet-100 text-violet-950 dark:border-violet-800 dark:bg-violet-950/80 dark:text-violet-100',
+            'border-violet-300 bg-violet-100 text-violet-950 dark:border-violet-300/40 dark:bg-violet-500/20 dark:text-violet-50 dark:shadow-violet-950/20',
         internal_notice:
-            'border-sky-300 bg-sky-100 text-sky-950 dark:border-sky-800 dark:bg-sky-950/80 dark:text-sky-100',
+            'border-sky-300 bg-sky-100 text-sky-950 dark:border-sky-300/40 dark:bg-sky-500/20 dark:text-sky-50 dark:shadow-sky-950/20',
     }[type];
 }
 
@@ -744,7 +744,7 @@ function TimelineSlotLink({
         <button
             type="button"
             data-timeline-slot-hour={hour}
-            className={`group relative flex touch-auto items-center justify-center border-l border-neutral-100 text-[10px] font-semibold text-emerald-800 transition focus-visible:z-20 focus-visible:bg-emerald-50 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:border-neutral-900 dark:text-emerald-200 dark:focus-visible:bg-emerald-950/30 dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950 ${isSelected ? 'bg-emerald-100 text-emerald-950 ring-1 ring-emerald-500 ring-inset dark:bg-emerald-950/60 dark:text-emerald-50 dark:ring-emerald-500' : 'hover:bg-emerald-50 dark:hover:bg-emerald-950/30'}`}
+            className={`group relative flex touch-auto items-center justify-center border-l border-neutral-100 text-[10px] font-semibold text-emerald-800 transition focus-visible:z-20 focus-visible:bg-emerald-50 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:border-white/5 dark:text-emerald-100 dark:focus-visible:bg-emerald-400/10 dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950 ${isSelected ? 'bg-emerald-100 text-emerald-950 ring-1 ring-emerald-500 ring-inset dark:bg-emerald-400/20 dark:text-emerald-50 dark:ring-emerald-300/60' : 'hover:bg-emerald-50 dark:hover:bg-emerald-400/10'}`}
             aria-label={`${rowName} ${startsAt} から ${endsAt} まで予定を追加`}
             title={`${rowName} ${startsAt} - ${endsAt} の予定を追加`}
             onClick={(event) => {
@@ -762,7 +762,7 @@ function TimelineSlotLink({
             }}
         >
             <span
-                className={`inline-flex items-center gap-1 rounded-md border border-dashed border-emerald-300 bg-white/90 px-1.5 py-1 shadow-sm transition group-hover:opacity-100 group-focus-visible:opacity-100 dark:border-emerald-800 dark:bg-neutral-950/90 ${isSelected ? 'opacity-100' : 'opacity-0'}`}
+                className={`inline-flex items-center gap-1 rounded-md border border-dashed border-emerald-300 bg-white/90 px-1.5 py-1 shadow-sm transition group-hover:opacity-100 group-focus-visible:opacity-100 dark:border-emerald-300/45 dark:bg-neutral-950/95 dark:shadow-black/30 ${isSelected ? 'opacity-100' : 'opacity-0'}`}
             >
                 <Plus className="size-3" />
                 {startsAt}
@@ -816,7 +816,7 @@ function TimelineEventBlock({
     const content = (
         <>
             <div className="flex min-w-0 items-center gap-1 truncate pr-5 text-[11px] leading-tight font-semibold">
-                <span className="shrink-0 rounded-full bg-gray-50 p-1">
+                <span className="shrink-0 rounded-full bg-white/80 px-1.5 py-0.5 text-[10px] shadow-sm dark:bg-black/25 dark:text-white">
                     {numberLabel}
                 </span>
                 <span className="min-w-0 truncate">{event.title}</span>
@@ -858,7 +858,7 @@ function TimelineEventBlock({
                 </button>
                 <Link
                     href={eventEditRoute(event, returnTo)}
-                    className="absolute top-1.5 right-1.5 inline-flex size-6 items-center justify-center rounded-md bg-white/80 shadow-sm transition hover:bg-white focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:bg-black/40 dark:hover:bg-black/60 dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950"
+                    className="absolute top-1.5 right-1.5 inline-flex size-6 items-center justify-center rounded-md bg-white/85 shadow-sm transition hover:bg-white focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:bg-white/15 dark:text-white dark:hover:bg-white/20 dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950"
                     title={`${label} を編集`}
                     aria-label={`${label} を編集`}
                 >
@@ -965,7 +965,7 @@ function UntimedEventChip({
                 </button>
                 <Link
                     href={eventEditRoute(event, returnTo)}
-                    className="inline-flex size-7 shrink-0 items-center justify-center border-l border-current/20 bg-white/50 transition hover:bg-white focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:bg-black/20 dark:hover:bg-black/40 dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950"
+                    className="inline-flex size-7 shrink-0 items-center justify-center border-l border-current/20 bg-white/60 transition hover:bg-white focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:bg-white/10 dark:hover:bg-white/20 dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950"
                     title={`${label} を編集`}
                     aria-label={`${label} を編集`}
                 >
@@ -1373,7 +1373,7 @@ function DayTimeline({
     }
 
     return (
-        <section className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
+        <section className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-neutral-900/80 dark:shadow-2xl dark:shadow-black/25">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                     <p className="text-sm text-muted-foreground">選択日</p>
@@ -1437,10 +1437,10 @@ function DayTimeline({
                 </span>
             </div>
 
-            <div className="mt-4 overflow-x-auto">
+            <div className="mt-4 overflow-x-auto rounded-lg border border-neutral-200 bg-white dark:border-white/10 dark:bg-neutral-950/80">
                 <div className="min-w-full" style={{ width: timelineWidth }}>
                     <div
-                        className="grid border-b border-neutral-200 text-xs font-semibold text-muted-foreground dark:border-neutral-800"
+                        className="grid border-b border-neutral-200 bg-neutral-50/80 text-xs font-semibold text-muted-foreground dark:border-white/10 dark:bg-white/5 dark:text-neutral-300"
                         style={timelineRowStyle(bounds)}
                     >
                         <div className="px-3 py-2">担当者</div>
@@ -1449,7 +1449,7 @@ function DayTimeline({
                             {bounds.hours.slice(0, -1).map((hour) => (
                                 <span
                                     key={hour}
-                                    className="border-l border-neutral-200 px-2 py-2 dark:border-neutral-800"
+                                    className="border-l border-neutral-200 px-2 py-2 dark:border-white/10"
                                 >
                                     {hourLabel(hour)}
                                 </span>
@@ -1457,7 +1457,7 @@ function DayTimeline({
                         </div>
                     </div>
 
-                    <div className="divide-y divide-neutral-200 dark:divide-neutral-800">
+                    <div className="divide-y divide-neutral-200 dark:divide-white/10">
                         {rows.map((row) => {
                             const rowEvents = eventsForUser(
                                 selectedDayTimeline.events,
@@ -1494,7 +1494,7 @@ function DayTimeline({
                             return (
                                 <div
                                     key={row.id ?? 'unassigned'}
-                                    className="grid min-h-12"
+                                    className="grid min-h-12 odd:bg-white even:bg-neutral-50/50 dark:odd:bg-neutral-950/40 dark:even:bg-white/[0.03]"
                                     style={timelineRowStyle(bounds)}
                                 >
                                     <div className="flex min-w-0 items-center px-3 py-1.5">
@@ -1532,7 +1532,7 @@ function DayTimeline({
                                             </span>
                                         )}
                                     </div>
-                                    <div className="relative min-h-12 bg-white dark:bg-neutral-950">
+                                    <div className="relative min-h-12 bg-white/70 dark:bg-transparent">
                                         <div
                                             className="absolute inset-0 grid"
                                             style={timelineGridStyle(bounds)}
@@ -1543,7 +1543,7 @@ function DayTimeline({
                                                 .map((hour) => (
                                                     <span
                                                         key={hour}
-                                                        className="border-l border-neutral-100 dark:border-neutral-900"
+                                                        className="border-l border-neutral-100 dark:border-white/[0.06]"
                                                     />
                                                 ))}
                                         </div>
@@ -1617,7 +1617,7 @@ function DayTimeline({
                                                     )}
                                                 {rowDragSelection !== null && (
                                                     <div
-                                                        className="pointer-events-none absolute top-1 bottom-1 z-10 flex items-center justify-center rounded-md border border-emerald-600 bg-emerald-500/15 px-2 text-[11px] font-bold text-emerald-950 shadow-sm ring-1 ring-white/80 dark:border-emerald-300 dark:bg-emerald-400/20 dark:text-emerald-50 dark:ring-neutral-950/80"
+                                                        className="pointer-events-none absolute top-1 bottom-1 z-10 flex items-center justify-center rounded-md border border-emerald-600 bg-emerald-500/15 px-2 text-[11px] font-bold text-emerald-950 shadow-sm ring-1 ring-white/80 dark:border-emerald-300/70 dark:bg-emerald-400/20 dark:text-emerald-50 dark:ring-black/60"
                                                         style={selectionPositionStyle(
                                                             rowDragSelection,
                                                             bounds,
@@ -1806,7 +1806,7 @@ export default function ScheduleOverviewIndex({
     return (
         <>
             <Head title="予定カレンダー" />
-            <main className="min-h-screen bg-neutral-100 p-3 text-neutral-950 md:p-6 dark:bg-neutral-950 dark:text-neutral-50">
+            <main className="min-h-screen bg-neutral-100 p-3 text-neutral-950 md:p-6 dark:bg-[radial-gradient(circle_at_top_left,_rgba(20,184,166,0.16),_transparent_32%),radial-gradient(circle_at_85%_12%,_rgba(245,158,11,0.14),_transparent_28%),linear-gradient(135deg,_#050505,_#171717_48%,_#0a0a0a)] dark:text-neutral-50">
                 <div className="mx-auto flex max-w-7xl flex-col gap-4">
                     {/* <header className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950"> */}
                     {/*     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"> */}
@@ -1827,7 +1827,7 @@ export default function ScheduleOverviewIndex({
                     {/* </header> */}
 
                     <div className="flex flex-col gap-4">
-                        <section className="rounded-lg border border-neutral-200 bg-white p-3 md:p-4 dark:border-neutral-800 dark:bg-neutral-950">
+                        <section className="rounded-lg border border-neutral-200 bg-white p-3 shadow-sm md:p-4 dark:border-white/10 dark:bg-neutral-900/80 dark:shadow-2xl dark:shadow-black/25">
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <h2 className="text-xl font-bold">
                                     {monthTitle(filters.date)}
@@ -1886,7 +1886,7 @@ export default function ScheduleOverviewIndex({
                                     {[0, 1, 2, 3, 4].map((level) => (
                                         <span
                                             key={level}
-                                            className={`size-5 rounded-md border ${heatCellClass(level)}`}
+                                            className={`size-5 rounded-md border shadow-sm ${heatCellClass(level)}`}
                                             aria-label={heatLabel(level)}
                                         />
                                     ))}
@@ -1903,7 +1903,7 @@ export default function ScheduleOverviewIndex({
                                                 className={
                                                     index === 0
                                                         ? 'text-red-600 dark:text-red-300'
-                                                        : undefined
+                                                        : 'dark:text-neutral-300'
                                                 }
                                             >
                                                 {weekday}
@@ -1915,7 +1915,7 @@ export default function ScheduleOverviewIndex({
                                         {cells.map((day) => (
                                             <div
                                                 key={day.date}
-                                                className={`relative min-h-[5.75rem] rounded-lg border p-1 transition sm:min-h-28 sm:p-2 ${dayCellClass(day, busiestScheduleCount)}`}
+                                                className={`relative min-h-[5.75rem] rounded-lg border p-1 shadow-sm transition sm:min-h-28 sm:p-2 dark:shadow-black/20 ${dayCellClass(day, busiestScheduleCount)}`}
                                             >
                                                 <span className="relative flex items-center justify-between gap-1">
                                                     <Link
@@ -1924,7 +1924,7 @@ export default function ScheduleOverviewIndex({
                                                                 day.date,
                                                             ),
                                                         )}
-                                                        className={`relative z-10 flex size-6 items-center justify-center rounded-full text-lg font-bold tabular-nums focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none sm:size-7 sm:text-lg dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950 ${day.isToday ? 'bg-neutral-800 text-white dark:bg-white dark:text-neutral-950' : ''}`}
+                                                        className={`relative z-10 flex size-6 items-center justify-center rounded-full text-lg font-bold tabular-nums focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none sm:size-7 sm:text-lg dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950 ${day.isToday ? 'bg-neutral-800 text-white dark:bg-amber-300 dark:text-neutral-950 dark:shadow-sm dark:shadow-amber-500/20' : ''}`}
                                                         aria-current={
                                                             day.isSelected
                                                                 ? 'date'
@@ -1938,7 +1938,7 @@ export default function ScheduleOverviewIndex({
                                                             : day.label}
                                                     </Link>
                                                 </span>
-                                                <hr />
+                                                <hr className="my-1 border-neutral-200/70 dark:border-white/10" />
                                                 <span className="relative flex flex-col gap-0.5">
                                                     <Link
                                                         href={scheduleIndex({
@@ -2006,7 +2006,7 @@ export default function ScheduleOverviewIndex({
                                                             shortLabel="連"
                                                         />
                                                     </Link>
-                                                    <hr />
+                                                    <hr className="my-0.5 border-neutral-200/70 dark:border-white/10" />
                                                     <Link
                                                         href={voucherIndex({
                                                             query: {
