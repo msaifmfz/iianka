@@ -7,7 +7,6 @@ import {
 } from '@/actions/App/Http/Controllers/ConstructionSiteController';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { dashboard } from '@/routes';
 import type { SiteGuideFile } from '@/types';
 
 type Props = {
@@ -174,10 +173,6 @@ export default function ConstructionSiteForm({ guideFile }: Props) {
 
 ConstructionSiteForm.layout = {
     breadcrumbs: [
-        {
-            title: 'メニュー',
-            href: dashboard(),
-        },
         {
             title: '現場案内図',
             href: guideIndex(),

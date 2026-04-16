@@ -19,7 +19,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { dashboard } from '@/routes';
 
 type ManagedUser = {
     id: number;
@@ -422,10 +421,6 @@ export default function AdminUsersIndex({ users, filters }: Props) {
 
 AdminUsersIndex.layout = {
     breadcrumbs: [
-        {
-            title: 'メニュー',
-            href: dashboard(),
-        },
         {
             title: 'ユーザー管理',
             href: userIndex(),

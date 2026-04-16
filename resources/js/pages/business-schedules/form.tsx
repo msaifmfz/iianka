@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { businessDateString } from '@/lib/dates';
 import { cn } from '@/lib/utils';
-import { dashboard } from '@/routes';
 import type {
     AttendanceLeaveRecord,
     BusinessSchedule,
@@ -721,10 +720,6 @@ export default function BusinessScheduleForm({
 
 BusinessScheduleForm.layout = {
     breadcrumbs: [
-        {
-            title: 'メニュー',
-            href: dashboard(),
-        },
         {
             title: '予定表',
             href: scheduleIndex(),

@@ -8,7 +8,6 @@ import { FloatingBackButton } from '@/components/floating-back-button';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { businessDateString } from '@/lib/dates';
-import { dashboard } from '@/routes';
 import type { ConstructionUser, InternalNotice } from '@/types';
 
 type Props = {
@@ -271,10 +270,6 @@ export default function InternalNoticeForm({
 
 InternalNoticeForm.layout = {
     breadcrumbs: [
-        {
-            title: 'メニュー',
-            href: dashboard(),
-        },
         {
             title: '予定表',
             href: scheduleIndex(),
