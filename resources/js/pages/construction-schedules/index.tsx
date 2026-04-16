@@ -56,7 +56,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { businessDateString } from '@/lib/dates';
-import { dashboard } from '@/routes';
 import type {
     ConstructionSchedule,
     ConstructionUser,
@@ -1859,10 +1858,6 @@ export default function ConstructionSchedulesIndex({
 
 ConstructionSchedulesIndex.layout = {
     breadcrumbs: [
-        {
-            title: 'メニュー',
-            href: dashboard(),
-        },
         {
             title: '予定表',
             href: scheduleIndex(),

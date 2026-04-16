@@ -17,7 +17,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { businessDateString } from '@/lib/dates';
-import { dashboard } from '@/routes';
 import type {
     AttendanceRecord,
     AttendanceStatus,
@@ -217,19 +216,6 @@ export default function AttendanceRecordIndex({
                 !isHiddenUser(record.user),
         );
     }, [records, visibleUserIds]);
-    const visibleStats = useMemo(() => {
-        return {
-            working: visibleRecords.filter(
-                (record) => record.status === 'working',
-            ).length,
-            leave: visibleRecords.filter((record) => record.status === 'leave')
-                .length,
-            unmarked: Math.max(
-                0,
-                visibleUsers.length * days.length - visibleRecords.length,
-            ),
-        };
-    }, [days.length, visibleRecords, visibleUsers.length]);
     const recordMap = useMemo(() => {
         return new Map(
             visibleRecords.map((record) => [
@@ -282,7 +268,7 @@ export default function AttendanceRecordIndex({
     return (
         <>
             <Head title="出勤管理" />
-            <div className="mx-auto max-w-7xl space-y-6 px-2 py-4 sm:p-4 md:p-6">
+            <div className="max-w-7xl space-y-3 px-2 py-4 sm:p-4 md:p-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <p className="text-sm text-muted-foreground">
@@ -323,18 +309,6 @@ export default function AttendanceRecordIndex({
                                 {monthLabel(filters.month)}
                             </p>
                         </div>
-                    </div>
-                    <div className="rounded-lg border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
-                        <p className="text-sm text-muted-foreground">出勤</p>
-                        <p className="mt-2 text-2xl font-bold text-emerald-700 dark:text-emerald-300">
-                            {visibleStats.working}
-                        </p>
-                    </div>
-                    <div className="rounded-lg border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
-                        <p className="text-sm text-muted-foreground">休み</p>
-                        <p className="mt-2 text-2xl font-bold text-rose-700 dark:text-rose-300">
-                            {visibleStats.leave}
-                        </p>
                     </div>
                 </section>
 
@@ -559,10 +533,6 @@ export default function AttendanceRecordIndex({
 
 AttendanceRecordIndex.layout = {
     breadcrumbs: [
-        {
-            title: 'メニュー',
-            href: dashboard(),
-        },
         {
             title: '出勤管理',
             href: attendanceRecordIndex(),

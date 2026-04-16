@@ -8,7 +8,6 @@ import { index as scheduleIndex } from '@/actions/App/Http/Controllers/Construct
 import { FloatingBackButton } from '@/components/floating-back-button';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { dashboard } from '@/routes';
 import type { BusinessSchedule } from '@/types';
 
 type Props = {
@@ -147,10 +146,6 @@ export default function BusinessScheduleShow({
 
 BusinessScheduleShow.layout = {
     breadcrumbs: [
-        {
-            title: 'メニュー',
-            href: dashboard(),
-        },
         {
             title: '予定表',
             href: scheduleIndex(),

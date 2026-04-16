@@ -15,7 +15,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { dashboard } from '@/routes';
 
 type ManagedUser = {
     id: number;
@@ -330,10 +329,6 @@ export default function AdminUserForm({ managedUser }: Props) {
 
 AdminUserForm.layout = {
     breadcrumbs: [
-        {
-            title: 'メニュー',
-            href: dashboard(),
-        },
         {
             title: 'ユーザー管理',
             href: userIndex(),

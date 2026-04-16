@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { businessDateString } from '@/lib/dates';
 import { cn } from '@/lib/utils';
-import { dashboard } from '@/routes';
 import type {
     AttendanceLeaveRecord,
     BusinessSchedule,
@@ -21,6 +20,11 @@ import type {
 
 type Props = {
     schedule: BusinessSchedule | null;
+    returnTo?: string | null;
+    initialScheduledOn?: string | null;
+    initialStartsAt?: string | null;
+    initialEndsAt?: string | null;
+    initialAssignedUserIds?: number[];
     users: ConstructionUser[];
     generalContractorOptions: string[];
     contentOptions: string[];
@@ -210,6 +214,11 @@ function persistRememberedContentOptions(options: string[]) {
 
 export default function BusinessScheduleForm({
     schedule,
+    returnTo,
+    initialScheduledOn,
+    initialStartsAt,
+    initialEndsAt,
+    initialAssignedUserIds = [],
     users,
     generalContractorOptions,
     contentOptions,
@@ -219,10 +228,14 @@ export default function BusinessScheduleForm({
     const { data, setData, post, processing, errors } =
         useForm<BusinessScheduleForm>({
             _method: schedule ? 'put' : '',
-            scheduled_on: schedule?.scheduled_on ?? businessDateString(),
+            scheduled_on:
+                schedule?.scheduled_on ??
+                initialScheduledOn ??
+                businessDateString(),
             schedule_number: schedule?.schedule_number?.toString() ?? '',
-            starts_at: schedule?.starts_at?.slice(0, 5) ?? '',
-            ends_at: schedule?.ends_at?.slice(0, 5) ?? '',
+            starts_at:
+                schedule?.starts_at?.slice(0, 5) ?? initialStartsAt ?? '',
+            ends_at: schedule?.ends_at?.slice(0, 5) ?? initialEndsAt ?? '',
             time_note: schedule?.time_note ?? '',
             personnel: schedule?.personnel ?? '',
             location: schedule?.location ?? '',
@@ -231,7 +244,8 @@ export default function BusinessScheduleForm({
             content: schedule?.content ?? '',
             memo: schedule?.memo ?? '',
             assigned_user_ids:
-                schedule?.assigned_users.map((user) => user.id) ?? [],
+                schedule?.assigned_users.map((user) => user.id) ??
+                initialAssignedUserIds,
         });
     const [rememberedContentOptions, setRememberedContentOptions] = useState<
         string[]
@@ -280,14 +294,25 @@ export default function BusinessScheduleForm({
         event.preventDefault();
         rememberContentOption(data.content);
 
+        const options =
+            returnTo === null || returnTo === undefined
+                ? undefined
+                : { query: { return_to: returnTo } };
+
         post(
             schedule
-                ? businessScheduleUpdate.url(schedule.id)
-                : businessScheduleStore.url(),
+                ? businessScheduleUpdate.url(schedule.id, options)
+                : businessScheduleStore.url(options),
         );
     }
 
     function handleGoBack() {
+        if (returnTo !== null && returnTo !== undefined) {
+            router.visit(returnTo);
+
+            return;
+        }
+
         if (typeof window !== 'undefined' && window.history.length > 1) {
             window.history.back();
 
@@ -695,10 +720,6 @@ export default function BusinessScheduleForm({
 
 BusinessScheduleForm.layout = {
     breadcrumbs: [
-        {
-            title: 'メニュー',
-            href: dashboard(),
-        },
         {
             title: '予定表',
             href: scheduleIndex(),

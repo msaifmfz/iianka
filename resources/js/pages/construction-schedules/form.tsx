@@ -42,6 +42,11 @@ import type {
 
 type Props = {
     schedule: ConstructionSchedule | null;
+    returnTo?: string | null;
+    initialScheduledOn?: string | null;
+    initialStartsAt?: string | null;
+    initialEndsAt?: string | null;
+    initialAssignedUserIds?: number[];
     users: ConstructionUser[];
     subcontractors: ConstructionSubcontractor[];
     siteGuideFiles: SiteGuideFile[];
@@ -239,6 +244,11 @@ function availableTimeSlots(schedules: ScheduleAvailability[]) {
 
 export default function ConstructionScheduleForm({
     schedule,
+    returnTo,
+    initialScheduledOn,
+    initialStartsAt,
+    initialEndsAt,
+    initialAssignedUserIds = [],
     users,
     subcontractors,
     siteGuideFiles,
@@ -254,10 +264,14 @@ export default function ConstructionScheduleForm({
     const { data, setData, post, processing, progress, errors } =
         useForm<ScheduleForm>({
             _method: schedule ? 'put' : '',
-            scheduled_on: schedule?.scheduled_on ?? businessDateString(),
+            scheduled_on:
+                schedule?.scheduled_on ??
+                initialScheduledOn ??
+                businessDateString(),
             schedule_number: schedule?.schedule_number?.toString() ?? '',
-            starts_at: schedule?.starts_at?.slice(0, 5) ?? '',
-            ends_at: schedule?.ends_at?.slice(0, 5) ?? '',
+            starts_at:
+                schedule?.starts_at?.slice(0, 5) ?? initialStartsAt ?? '',
+            ends_at: schedule?.ends_at?.slice(0, 5) ?? initialEndsAt ?? '',
             time_note: schedule?.time_note ?? '',
             status: schedule?.status ?? 'scheduled',
             meeting_place: schedule?.meeting_place ?? '',
@@ -268,7 +282,8 @@ export default function ConstructionScheduleForm({
             content: schedule?.content ?? '',
             navigation_address: schedule?.navigation_address ?? '',
             assigned_user_ids:
-                schedule?.assigned_users.map((user) => user.id) ?? [],
+                schedule?.assigned_users.map((user) => user.id) ??
+                initialAssignedUserIds,
             subcontractor_ids:
                 schedule?.subcontractors.map(
                     (subcontractor) => subcontractor.id,
@@ -335,12 +350,28 @@ export default function ConstructionScheduleForm({
     function submit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
 
-        post(schedule ? scheduleUpdate.url(schedule.id) : scheduleStore.url(), {
-            forceFormData: true,
-        });
+        const options =
+            returnTo === null || returnTo === undefined
+                ? undefined
+                : { query: { return_to: returnTo } };
+
+        post(
+            schedule
+                ? scheduleUpdate.url(schedule.id, options)
+                : scheduleStore.url(options),
+            {
+                forceFormData: true,
+            },
+        );
     }
 
     function handleGoBack() {
+        if (returnTo !== null && returnTo !== undefined) {
+            router.visit(returnTo);
+
+            return;
+        }
+
         if (typeof window !== 'undefined' && window.history.length > 1) {
             window.history.back();
 

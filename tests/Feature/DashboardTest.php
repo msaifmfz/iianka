@@ -26,5 +26,5 @@ test('authenticated users can visit the dashboard', function (): void {
     $this->actingAs($user);
 
     $response = $this->get(route('dashboard'));
-    $response->assertRedirect(route('construction-schedules.index'));
+    $response->assertRedirect(route('schedule-overview.index'));
 });

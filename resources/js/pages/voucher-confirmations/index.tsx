@@ -16,23 +16,31 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { businessDateString } from '@/lib/dates';
-import { dashboard } from '@/routes';
 import type { VoucherConfirmationSchedule } from '@/types';
 
 type CheckedFilter = 'all' | 'unchecked' | 'checked';
+type DayFilter = string | 'all';
 
 type Props = {
     filters: {
         checked: CheckedFilter;
         date: string;
+        day: DayFilter;
         starts_on: string;
         ends_on: string;
+        today: string;
     };
     summary: {
         total: number;
         checked: number;
         unchecked: number;
     };
+    dayOptions: {
+        date: string;
+        total: number;
+        checked: number;
+        unchecked: number;
+    }[];
     schedules: VoucherConfirmationSchedule[];
     canManage: boolean;
 };
@@ -52,8 +60,17 @@ function formatDate(date: string) {
     return new Intl.DateTimeFormat('ja-JP', {
         month: 'numeric',
         day: 'numeric',
+        timeZone: 'Asia/Tokyo',
         weekday: 'short',
-    }).format(new Date(`${date}T00:00:00`));
+    }).format(new Date(`${date}T00:00:00+09:00`));
+}
+
+function formatShortDate(date: string) {
+    return new Intl.DateTimeFormat('ja-JP', {
+        day: 'numeric',
+        timeZone: 'Asia/Tokyo',
+        weekday: 'short',
+    }).format(new Date(`${date}T00:00:00+09:00`));
 }
 
 function formatDateTime(dateTime: string | null) {
@@ -66,23 +83,25 @@ function formatDateTime(dateTime: string | null) {
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
+        timeZone: 'Asia/Tokyo',
     }).format(new Date(dateTime.replace(' ', 'T')));
 }
 
 function adjacentMonthDate(date: string, offset: number) {
-    const value = new Date(`${date}T00:00:00`);
-    value.setMonth(value.getMonth() + offset);
+    const [year, month] = date.split('-').map(Number);
+    const value = new Date(Date.UTC(year, month - 1 + offset, 1, 12));
 
     return businessDateString(value);
 }
 
 function filterQuery(
     filters: Props['filters'],
-    query: Partial<Pick<Props['filters'], 'date' | 'checked'>>,
+    query: Partial<Pick<Props['filters'], 'date' | 'checked' | 'day'>>,
 ) {
     return {
         date: query.date ?? filters.date,
         checked: query.checked ?? filters.checked,
+        day: query.day ?? filters.day,
     };
 }
 
@@ -113,6 +132,47 @@ function FilterLink({
                 {label}
             </Link>
         </Button>
+    );
+}
+
+function DayFilterLink({
+    label,
+    day,
+    filters,
+    description,
+}: {
+    label: string;
+    day: DayFilter;
+    filters: Props['filters'];
+    description?: string;
+}) {
+    const active = filters.day === day;
+
+    return (
+        <Link
+            href={voucherIndex({
+                query: filterQuery(filters, { day }),
+            })}
+            className={`inline-flex min-h-10 items-center gap-2 rounded-md border px-3 py-2 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950 ${
+                active
+                    ? 'border-neutral-950 bg-neutral-950 text-white dark:border-white dark:bg-white dark:text-neutral-950'
+                    : 'border-neutral-200 bg-white text-neutral-900 hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100 dark:hover:bg-neutral-900'
+            }`}
+            preserveScroll
+        >
+            <span>{label}</span>
+            {description && (
+                <span
+                    className={`text-xs font-medium ${
+                        active
+                            ? 'text-white/75 dark:text-neutral-950/70'
+                            : 'text-muted-foreground'
+                    }`}
+                >
+                    {description}
+                </span>
+            )}
+        </Link>
     );
 }
 
@@ -259,6 +319,7 @@ function VoucherScheduleCard({
 export default function VoucherConfirmationsIndex({
     filters,
     summary,
+    dayOptions,
     schedules,
     canManage,
 }: Props) {
@@ -267,7 +328,12 @@ export default function VoucherConfirmationsIndex({
     const monthTitle = new Intl.DateTimeFormat('ja-JP', {
         year: 'numeric',
         month: 'long',
-    }).format(new Date(`${filters.date}T00:00:00`));
+        timeZone: 'Asia/Tokyo',
+    }).format(new Date(`${filters.date}T00:00:00+09:00`));
+    const selectedRangeLabel =
+        filters.day === 'all' ? '月すべて' : formatDate(filters.day);
+    const todayInMonth =
+        filters.today >= filters.starts_on && filters.today <= filters.ends_on;
 
     return (
         <>
@@ -287,11 +353,14 @@ export default function VoucherConfirmationsIndex({
                                 {formatDate(filters.starts_on)} -{' '}
                                 {formatDate(filters.ends_on)}
                             </p>
+                            <p className="mt-1 text-sm font-medium">
+                                表示中: {selectedRangeLabel}
+                            </p>
                         </div>
                         <div className="grid grid-cols-3 gap-2 text-center text-sm">
                             <div className="rounded-2xl bg-neutral-100 px-4 py-3 dark:bg-neutral-900">
                                 <p className="text-xs text-muted-foreground">
-                                    表示
+                                    月合計
                                 </p>
                                 <p className="font-semibold">{summary.total}</p>
                             </div>
@@ -310,69 +379,115 @@ export default function VoucherConfirmationsIndex({
                         </div>
                     </div>
 
-                    <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-neutral-200 pt-4 dark:border-neutral-800">
-                        <div className="flex flex-wrap gap-2">
-                            {(
-                                Object.keys(checkedLabels) as CheckedFilter[]
-                            ).map((checked) => (
-                                <FilterLink
-                                    key={checked}
-                                    label={checkedLabels[checked]}
-                                    checked={checked}
-                                    filters={filters}
-                                />
-                            ))}
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Button
-                                asChild
-                                variant="outline"
-                                size="sm"
-                                className="rounded-full"
-                            >
-                                <Link
-                                    href={voucherIndex({
-                                        query: filterQuery(filters, {
-                                            date: previousMonthDate,
-                                        }),
-                                    })}
-                                    preserveScroll
-                                >
-                                    <ChevronLeft className="size-4" />
-                                    前月
-                                </Link>
-                            </Button>
-                            <div className="inline-flex items-center gap-2 rounded-full bg-neutral-100 px-3 py-2 text-sm font-semibold dark:bg-neutral-900">
-                                <CalendarDays className="size-4" />
-                                {monthTitle}
+                    <div className="mt-5 grid gap-4 border-t border-neutral-200 pt-4 dark:border-neutral-800">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex flex-wrap gap-2">
+                                {(
+                                    Object.keys(
+                                        checkedLabels,
+                                    ) as CheckedFilter[]
+                                ).map((checked) => (
+                                    <FilterLink
+                                        key={checked}
+                                        label={checkedLabels[checked]}
+                                        checked={checked}
+                                        filters={filters}
+                                    />
+                                ))}
                             </div>
-                            <Button
-                                asChild
-                                variant="outline"
-                                size="sm"
-                                className="rounded-full"
-                            >
-                                <Link
-                                    href={voucherIndex({
-                                        query: filterQuery(filters, {
-                                            date: nextMonthDate,
-                                        }),
-                                    })}
-                                    preserveScroll
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    asChild
+                                    variant="outline"
+                                    size="sm"
+                                    className="rounded-full"
                                 >
-                                    翌月
-                                    <ChevronRight className="size-4" />
-                                </Link>
-                            </Button>
+                                    <Link
+                                        href={voucherIndex({
+                                            query: filterQuery(filters, {
+                                                date: previousMonthDate,
+                                                day: 'all',
+                                            }),
+                                        })}
+                                        preserveScroll
+                                    >
+                                        <ChevronLeft className="size-4" />
+                                        前月
+                                    </Link>
+                                </Button>
+                                <div className="inline-flex items-center gap-2 rounded-full bg-neutral-100 px-3 py-2 text-sm font-semibold dark:bg-neutral-900">
+                                    <CalendarDays className="size-4" />
+                                    {monthTitle}
+                                </div>
+                                <Button
+                                    asChild
+                                    variant="outline"
+                                    size="sm"
+                                    className="rounded-full"
+                                >
+                                    <Link
+                                        href={voucherIndex({
+                                            query: filterQuery(filters, {
+                                                date: nextMonthDate,
+                                                day: 'all',
+                                            }),
+                                        })}
+                                        preserveScroll
+                                    >
+                                        翌月
+                                        <ChevronRight className="size-4" />
+                                    </Link>
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div className="grid gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-sm font-semibold">
+                                    日付
+                                </span>
+                                <DayFilterLink
+                                    label="月すべて"
+                                    day="all"
+                                    filters={filters}
+                                    description={`${summary.total}件`}
+                                />
+                                {todayInMonth && (
+                                    <DayFilterLink
+                                        label="今日"
+                                        day={filters.today}
+                                        filters={filters}
+                                    />
+                                )}
+                            </div>
+                            {dayOptions.length > 0 && (
+                                <div className="flex gap-2 overflow-x-auto pb-1">
+                                    {dayOptions.map((day) => (
+                                        <DayFilterLink
+                                            key={day.date}
+                                            label={formatShortDate(day.date)}
+                                            day={day.date}
+                                            filters={filters}
+                                            description={
+                                                day.unchecked > 0
+                                                    ? `未${day.unchecked}/${day.total}`
+                                                    : `${day.total}件`
+                                            }
+                                        />
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
 
                 {schedules.length === 0 ? (
                     <div className="rounded-3xl border border-dashed p-10 text-center text-muted-foreground dark:border-neutral-800">
-                        {filters.checked === 'all'
-                            ? 'この月の工事予定はありません。'
-                            : `${checkedLabels[filters.checked]}の工事予定はありません。`}
+                        {filters.day === 'all'
+                            ? filters.checked === 'all'
+                                ? 'この月の工事予定はありません。'
+                                : `${checkedLabels[filters.checked]}の工事予定はありません。`
+                            : `${formatDate(filters.day)} の${checkedLabels[filters.checked]}工事予定はありません。`}
                     </div>
                 ) : (
                     <div className="grid gap-4">
@@ -392,10 +507,6 @@ export default function VoucherConfirmationsIndex({
 
 VoucherConfirmationsIndex.layout = {
     breadcrumbs: [
-        {
-            title: 'メニュー',
-            href: dashboard(),
-        },
         {
             title: '伝票確認',
             href: voucherIndex(),

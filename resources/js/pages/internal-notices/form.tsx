@@ -8,11 +8,15 @@ import { FloatingBackButton } from '@/components/floating-back-button';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { businessDateString } from '@/lib/dates';
-import { dashboard } from '@/routes';
 import type { ConstructionUser, InternalNotice } from '@/types';
 
 type Props = {
     notice: InternalNotice | null;
+    returnTo?: string | null;
+    initialScheduledOn?: string | null;
+    initialStartsAt?: string | null;
+    initialEndsAt?: string | null;
+    initialAssignedUserIds?: number[];
     users: ConstructionUser[];
 };
 
@@ -53,33 +57,56 @@ function toggleNumber(values: number[], value: number) {
         : [...values, value];
 }
 
-export default function InternalNoticeForm({ notice, users }: Props) {
+export default function InternalNoticeForm({
+    notice,
+    returnTo,
+    initialScheduledOn,
+    initialStartsAt,
+    initialEndsAt,
+    initialAssignedUserIds = [],
+    users,
+}: Props) {
     const { data, setData, post, processing, errors } =
         useForm<InternalNoticeForm>({
             _method: notice ? 'put' : '',
-            scheduled_on: notice?.scheduled_on ?? businessDateString(),
-            starts_at: notice?.starts_at?.slice(0, 5) ?? '',
-            ends_at: notice?.ends_at?.slice(0, 5) ?? '',
+            scheduled_on:
+                notice?.scheduled_on ??
+                initialScheduledOn ??
+                businessDateString(),
+            starts_at: notice?.starts_at?.slice(0, 5) ?? initialStartsAt ?? '',
+            ends_at: notice?.ends_at?.slice(0, 5) ?? initialEndsAt ?? '',
             time_note: notice?.time_note ?? '',
             title: notice?.title ?? '',
             location: notice?.location ?? '',
             content: notice?.content ?? '',
             memo: notice?.memo ?? '',
             assigned_user_ids:
-                notice?.assigned_users.map((user) => user.id) ?? [],
+                notice?.assigned_users.map((user) => user.id) ??
+                initialAssignedUserIds,
         });
 
     function submit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
 
+        const options =
+            returnTo === null || returnTo === undefined
+                ? undefined
+                : { query: { return_to: returnTo } };
+
         post(
             notice
-                ? internalNoticeUpdate.url(notice.id)
-                : internalNoticeStore.url(),
+                ? internalNoticeUpdate.url(notice.id, options)
+                : internalNoticeStore.url(options),
         );
     }
 
     function handleGoBack() {
+        if (returnTo !== null && returnTo !== undefined) {
+            router.visit(returnTo);
+
+            return;
+        }
+
         if (typeof window !== 'undefined' && window.history.length > 1) {
             window.history.back();
 
@@ -243,10 +270,6 @@ export default function InternalNoticeForm({ notice, users }: Props) {
 
 InternalNoticeForm.layout = {
     breadcrumbs: [
-        {
-            title: 'メニュー',
-            href: dashboard(),
-        },
         {
             title: '予定表',
             href: scheduleIndex(),

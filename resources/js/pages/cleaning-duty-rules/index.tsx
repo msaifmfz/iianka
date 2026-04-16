@@ -7,7 +7,6 @@ import {
 import { index as scheduleIndex } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { dashboard } from '@/routes';
 import type { CleaningDutyRule } from '@/types';
 
 type Props = {
@@ -121,10 +120,6 @@ export default function CleaningDutyRuleIndex({ rules, canManage }: Props) {
 
 CleaningDutyRuleIndex.layout = {
     breadcrumbs: [
-        {
-            title: 'メニュー',
-            href: dashboard(),
-        },
         {
             title: '予定表',
             href: scheduleIndex(),

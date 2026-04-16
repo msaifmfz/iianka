@@ -3,16 +3,18 @@
 use App\Models\ConstructionSchedule;
 use App\Models\User;
 use App\Services\BusinessDate;
+use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
 
 test('users can view voucher confirmations for construction schedules', function (): void {
     $user = User::factory()->create();
     $admin = User::factory()->admin()->create();
+    $checkedAt = Carbon::parse('2026-05-10 00:30:00', 'UTC');
     $checkedSchedule = ConstructionSchedule::factory()->create([
         'scheduled_on' => BusinessDate::today()->toDateString(),
         'location' => '確認済み現場',
         'voucher_note' => '日付を確認済み',
-        'voucher_checked_at' => now(),
+        'voucher_checked_at' => $checkedAt,
         'voucher_checked_by_user_id' => $admin->id,
     ]);
     $uncheckedSchedule = ConstructionSchedule::factory()->create([
@@ -34,6 +36,7 @@ test('users can view voucher confirmations for construction schedules', function
                 fn (array $schedule): bool => $schedule['location'] === '確認済み現場'
                     && $schedule['voucher_checked'] === true
                     && $schedule['voucher_note'] === '日付を確認済み'
+                    && $schedule['voucher_checked_at'] === $checkedAt->toJSON()
                     && $schedule['voucher_checked_by']['name'] === $admin->name
             ) && collect($schedules)->contains(
                 fn (array $schedule): bool => $schedule['location'] === '未確認現場'
@@ -127,6 +130,9 @@ test('voucher confirmation page filters checked state for the selected month', f
         ->assertOk()
         ->assertInertia(fn (Assert $page): Assert => $page
             ->where('filters.checked', 'checked')
+            ->where('summary.total', 2)
+            ->where('summary.checked', 1)
+            ->where('summary.unchecked', 1)
             ->has('schedules', 1, fn (Assert $page): Assert => $page
                 ->where('location', '確認済み現場')
                 ->where('voucher_checked', true)
@@ -142,12 +148,86 @@ test('voucher confirmation page filters checked state for the selected month', f
         ->assertOk()
         ->assertInertia(fn (Assert $page): Assert => $page
             ->where('filters.checked', 'unchecked')
+            ->where('summary.total', 2)
+            ->where('summary.checked', 1)
+            ->where('summary.unchecked', 1)
             ->has('schedules', 1, fn (Assert $page): Assert => $page
                 ->where('location', '未確認現場')
                 ->where('voucher_checked', false)
                 ->etc()
             )
         );
+});
+
+test('voucher confirmation page can filter schedules by day or show the whole month', function (): void {
+    $user = User::factory()->create();
+    ConstructionSchedule::factory()->create([
+        'scheduled_on' => '2026-05-12',
+        'location' => '十二日現場',
+        'voucher_checked_at' => null,
+    ]);
+    ConstructionSchedule::factory()->create([
+        'scheduled_on' => '2026-05-13',
+        'location' => '十三日現場',
+        'voucher_checked_at' => null,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('voucher-confirmations.index', [
+            'date' => '2026-05-01',
+            'day' => '2026-05-12',
+        ]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->where('filters.day', '2026-05-12')
+            ->where('summary.total', 2)
+            ->has('dayOptions', 2)
+            ->has('schedules', 1, fn (Assert $page): Assert => $page
+                ->where('location', '十二日現場')
+                ->etc()
+            )
+        );
+
+    $this->actingAs($user)
+        ->get(route('voucher-confirmations.index', [
+            'date' => '2026-05-01',
+            'day' => 'all',
+        ]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->where('filters.day', 'all')
+            ->where('summary.total', 2)
+            ->has('schedules', 2)
+        );
+});
+
+test('voucher confirmation page defaults to the current japan business date', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-05-12 15:30:00', 'UTC'));
+
+    $user = User::factory()->create();
+    ConstructionSchedule::factory()->create([
+        'scheduled_on' => '2026-05-12',
+        'location' => '前日現場',
+    ]);
+    ConstructionSchedule::factory()->create([
+        'scheduled_on' => '2026-05-13',
+        'location' => '今日現場',
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('voucher-confirmations.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->where('filters.date', '2026-05-13')
+            ->where('filters.day', '2026-05-13')
+            ->where('filters.today', '2026-05-13')
+            ->has('schedules', 1, fn (Assert $page): Assert => $page
+                ->where('location', '今日現場')
+                ->etc()
+            )
+        );
+
+    Carbon::setTestNow();
 });
 
 test('editing construction schedule details does not reset voucher confirmation', function (): void {

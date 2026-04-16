@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { dashboard } from '@/routes';
 
 type AuditActor = {
     id: number;
@@ -512,10 +511,6 @@ export default function AuditLogsIndex({ logs, filters, options }: Props) {
 
 AuditLogsIndex.layout = {
     breadcrumbs: [
-        {
-            title: 'メニュー',
-            href: dashboard(),
-        },
         {
             title: '監査ログ',
             href: auditLogIndex(),

@@ -6,7 +6,6 @@ import {
 } from '@/actions/App/Http/Controllers/ConstructionSiteController';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { dashboard } from '@/routes';
 import type { SiteGuideFile } from '@/types';
 
 type Props = {
@@ -81,10 +80,6 @@ export default function ConstructionSiteShow({ guideFile, canManage }: Props) {
 
 ConstructionSiteShow.layout = {
     breadcrumbs: [
-        {
-            title: 'メニュー',
-            href: dashboard(),
-        },
         {
             title: '現場案内図',
             href: guideIndex(),

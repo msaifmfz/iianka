@@ -8,7 +8,6 @@ import {
 import { index as scheduleIndex } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { dashboard } from '@/routes';
 import type { CleaningDutyRule, ConstructionUser } from '@/types';
 
 type WeekdayOption = {
@@ -244,10 +243,6 @@ export default function CleaningDutyRuleForm({
 
 CleaningDutyRuleForm.layout = {
     breadcrumbs: [
-        {
-            title: 'メニュー',
-            href: dashboard(),
-        },
         {
             title: '予定表',
             href: scheduleIndex(),
