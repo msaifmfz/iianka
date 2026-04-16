@@ -1039,6 +1039,27 @@ function DayTimeline({
             }
         };
     }, []);
+
+    const isDraggingSlotSelection = dragSelection !== null;
+
+    useEffect(() => {
+        if (!isDraggingSlotSelection) {
+            return;
+        }
+
+        const preventTouchScroll = (event: TouchEvent) => {
+            event.preventDefault();
+        };
+
+        window.addEventListener('touchmove', preventTouchScroll, {
+            passive: false,
+        });
+
+        return () => {
+            window.removeEventListener('touchmove', preventTouchScroll);
+        };
+    }, [isDraggingSlotSelection]);
+
     const hasUnassignedEvents = selectedDayTimeline.events.some(
         (event) => event.assigned_users.length === 0,
     );
@@ -1518,7 +1539,7 @@ function DayTimeline({
                                         </div>
                                         {canManageSchedules && (
                                             <div
-                                                className="absolute inset-0 grid select-none"
+                                                className={`absolute inset-0 grid select-none ${rowDragSelection !== null ? 'touch-none' : 'touch-auto'}`}
                                                 style={timelineGridStyle(
                                                     bounds,
                                                 )}
