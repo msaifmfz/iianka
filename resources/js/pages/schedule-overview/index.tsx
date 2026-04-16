@@ -587,7 +587,9 @@ function TimelineEventBlock({
     const content = (
         <>
             <div className="flex min-w-0 items-center gap-1 truncate pr-5 text-[11px] leading-tight font-semibold">
-                <span className="shrink-0 bg-gray-50 p-1 rounded-full">{numberLabel}</span>
+                <span className="shrink-0 rounded-full bg-gray-50 p-1">
+                    {numberLabel}
+                </span>
                 <span className="min-w-0 truncate">{event.title}</span>
                 {multipleAssignedUsersCount && (
                     <span className="shrink-0">
@@ -769,7 +771,11 @@ function DayTimeline({
             : minuteInputValue(createSlot.hour + timelineHour);
 
     function createFromSlot(type: TimelineEventType) {
-        if (createSlot === null || slotStartsAt === null || slotEndsAt === null) {
+        if (
+            createSlot === null ||
+            slotStartsAt === null ||
+            slotEndsAt === null
+        ) {
             return;
         }
 
@@ -1106,49 +1112,51 @@ export default function ScheduleOverviewIndex({
                                 <h2 className="text-xl font-bold">
                                     {monthTitle(filters.date)}
                                 </h2>
-                              <div className="flex flex-wrap gap-2">
-                                <Button
-                                    asChild
-                                    variant="outline"
-                                    className="rounded-md"
-                                >
-                                    <Link
-                                        href={overviewIndex(
-                                            overviewQuery(previousMonthDate),
-                                        )}
+                                <div className="flex flex-wrap gap-2">
+                                    <Button
+                                        asChild
+                                        variant="outline"
+                                        className="rounded-md"
                                     >
-                                        <ChevronLeft className="size-4" />
-                                        前月
-                                    </Link>
-                                </Button>
-                                <Button
-                                    asChild
-                                    variant="secondary"
-                                    className="rounded-md"
-                                >
-                                    <Link
-                                        href={overviewIndex(
-                                            overviewQuery(todayDate),
-                                        )}
+                                        <Link
+                                            href={overviewIndex(
+                                                overviewQuery(
+                                                    previousMonthDate,
+                                                ),
+                                            )}
+                                        >
+                                            <ChevronLeft className="size-4" />
+                                            前月
+                                        </Link>
+                                    </Button>
+                                    <Button
+                                        asChild
+                                        variant="secondary"
+                                        className="rounded-md"
                                     >
-                                        今日
-                                    </Link>
-                                </Button>
-                                <Button
-                                    asChild
-                                    variant="outline"
-                                    className="rounded-md"
-                                >
-                                    <Link
-                                        href={overviewIndex(
-                                            overviewQuery(nextMonthDate),
-                                        )}
+                                        <Link
+                                            href={overviewIndex(
+                                                overviewQuery(todayDate),
+                                            )}
+                                        >
+                                            今日
+                                        </Link>
+                                    </Button>
+                                    <Button
+                                        asChild
+                                        variant="outline"
+                                        className="rounded-md"
                                     >
-                                        翌月
-                                        <ChevronRight className="size-4" />
-                                    </Link>
-                                </Button>
-                            </div>
+                                        <Link
+                                            href={overviewIndex(
+                                                overviewQuery(nextMonthDate),
+                                            )}
+                                        >
+                                            翌月
+                                            <ChevronRight className="size-4" />
+                                        </Link>
+                                    </Button>
+                                </div>
                                 <div
                                     className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
                                     aria-label="予定の多さ"
@@ -1187,7 +1195,7 @@ export default function ScheduleOverviewIndex({
                                         {cells.map((day) => (
                                             <div
                                                 key={day.date}
-                                                className={`relative min-h-[5.75rem] rounded-lg p-1 transition sm:min-h-28 sm:p-2 border ${dayCellClass(day, busiestScheduleCount)}`}
+                                                className={`relative min-h-[5.75rem] rounded-lg border p-1 transition sm:min-h-28 sm:p-2 ${dayCellClass(day, busiestScheduleCount)}`}
                                             >
                                                 <span className="relative flex items-center justify-between gap-1">
                                                     <Link
@@ -1196,7 +1204,7 @@ export default function ScheduleOverviewIndex({
                                                                 day.date,
                                                             ),
                                                         )}
-                                                        className={`relative z-10 flex size-6 items-center justify-center rounded-full text-lg font-bold tabular-nums sm:size-7 sm:text-lg focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950 ${day.isToday ? 'bg-neutral-800 text-white dark:bg-white dark:text-neutral-950' : ''}`}
+                                                        className={`relative z-10 flex size-6 items-center justify-center rounded-full text-lg font-bold tabular-nums focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none sm:size-7 sm:text-lg dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950 ${day.isToday ? 'bg-neutral-800 text-white dark:bg-white dark:text-neutral-950' : ''}`}
                                                         aria-current={
                                                             day.isSelected
                                                                 ? 'date'
