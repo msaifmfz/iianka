@@ -81,6 +81,7 @@ test('users can view company wide schedule overview counts by day', function ():
                     && $day['construction_count'] === 5
                     && $day['business_count'] === 5
                     && $day['internal_notice_count'] === 1
+                    && $day['voucher_confirmation_count'] === 3
                     && $day['unconfirmed_voucher_count'] === 2
                     && $day['schedule_count'] === 11
             ))
@@ -89,6 +90,7 @@ test('users can view company wide schedule overview counts by day', function ():
                     && $day['construction_count'] === 1
                     && $day['business_count'] === 1
                     && $day['internal_notice_count'] === 1
+                    && $day['voucher_confirmation_count'] === 1
                     && $day['unconfirmed_voucher_count'] === 1
             ))
             ->where('calendarDays', fn ($days): bool => ! collect($days)->contains(

@@ -60,7 +60,7 @@ class ScheduleOverviewController extends Controller
     }
 
     /**
-     * @return Collection<int, array{date: string, construction_count: int, business_count: int, internal_notice_count: int, unconfirmed_voucher_count: int, schedule_count: int}>
+     * @return Collection<int, array{date: string, construction_count: int, business_count: int, internal_notice_count: int, voucher_confirmation_count: int, unconfirmed_voucher_count: int, schedule_count: int}>
      */
     private function calendarDays(Carbon $calendarStart, Carbon $calendarEnd): Collection
     {
@@ -74,6 +74,7 @@ class ScheduleOverviewController extends Controller
                 'construction_count' => 0,
                 'business_count' => 0,
                 'internal_notice_count' => 0,
+                'voucher_confirmation_count' => 0,
                 'unconfirmed_voucher_count' => 0,
                 'schedule_count' => 0,
             ]);
@@ -91,6 +92,7 @@ class ScheduleOverviewController extends Controller
 
                 $constructionCount = (int) $schedule->construction_count;
                 $day['construction_count'] = $constructionCount;
+                $day['voucher_confirmation_count'] = (int) $schedule->voucher_confirmation_count;
                 $day['unconfirmed_voucher_count'] = (int) $schedule->unconfirmed_voucher_count;
                 $day['schedule_count'] = $this->dayScheduleCount($day);
 
@@ -146,8 +148,11 @@ class ScheduleOverviewController extends Controller
     {
         return ConstructionSchedule::query()
             ->selectRaw(
-                'scheduled_on, count(*) as construction_count, sum(case when status not in (?, ?) and voucher_checked_at is null then 1 else 0 end) as unconfirmed_voucher_count',
-                ConstructionSchedule::VOUCHER_CONFIRMATION_EXCLUDED_STATUSES,
+                'scheduled_on, count(*) as construction_count, sum(case when status not in (?, ?) then 1 else 0 end) as voucher_confirmation_count, sum(case when status not in (?, ?) and voucher_checked_at is null then 1 else 0 end) as unconfirmed_voucher_count',
+                [
+                    ...ConstructionSchedule::VOUCHER_CONFIRMATION_EXCLUDED_STATUSES,
+                    ...ConstructionSchedule::VOUCHER_CONFIRMATION_EXCLUDED_STATUSES,
+                ],
             )
             ->whereDate('scheduled_on', '>=', $calendarStart->toDateString())
             ->whereDate('scheduled_on', '<=', $calendarEnd->toDateString())
