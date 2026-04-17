@@ -326,8 +326,12 @@ const timelineDefaultStart = 8 * 60;
 const timelineDefaultEnd = 20 * 60;
 const timelineHour = 60;
 const timelineSlotWidth = 47;
-const timelineAssigneeColumnWidth = '6rem';
-const timelineUntimedColumnWidth = '7rem';
+const timelineAssigneeColumnWidth = '5rem';
+const timelineUntimedColumnWidth = '5rem';
+const timelineRowMinHeight = 48;
+const timelineEventLaneHeight = 44;
+const timelineEventBlockHeight = 36;
+const timelineEventBlockInset = 4;
 const touchSelectionDelay = 260;
 const scheduleDetailHoldDelay = 500;
 const touchScrollTolerance = 10;
@@ -404,6 +408,67 @@ function eventKey(event: TimelineEvent) {
     return `${event.type}-${event.id}`;
 }
 
+function eventRange(
+    event: TimelineEvent,
+    bounds: ReturnType<typeof timelineBounds>,
+) {
+    const startsAt = timeToMinutes(event.starts_at) ?? bounds.startsAt;
+    const endsAt = timeToMinutes(event.ends_at) ?? bounds.endsAt;
+
+    return {
+        startsAt,
+        endsAt: Math.max(endsAt, startsAt + 15),
+    };
+}
+
+function layoutTimelineEvents(
+    events: TimelineEvent[],
+    bounds: ReturnType<typeof timelineBounds>,
+) {
+    const laneEnds: number[] = [];
+
+    return [...events]
+        .sort((firstEvent, secondEvent) => {
+            const firstRange = eventRange(firstEvent, bounds);
+            const secondRange = eventRange(secondEvent, bounds);
+
+            if (firstRange.startsAt !== secondRange.startsAt) {
+                return firstRange.startsAt - secondRange.startsAt;
+            }
+
+            if (firstRange.endsAt !== secondRange.endsAt) {
+                return firstRange.endsAt - secondRange.endsAt;
+            }
+
+            return eventKey(firstEvent).localeCompare(eventKey(secondEvent));
+        })
+        .map((event) => {
+            const range = eventRange(event, bounds);
+            const laneIndex = laneEnds.findIndex(
+                (laneEnd) => laneEnd <= range.startsAt,
+            );
+            const lane = laneIndex === -1 ? laneEnds.length : laneIndex;
+
+            laneEnds[lane] = range.endsAt;
+
+            return {
+                event,
+                lane,
+            };
+        });
+}
+
+function timelineRowHeight(laneCount: number) {
+    if (laneCount <= 0) {
+        return timelineRowMinHeight;
+    }
+
+    return Math.max(
+        timelineRowMinHeight,
+        timelineEventBlockInset * 2 + laneCount * timelineEventLaneHeight,
+    );
+}
+
 function eventEditRoute(event: TimelineEvent, returnTo?: string) {
     const options =
         returnTo === undefined ? undefined : { query: { return_to: returnTo } };
@@ -474,12 +539,12 @@ function TimelineEventBorderBadges({
     multipleAssignedUsersCount: string | null;
 }) {
     return (
-        <span className="pointer-events-none absolute top-0 left-1 z-20 inline-flex max-w-[calc(100%-0.5rem)] -translate-y-1/2 items-center gap-1 overflow-hidden">
-            <span className="shrink-0 rounded-full border border-current/10 bg-white/90 px-1.5 py-0.5 text-[10px] leading-none font-bold shadow-sm dark:bg-neutral-950/90 dark:text-white">
+        <span className="pointer-events-none absolute top-0 left-1 z-20 inline-flex max-w-[calc(100%-0.5rem)] -translate-y-1/2 items-center overflow-hidden">
+            <span className="shrink-0 rounded-full border border-current/10 bg-white/90 px-1 py-0.5 text-[10px] leading-none font-bold shadow-sm dark:bg-neutral-950/90 dark:text-white">
                 {numberLabel}
             </span>
             {multipleAssignedUsersCount && (
-                <span className="shrink-0 rounded-full border border-current/10 bg-white/90 px-1.5 py-0.5 text-[10px] leading-none font-bold shadow-sm dark:bg-neutral-950/90 dark:text-white">
+                <span className="shrink-0 rounded-full border border-current/10 bg-white/90 px-1 py-0.5 text-[10px] leading-none font-bold shadow-sm dark:bg-neutral-950/90 dark:text-white">
                     {multipleAssignedUsersCount}
                 </span>
             )}
@@ -506,16 +571,17 @@ function timelineRowStyle(
 function eventPositionStyle(
     event: TimelineEvent,
     bounds: ReturnType<typeof timelineBounds>,
+    lane = 0,
 ): CSSProperties {
-    const startsAt = timeToMinutes(event.starts_at) ?? bounds.startsAt;
-    const endsAt = timeToMinutes(event.ends_at) ?? bounds.endsAt;
+    const { startsAt, endsAt } = eventRange(event, bounds);
     const left = ((startsAt - bounds.startsAt) / bounds.duration) * 100;
-    const width =
-        ((Math.max(endsAt, startsAt + 15) - startsAt) / bounds.duration) * 100;
+    const width = ((endsAt - startsAt) / bounds.duration) * 100;
 
     return {
         left: `${Math.max(left, 0)}%`,
         width: `${Math.min(Math.max(width, 2), 100 - Math.max(left, 0))}%`,
+        top: `${timelineEventBlockInset + lane * timelineEventLaneHeight}px`,
+        height: `${timelineEventBlockHeight}px`,
     };
 }
 
@@ -797,6 +863,7 @@ function TimelineSlotLink({
 function TimelineEventBlock({
     event,
     bounds,
+    lane,
     isHighlighted,
     onToggleHighlight,
     onOpenDetail,
@@ -805,6 +872,7 @@ function TimelineEventBlock({
 }: {
     event: TimelineEvent;
     bounds: ReturnType<typeof timelineBounds>;
+    lane: number;
     isHighlighted: boolean;
     onToggleHighlight: (event: TimelineEvent) => void;
     onOpenDetail: (event: TimelineEvent) => void;
@@ -826,9 +894,9 @@ function TimelineEventBlock({
         .filter(Boolean)
         .join(' ');
     const hasMultipleAssignedUsers = event.assigned_users.length > 1;
-    const className = `absolute top-1 bottom-1 min-w-12 rounded-md border text-left shadow-sm transition ${eventTypeClass(event.type)} ${hasOpenEnd ? 'border-dashed' : ''} ${isHighlighted ? 'z-10 ring-2 ring-neutral-950 ring-offset-2 dark:ring-white dark:ring-offset-neutral-950' : ''}`;
+    const className = `absolute min-w-12 rounded-md border text-left shadow-sm transition ${eventTypeClass(event.type)} ${hasOpenEnd ? 'border-dashed' : ''} ${isHighlighted ? 'z-20 ring-2 ring-neutral-950 ring-offset-2 dark:ring-white dark:ring-offset-neutral-950' : 'z-10'}`;
     const style = {
-        ...eventPositionStyle(event, bounds),
+        ...eventPositionStyle(event, bounds, lane),
         ...(hasOpenEnd
             ? {
                   backgroundImage:
@@ -1492,6 +1560,16 @@ function DayTimeline({
                             const timedEvents = rowEvents.filter(
                                 (event) => event.starts_at !== null,
                             );
+                            const positionedTimedEvents = layoutTimelineEvents(
+                                timedEvents,
+                                bounds,
+                            );
+                            const timedLaneCount = positionedTimedEvents.reduce(
+                                (count, positionedEvent) =>
+                                    Math.max(count, positionedEvent.lane + 1),
+                                0,
+                            );
+                            const rowHeight = timelineRowHeight(timedLaneCount);
                             const availableHours = bounds.hours
                                 .slice(0, -1)
                                 .filter(
@@ -1517,8 +1595,11 @@ function DayTimeline({
                             return (
                                 <div
                                     key={row.id ?? 'unassigned'}
-                                    className="grid min-h-12 odd:bg-white even:bg-neutral-50/50 dark:odd:bg-neutral-950/40 dark:even:bg-white/[0.03]"
-                                    style={timelineRowStyle(bounds)}
+                                    className="grid odd:bg-white even:bg-neutral-50/50 dark:odd:bg-neutral-950/40 dark:even:bg-white/[0.03]"
+                                    style={{
+                                        ...timelineRowStyle(bounds),
+                                        minHeight: `${rowHeight}px`,
+                                    }}
                                 >
                                     <div
                                         className={`sticky left-0 z-40 flex min-w-0 items-center border-r border-neutral-200 px-2 py-1.5 shadow-[4px_0_10px_-8px_rgb(0_0_0_/_0.45)] dark:border-white/10 ${rowIndex % 2 === 0 ? 'bg-white dark:bg-neutral-950' : 'bg-neutral-50 dark:bg-neutral-900'}`}
@@ -1557,7 +1638,12 @@ function DayTimeline({
                                             </span>
                                         )}
                                     </div>
-                                    <div className="relative min-h-12 bg-white/70 dark:bg-transparent">
+                                    <div
+                                        className="relative bg-white/70 dark:bg-transparent"
+                                        style={{
+                                            minHeight: `${rowHeight}px`,
+                                        }}
+                                    >
                                         <div
                                             className="absolute inset-0 grid"
                                             style={timelineGridStyle(bounds)}
@@ -1665,28 +1751,31 @@ function DayTimeline({
                                                 )}
                                             </div>
                                         )}
-                                        {timedEvents.length > 0 ? (
-                                            timedEvents.map((event) => (
-                                                <TimelineEventBlock
-                                                    key={`${event.type}-${event.id}`}
-                                                    event={event}
-                                                    bounds={bounds}
-                                                    isHighlighted={
-                                                        highlightedEventKey ===
-                                                        eventKey(event)
-                                                    }
-                                                    onToggleHighlight={
-                                                        toggleHighlightedEvent
-                                                    }
-                                                    onOpenDetail={
-                                                        setDetailEvent
-                                                    }
-                                                    canManageSchedules={
-                                                        canManageSchedules
-                                                    }
-                                                    returnTo={returnTo}
-                                                />
-                                            ))
+                                        {positionedTimedEvents.length > 0 ? (
+                                            positionedTimedEvents.map(
+                                                ({ event, lane }) => (
+                                                    <TimelineEventBlock
+                                                        key={`${event.type}-${event.id}`}
+                                                        event={event}
+                                                        bounds={bounds}
+                                                        lane={lane}
+                                                        isHighlighted={
+                                                            highlightedEventKey ===
+                                                            eventKey(event)
+                                                        }
+                                                        onToggleHighlight={
+                                                            toggleHighlightedEvent
+                                                        }
+                                                        onOpenDetail={
+                                                            setDetailEvent
+                                                        }
+                                                        canManageSchedules={
+                                                            canManageSchedules
+                                                        }
+                                                        returnTo={returnTo}
+                                                    />
+                                                ),
+                                            )
                                         ) : (
                                             <div className="absolute top-1/2 left-3 -translate-y-1/2">
                                                 {!canManageSchedules && (
