@@ -243,11 +243,11 @@ test('worker dashboard shares attention counts and worker summary', function ():
         ->assertInertia(fn (Assert $page): Assert => $page
             ->component('construction-schedules/index')
             ->where('attention.schedule_count', 4)
-            ->where('attention.pending_voucher_count', 1)
+            ->where('attention.pending_voucher_count', 0)
             ->where('attention.internal_notice_count', 1)
             ->where('workerSummary.assigned_count', 4)
             ->where('workerSummary.notice_count', 1)
-            ->where('workerSummary.pending_voucher_count', 1)
+            ->where('workerSummary.pending_voucher_count', 0)
             ->where('workerSummary.status_change_count', 1)
         );
 });

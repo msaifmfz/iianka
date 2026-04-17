@@ -20,6 +20,18 @@ test('users can view company wide schedule overview counts by day', function ():
         'voucher_checked_at' => now(),
         'voucher_checked_by_user_id' => $user->id,
     ]);
+    ConstructionSchedule::factory()->create([
+        'scheduled_on' => $date,
+        'status' => ConstructionSchedule::STATUS_POSTPONED,
+        'voucher_checked_at' => null,
+        'voucher_checked_by_user_id' => null,
+    ]);
+    ConstructionSchedule::factory()->create([
+        'scheduled_on' => $date,
+        'status' => ConstructionSchedule::STATUS_CANCELED,
+        'voucher_checked_at' => null,
+        'voucher_checked_by_user_id' => null,
+    ]);
     BusinessSchedule::factory()->count(5)->create([
         'scheduled_on' => $date,
     ]);
@@ -66,11 +78,11 @@ test('users can view company wide schedule overview counts by day', function ():
             ->where('month.ends_on', '2026-05-31')
             ->where('calendarDays', fn ($days): bool => collect($days)->contains(
                 fn (array $day): bool => $day['date'] === $date
-                    && $day['construction_count'] === 3
+                    && $day['construction_count'] === 5
                     && $day['business_count'] === 5
                     && $day['internal_notice_count'] === 1
                     && $day['unconfirmed_voucher_count'] === 2
-                    && $day['schedule_count'] === 9
+                    && $day['schedule_count'] === 11
             ))
             ->where('calendarDays', fn ($days): bool => collect($days)->contains(
                 fn (array $day): bool => $day['date'] === '2026-04-30'
@@ -83,11 +95,11 @@ test('users can view company wide schedule overview counts by day', function ():
                 fn (array $day): bool => $day['date'] === '2026-06-10'
             ))
             ->where('monthSummary', [
-                'construction_count' => 4,
+                'construction_count' => 6,
                 'business_count' => 6,
                 'internal_notice_count' => 1,
                 'unconfirmed_voucher_count' => 3,
-                'schedule_count' => 11,
+                'schedule_count' => 13,
             ])
         );
 });

@@ -159,6 +159,77 @@ test('voucher confirmation page filters checked state for the selected month', f
         );
 });
 
+test('voucher confirmation page excludes postponed and canceled construction schedules', function (): void {
+    $user = User::factory()->create();
+    ConstructionSchedule::factory()->create([
+        'scheduled_on' => '2026-05-10',
+        'status' => ConstructionSchedule::STATUS_SCHEDULED,
+        'location' => '確認対象現場',
+        'voucher_checked_at' => null,
+    ]);
+    ConstructionSchedule::factory()->create([
+        'scheduled_on' => '2026-05-11',
+        'status' => ConstructionSchedule::STATUS_CONFIRMED,
+        'location' => '確定現場',
+        'voucher_checked_at' => null,
+    ]);
+    ConstructionSchedule::factory()->create([
+        'scheduled_on' => '2026-05-12',
+        'status' => ConstructionSchedule::STATUS_POSTPONED,
+        'location' => '延長現場',
+        'voucher_checked_at' => null,
+    ]);
+    ConstructionSchedule::factory()->create([
+        'scheduled_on' => '2026-05-13',
+        'status' => ConstructionSchedule::STATUS_CANCELED,
+        'location' => '中止現場',
+        'voucher_checked_at' => null,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('voucher-confirmations.index', [
+            'date' => '2026-05-01',
+            'day' => 'all',
+        ]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->where('summary.total', 2)
+            ->where('summary.checked', 0)
+            ->where('summary.unchecked', 2)
+            ->has('dayOptions', 2)
+            ->where('schedules', fn ($schedules): bool => collect($schedules)->pluck('location')->all() === [
+                '確認対象現場',
+                '確定現場',
+            ])
+        );
+});
+
+test('admins cannot update voucher confirmation for postponed or canceled construction schedules', function (string $status): void {
+    $admin = User::factory()->admin()->create();
+    $schedule = ConstructionSchedule::factory()->create([
+        'status' => $status,
+        'voucher_note' => null,
+        'voucher_checked_at' => null,
+        'voucher_checked_by_user_id' => null,
+    ]);
+
+    $this->actingAs($admin)
+        ->patch(route('construction-schedules.voucher-confirmation.update', $schedule), [
+            'voucher_checked' => true,
+            'voucher_note' => '確認しました',
+        ])
+        ->assertNotFound();
+
+    $schedule->refresh();
+
+    expect($schedule->voucher_note)->toBeNull()
+        ->and($schedule->voucher_checked_at)->toBeNull()
+        ->and($schedule->voucher_checked_by_user_id)->toBeNull();
+})->with([
+    'postponed' => ConstructionSchedule::STATUS_POSTPONED,
+    'canceled' => ConstructionSchedule::STATUS_CANCELED,
+]);
+
 test('voucher confirmation page can filter schedules by day or show the whole month', function (): void {
     $user = User::factory()->create();
     ConstructionSchedule::factory()->create([

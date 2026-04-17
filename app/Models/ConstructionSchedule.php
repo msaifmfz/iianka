@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Database\Factories\ConstructionScheduleFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -43,6 +44,11 @@ class ConstructionSchedule extends Model
 
     public const STATUS_CANCELED = 'canceled';
 
+    public const VOUCHER_CONFIRMATION_EXCLUDED_STATUSES = [
+        self::STATUS_POSTPONED,
+        self::STATUS_CANCELED,
+    ];
+
     /**
      * @return array<string, string>
      */
@@ -61,6 +67,20 @@ class ConstructionSchedule extends Model
     public function voucherCheckedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'voucher_checked_by_user_id');
+    }
+
+    /**
+     * @param  Builder<ConstructionSchedule>  $query
+     * @return Builder<ConstructionSchedule>
+     */
+    public function scopeRequiresVoucherConfirmation(Builder $query): Builder
+    {
+        return $query->whereNotIn('status', self::VOUCHER_CONFIRMATION_EXCLUDED_STATUSES);
+    }
+
+    public function requiresVoucherConfirmation(): bool
+    {
+        return ! in_array($this->status, self::VOUCHER_CONFIRMATION_EXCLUDED_STATUSES, true);
     }
 
     /**
