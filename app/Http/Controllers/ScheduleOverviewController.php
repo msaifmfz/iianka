@@ -145,7 +145,10 @@ class ScheduleOverviewController extends Controller
     private function constructionCounts(Carbon $calendarStart, Carbon $calendarEnd): EloquentCollection
     {
         return ConstructionSchedule::query()
-            ->selectRaw('scheduled_on, count(*) as construction_count, sum(case when voucher_checked_at is null then 1 else 0 end) as unconfirmed_voucher_count')
+            ->selectRaw(
+                'scheduled_on, count(*) as construction_count, sum(case when status not in (?, ?) and voucher_checked_at is null then 1 else 0 end) as unconfirmed_voucher_count',
+                ConstructionSchedule::VOUCHER_CONFIRMATION_EXCLUDED_STATUSES,
+            )
             ->whereDate('scheduled_on', '>=', $calendarStart->toDateString())
             ->whereDate('scheduled_on', '<=', $calendarEnd->toDateString())
             ->groupBy('scheduled_on')

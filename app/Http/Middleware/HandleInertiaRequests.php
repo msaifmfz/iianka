@@ -88,6 +88,7 @@ class HandleInertiaRequests extends Middleware
                     + InternalNotice::query()->whereDate('scheduled_on', $todayDate)->count()
                     + CleaningDutyRule::query()->where('is_active', true)->where('weekday', $weekday)->count(),
                 'pending_voucher_count' => ConstructionSchedule::query()
+                    ->requiresVoucherConfirmation()
                     ->whereDate('scheduled_on', '<=', $todayDate)
                     ->whereNull('voucher_checked_at')
                     ->count(),
@@ -112,6 +113,7 @@ class HandleInertiaRequests extends Middleware
                     ->where('weekday', $weekday)
                     ->count(),
             'pending_voucher_count' => $user->constructionSchedules()
+                ->requiresVoucherConfirmation()
                 ->whereDate('scheduled_on', '<=', $todayDate)
                 ->whereNull('voucher_checked_at')
                 ->count(),

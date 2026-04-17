@@ -162,6 +162,7 @@ class ConstructionScheduleController extends Controller
                     + $allMyCleaningDutyOccurrences->count(),
                 'notice_count' => $allMyInternalNotices->count(),
                 'pending_voucher_count' => $allMyConstructionSchedules
+                    ->filter(fn (ConstructionSchedule $schedule): bool => $schedule->requiresVoucherConfirmation())
                     ->whereNull('voucher_checked_at')
                     ->count(),
                 'status_change_count' => $allMyConstructionSchedules

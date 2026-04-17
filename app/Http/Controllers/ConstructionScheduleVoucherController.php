@@ -36,6 +36,7 @@ class ConstructionScheduleVoucherController extends Controller
         }
 
         $monthlyQuery = ConstructionSchedule::query()
+            ->requiresVoucherConfirmation()
             ->whereDate('scheduled_on', '>=', $startsOn->toDateString())
             ->whereDate('scheduled_on', '<=', $endsOn->toDateString());
 
@@ -84,6 +85,8 @@ class ConstructionScheduleVoucherController extends Controller
         UpdateConstructionScheduleVoucherRequest $request,
         ConstructionSchedule $constructionSchedule
     ): RedirectResponse {
+        abort_unless($constructionSchedule->requiresVoucherConfirmation(), 404);
+
         $validated = $request->validated();
         $voucherChecked = (bool) $validated['voucher_checked'];
 
