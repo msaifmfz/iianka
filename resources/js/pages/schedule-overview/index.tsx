@@ -539,7 +539,7 @@ function TimelineEventBorderBadges({
     multipleAssignedUsersCount: string | null;
 }) {
     return (
-        <span className="pointer-events-none absolute top-0 left-1 z-20 inline-flex max-w-[calc(100%-0.5rem)] -translate-y-1/2 items-center overflow-hidden">
+        <span className="pointer-events-none absolute top-0 -left-1 z-20 inline-flex max-w-[calc(100%-0.5rem)] -translate-y-1/2 items-center">
             <span className="shrink-0 rounded-full border border-current/10 bg-white/90 px-1 py-0.5 text-[10px] leading-none font-bold shadow-sm dark:bg-neutral-950/90 dark:text-white">
                 {numberLabel}
             </span>
