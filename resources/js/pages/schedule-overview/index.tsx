@@ -41,6 +41,7 @@ type CalendarDay = {
     construction_count: number;
     business_count: number;
     internal_notice_count: number;
+    voucher_confirmation_count: number;
     unconfirmed_voucher_count: number;
     schedule_count: number;
 };
@@ -173,6 +174,7 @@ function calendarCells(
             construction_count: 0,
             business_count: 0,
             internal_notice_count: 0,
+            voucher_confirmation_count: 0,
             unconfirmed_voucher_count: 0,
             schedule_count: 0,
         };
@@ -315,19 +317,22 @@ function MetricPill({
 }
 
 function confirmedVoucherCount(day: CalendarDay) {
-    return Math.max(day.construction_count - day.unconfirmed_voucher_count, 0);
+    return Math.max(
+        day.voucher_confirmation_count - day.unconfirmed_voucher_count,
+        0,
+    );
 }
 
 function voucherConfirmationValue(day: CalendarDay) {
-    return `${confirmedVoucherCount(day)}/${day.construction_count}`;
+    return `${confirmedVoucherCount(day)}/${day.voucher_confirmation_count}`;
 }
 
 const timelineDefaultStart = 8 * 60;
 const timelineDefaultEnd = 20 * 60;
 const timelineHour = 60;
 const timelineSlotWidth = 47;
-const timelineAssigneeColumnWidth = '5rem';
-const timelineUntimedColumnWidth = '5rem';
+const timelineAssigneeColumnWidth = '7rem';
+const timelineUntimedColumnWidth = '9rem';
 const timelineRowMinHeight = 48;
 const timelineEventLaneHeight = 44;
 const timelineEventBlockHeight = 36;
@@ -1913,6 +1918,7 @@ export default function ScheduleOverviewIndex({
         construction_count: 0,
         business_count: 0,
         internal_notice_count: 0,
+        voucher_confirmation_count: 0,
         unconfirmed_voucher_count: 0,
         schedule_count: 0,
     };
