@@ -326,6 +326,8 @@ const timelineDefaultStart = 8 * 60;
 const timelineDefaultEnd = 20 * 60;
 const timelineHour = 60;
 const timelineSlotWidth = 47;
+const timelineAssigneeColumnWidth = '6rem';
+const timelineUntimedColumnWidth = '7rem';
 const touchSelectionDelay = 260;
 const scheduleDetailHoldDelay = 500;
 const touchScrollTolerance = 10;
@@ -464,6 +466,27 @@ function multipleAssignedUsersCountLabel(event: TimelineEvent) {
     return `${event.assigned_users.length}名`;
 }
 
+function TimelineEventBorderBadges({
+    numberLabel,
+    multipleAssignedUsersCount,
+}: {
+    numberLabel: string;
+    multipleAssignedUsersCount: string | null;
+}) {
+    return (
+        <span className="pointer-events-none absolute top-0 left-1 z-20 inline-flex max-w-[calc(100%-0.5rem)] -translate-y-1/2 items-center gap-1 overflow-hidden">
+            <span className="shrink-0 rounded-full border border-current/10 bg-white/90 px-1.5 py-0.5 text-[10px] leading-none font-bold shadow-sm dark:bg-neutral-950/90 dark:text-white">
+                {numberLabel}
+            </span>
+            {multipleAssignedUsersCount && (
+                <span className="shrink-0 rounded-full border border-current/10 bg-white/90 px-1.5 py-0.5 text-[10px] leading-none font-bold shadow-sm dark:bg-neutral-950/90 dark:text-white">
+                    {multipleAssignedUsersCount}
+                </span>
+            )}
+        </span>
+    );
+}
+
 function timelineGridStyle(
     bounds: ReturnType<typeof timelineBounds>,
 ): CSSProperties {
@@ -476,7 +499,7 @@ function timelineRowStyle(
     bounds: ReturnType<typeof timelineBounds>,
 ): CSSProperties {
     return {
-        gridTemplateColumns: `7rem 7rem ${bounds.width}px`,
+        gridTemplateColumns: `${timelineAssigneeColumnWidth} ${timelineUntimedColumnWidth} ${bounds.width}px`,
     };
 }
 
@@ -803,7 +826,7 @@ function TimelineEventBlock({
         .filter(Boolean)
         .join(' ');
     const hasMultipleAssignedUsers = event.assigned_users.length > 1;
-    const className = `absolute top-1 bottom-1 min-w-12 overflow-hidden rounded-md border text-left shadow-sm transition ${eventTypeClass(event.type)} ${hasOpenEnd ? 'border-dashed' : ''} ${isHighlighted ? 'z-10 ring-2 ring-neutral-950 ring-offset-2 dark:ring-white dark:ring-offset-neutral-950' : ''}`;
+    const className = `absolute top-1 bottom-1 min-w-12 rounded-md border text-left shadow-sm transition ${eventTypeClass(event.type)} ${hasOpenEnd ? 'border-dashed' : ''} ${isHighlighted ? 'z-10 ring-2 ring-neutral-950 ring-offset-2 dark:ring-white dark:ring-offset-neutral-950' : ''}`;
     const style = {
         ...eventPositionStyle(event, bounds),
         ...(hasOpenEnd
@@ -814,27 +837,21 @@ function TimelineEventBlock({
             : {}),
     };
     const content = (
-        <>
-            <div className="flex min-w-0 items-center gap-1 truncate pr-5 text-[11px] leading-tight font-semibold">
-                <span className="shrink-0 rounded-full bg-white/80 px-1.5 py-0.5 text-[10px] shadow-sm dark:bg-black/25 dark:text-white">
-                    {numberLabel}
-                </span>
-                <span className="min-w-0 truncate">{event.title}</span>
-                {multipleAssignedUsersCount && (
-                    <span className="shrink-0">
-                        {multipleAssignedUsersCount}
-                    </span>
-                )}
-            </div>
-        </>
+        <div className="flex min-w-0 items-center truncate pr-5 text-[11px] leading-tight font-semibold">
+            <span className="min-w-0 truncate">{event.title}</span>
+        </div>
     );
 
     if (canManageSchedules) {
         return (
             <div className={className} style={style} title={label}>
+                <TimelineEventBorderBadges
+                    numberLabel={numberLabel}
+                    multipleAssignedUsersCount={multipleAssignedUsersCount}
+                />
                 <button
                     type="button"
-                    className={`h-full w-full px-1.5 py-1 text-left focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950 ${hasMultipleAssignedUsers ? 'cursor-pointer' : 'cursor-default'}`}
+                    className={`h-full w-full overflow-hidden px-1.5 py-1 text-left focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950 ${hasMultipleAssignedUsers ? 'cursor-pointer' : 'cursor-default'}`}
                     aria-label={label}
                     aria-pressed={
                         hasMultipleAssignedUsers ? isHighlighted : undefined
@@ -891,7 +908,11 @@ function TimelineEventBlock({
                 onToggleHighlight(event);
             }}
         >
-            {content}
+            <TimelineEventBorderBadges
+                numberLabel={numberLabel}
+                multipleAssignedUsersCount={multipleAssignedUsersCount}
+            />
+            <span className="block overflow-hidden">{content}</span>
         </button>
     );
 }
@@ -925,23 +946,19 @@ function UntimedEventChip({
         .filter(Boolean)
         .join(' ');
     const hasMultipleAssignedUsers = event.assigned_users.length > 1;
-    const className = `inline-flex max-w-full items-center gap-1 rounded-md border text-left text-xs font-semibold transition ${eventTypeClass(event.type)} ${isHighlighted ? 'ring-2 ring-neutral-950 ring-offset-2 dark:ring-white dark:ring-offset-neutral-950' : ''}`;
-    const content = (
-        <>
-            {/* <span className="shrink-0 rounded-full bg-gray-50 p-1">{numberLabel}</span> */}
-            <span className="min-w-0 truncate">{event.title}</span>
-            {multipleAssignedUsersCount && (
-                <span className="shrink-0">{multipleAssignedUsersCount}</span>
-            )}
-        </>
-    );
+    const className = `relative inline-flex max-w-full items-center gap-1 rounded-md border text-left text-xs font-semibold transition ${eventTypeClass(event.type)} ${isHighlighted ? 'ring-2 ring-neutral-950 ring-offset-2 dark:ring-white dark:ring-offset-neutral-950' : ''}`;
+    const content = <span className="min-w-0 truncate">{event.title}</span>;
 
     if (canManageSchedules) {
         return (
-            <span className={`${className} overflow-hidden`} title={label}>
+            <span className={className} title={label}>
+                <TimelineEventBorderBadges
+                    numberLabel={numberLabel}
+                    multipleAssignedUsersCount={multipleAssignedUsersCount}
+                />
                 <button
                     type="button"
-                    className={`inline-flex min-w-0 items-center gap-1 px-2 py-1 text-left focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950 ${hasMultipleAssignedUsers ? 'cursor-pointer' : 'cursor-default'}`}
+                    className={`inline-flex min-w-0 items-center gap-1 overflow-hidden px-2 py-1 text-left focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950 ${hasMultipleAssignedUsers ? 'cursor-pointer' : 'cursor-default'}`}
                     aria-label={label}
                     aria-pressed={
                         hasMultipleAssignedUsers ? isHighlighted : undefined
@@ -978,7 +995,7 @@ function UntimedEventChip({
     return (
         <button
             type="button"
-            className={`${className} px-2 py-1 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950 ${hasMultipleAssignedUsers ? 'cursor-pointer' : 'cursor-default'}`}
+            className={`${className} overflow-visible px-2 py-1 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950 ${hasMultipleAssignedUsers ? 'cursor-pointer' : 'cursor-default'}`}
             title={label}
             aria-pressed={hasMultipleAssignedUsers ? isHighlighted : undefined}
             onPointerDown={(pointerEvent) =>
@@ -996,7 +1013,11 @@ function UntimedEventChip({
                 onToggleHighlight(event);
             }}
         >
-            {content}
+            <TimelineEventBorderBadges
+                numberLabel={numberLabel}
+                multipleAssignedUsersCount={multipleAssignedUsersCount}
+            />
+            <span className="block min-w-0 overflow-hidden">{content}</span>
         </button>
     );
 }
@@ -1072,7 +1093,7 @@ function DayTimeline({
             ? [{ id: null, name: '担当者未設定', muted: true }]
             : []),
     ];
-    const timelineWidth = `calc(22rem + ${bounds.width}px)`;
+    const timelineWidth = `calc(21rem + ${bounds.width}px)`;
 
     function toggleHighlightedEvent(event: TimelineEvent) {
         if (event.assigned_users.length <= 1) {
@@ -1443,7 +1464,7 @@ function DayTimeline({
                         className="grid border-b border-neutral-200 bg-neutral-50/80 text-xs font-semibold text-muted-foreground dark:border-white/10 dark:bg-white/5 dark:text-neutral-300"
                         style={timelineRowStyle(bounds)}
                     >
-                        <div className="sticky left-0 z-30 border-r border-neutral-200 bg-neutral-50 px-3 py-2 shadow-[4px_0_10px_-8px_rgb(0_0_0_/_0.45)] dark:border-white/10 dark:bg-neutral-900">
+                        <div className="sticky left-0 z-50 border-r border-neutral-200 bg-neutral-50 px-2 py-2 shadow-[4px_0_10px_-8px_rgb(0_0_0_/_0.45)] dark:border-white/10 dark:bg-neutral-900">
                             担当者
                         </div>
                         <div className="px-3 py-2">時間未定</div>
@@ -1500,7 +1521,7 @@ function DayTimeline({
                                     style={timelineRowStyle(bounds)}
                                 >
                                     <div
-                                        className={`sticky left-0 z-20 flex min-w-0 items-center border-r border-neutral-200 px-3 py-1.5 shadow-[4px_0_10px_-8px_rgb(0_0_0_/_0.45)] dark:border-white/10 ${rowIndex % 2 === 0 ? 'bg-white dark:bg-neutral-950' : 'bg-neutral-50 dark:bg-neutral-900'}`}
+                                        className={`sticky left-0 z-40 flex min-w-0 items-center border-r border-neutral-200 px-2 py-1.5 shadow-[4px_0_10px_-8px_rgb(0_0_0_/_0.45)] dark:border-white/10 ${rowIndex % 2 === 0 ? 'bg-white dark:bg-neutral-950' : 'bg-neutral-50 dark:bg-neutral-900'}`}
                                     >
                                         <span
                                             className={`truncate text-sm font-semibold ${row.muted ? 'text-muted-foreground' : ''}`}
