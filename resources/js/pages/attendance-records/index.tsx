@@ -74,11 +74,38 @@ function recordKey(userId: number, date: string) {
     return `${userId}-${date}`;
 }
 
+function dayLabel(day: AttendanceDay) {
+    if (day.day === 1) {
+        return `${new Date(`${day.date}T00:00:00`).getMonth() + 1}/${day.day}`;
+    }
+
+    return day.day.toString();
+}
+
 function monthLabel(date: string) {
     return new Intl.DateTimeFormat('ja-JP', {
         year: 'numeric',
         month: 'long',
-    }).format(new Date(date));
+    }).format(new Date(`${date}T00:00:00`));
+}
+
+function dateLabel(date: string) {
+    return new Intl.DateTimeFormat('ja-JP', {
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+    }).format(new Date(`${date}T00:00:00`));
+}
+
+function attendancePeriodLabel(days: AttendanceDay[]) {
+    const firstDay = days[0];
+    const lastDay = days.at(-1);
+
+    if (!firstDay || !lastDay) {
+        return '';
+    }
+
+    return `${dateLabel(firstDay.date)} - ${dateLabel(lastDay.date)}`;
 }
 
 function shortDateLabel(date: string) {
@@ -86,7 +113,7 @@ function shortDateLabel(date: string) {
         month: 'numeric',
         day: 'numeric',
         weekday: 'short',
-    }).format(new Date(date));
+    }).format(new Date(`${date}T00:00:00`));
 }
 
 function japaneseWeekdayName(day: AttendanceDay): string {
@@ -135,12 +162,15 @@ function AttendanceCell({
     ) => void;
     onClear: (record: AttendanceRecord) => void;
 }) {
+    const todayClass = day.is_today
+        ? 'ring-2 ring-amber-500 ring-offset-2 ring-offset-white dark:ring-amber-300 dark:ring-offset-neutral-950'
+        : '';
     const content = (
         <>
-            <span className="text-xs font-semibold">{day.day}</span>
+            <span className="text-xs font-semibold">{dayLabel(day)}</span>
             {showWeekday ? (
                 <span className="text-[10px] leading-none font-medium text-current opacity-75">
-                    {japaneseWeekdayName(day)}
+                    {day.is_today ? '今日' : japaneseWeekdayName(day)}
                 </span>
             ) : null}
             <span className="text-[11px]">
@@ -152,7 +182,7 @@ function AttendanceCell({
     if (!canManage) {
         return (
             <div
-                className={`grid ${showWeekday ? 'h-16' : 'h-14'} place-items-center content-center gap-0.5 rounded-md border px-1 text-center ${statusClass(record?.status)}`}
+                className={`grid ${showWeekday ? 'h-16' : 'h-14'} place-items-center content-center gap-0.5 rounded-md border px-1 text-center ${statusClass(record?.status)} ${showWeekday ? todayClass : ''}`}
                 title={record?.note ?? undefined}
             >
                 {content}
@@ -164,7 +194,7 @@ function AttendanceCell({
         <div className="relative">
             <button
                 type="button"
-                className={`grid ${showWeekday ? 'h-16' : 'h-14'} w-full place-items-center content-center gap-0.5 rounded-md border px-1 text-center transition ${statusClass(record?.status)}`}
+                className={`grid ${showWeekday ? 'h-16' : 'h-14'} w-full place-items-center content-center gap-0.5 rounded-md border px-1 text-center transition ${statusClass(record?.status)} ${showWeekday ? todayClass : ''}`}
                 onClick={() => onSelect(user, day, record)}
                 title={record?.note ?? undefined}
             >
@@ -224,10 +254,23 @@ export default function AttendanceRecordIndex({
             ]),
         );
     }, [visibleRecords]);
+    const workingCountByUser = useMemo(() => {
+        return visibleRecords.reduce((counts, record) => {
+            if (record.status === 'working') {
+                counts.set(
+                    record.user_id,
+                    (counts.get(record.user_id) ?? 0) + 1,
+                );
+            }
+
+            return counts;
+        }, new Map<number, number>());
+    }, [visibleRecords]);
     const today = businessDateString();
     const leaveToday = visibleRecords.filter(
         (record) => record.status === 'leave' && record.work_date === today,
     );
+    const periodLabel = attendancePeriodLabel(days);
 
     function openEditor(
         user: ConstructionUser,
@@ -305,9 +348,16 @@ export default function AttendanceRecordIndex({
                         <p className="text-sm text-muted-foreground">対象月</p>
                         <div className="mt-2 flex items-center gap-3">
                             <CalendarCheck2 className="size-6 text-emerald-600" />
-                            <p className="text-2xl font-bold">
-                                {monthLabel(filters.month)}
-                            </p>
+                            <div>
+                                <p className="text-2xl font-bold">
+                                    {monthLabel(filters.month)}
+                                </p>
+                                {periodLabel ? (
+                                    <p className="mt-1 text-sm text-muted-foreground">
+                                        {periodLabel}
+                                    </p>
+                                ) : null}
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -347,11 +397,14 @@ export default function AttendanceRecordIndex({
                         <div
                             className="grid min-w-[1180px] gap-2 p-4"
                             style={{
-                                gridTemplateColumns: `180px repeat(${days.length}, minmax(38px, 1fr))`,
+                                gridTemplateColumns: `180px 72px repeat(${days.length}, minmax(38px, 1fr))`,
                             }}
                         >
                             <div className="sticky left-0 z-10 bg-white text-sm font-semibold dark:bg-neutral-950">
                                 ユーザー
+                            </div>
+                            <div className="sticky left-[188px] z-10 bg-white text-center text-sm font-semibold dark:bg-neutral-950">
+                                出勤日数
                             </div>
                             {days.map((day) => (
                                 <div
@@ -366,7 +419,7 @@ export default function AttendanceRecordIndex({
                                         }
                                     >
                                         <span className="text-sm leading-none">
-                                            {day.day}
+                                            {dayLabel(day)}
                                         </span>
                                         <span className="mt-1 text-[10px] leading-none font-medium">
                                             {japaneseWeekdayName(day)}
@@ -390,6 +443,16 @@ export default function AttendanceRecordIndex({
                                                 {user.email ?? 'メール未登録'}
                                             </p>
                                         </div>
+                                    </div>
+                                    <div className="sticky left-[188px] z-10 grid place-items-center bg-white py-2 dark:bg-neutral-950">
+                                        <Badge
+                                            variant="outline"
+                                            className="border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100"
+                                        >
+                                            {workingCountByUser.get(user.id) ??
+                                                0}
+                                            日
+                                        </Badge>
                                     </div>
                                     {days.map((day) => (
                                         <AttendanceCell
@@ -420,6 +483,13 @@ export default function AttendanceRecordIndex({
                                     <h3 className="font-semibold">
                                         {user.name}
                                     </h3>
+                                    <Badge
+                                        variant="outline"
+                                        className="ml-auto border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100"
+                                    >
+                                        出勤{' '}
+                                        {workingCountByUser.get(user.id) ?? 0}日
+                                    </Badge>
                                 </div>
                                 <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-7">
                                     {days.map((day) => (

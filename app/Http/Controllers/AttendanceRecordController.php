@@ -18,9 +18,10 @@ class AttendanceRecordController extends Controller
     public function index(Request $request): Response
     {
         $month = Carbon::parse($request->query('month', BusinessDate::today()->toDateString()))->startOfMonth();
-        $startsOn = $month->copy()->startOfMonth();
-        $endsOn = $month->copy()->endOfMonth();
+        $startsOn = $month->copy()->day(21);
+        $endsOn = $month->copy()->addMonthNoOverflow()->day(20);
         $canManage = $request->user()?->canManageContent() === true;
+        $days = $this->days($startsOn, $endsOn);
 
         $users = User::query()
             ->visibleToWorkers()
@@ -41,13 +42,13 @@ class AttendanceRecordController extends Controller
                 'previous_month' => $month->copy()->subMonthNoOverflow()->toDateString(),
                 'next_month' => $month->copy()->addMonthNoOverflow()->toDateString(),
             ],
-            'days' => $this->days($startsOn, $endsOn),
+            'days' => $days,
             'users' => $users,
             'records' => $this->recordPayload($records),
             'stats' => [
                 'working' => $records->where('status', AttendanceRecord::STATUS_WORKING)->count(),
                 'leave' => $records->where('status', AttendanceRecord::STATUS_LEAVE)->count(),
-                'unmarked' => max(0, ($users->count() * $startsOn->daysInMonth) - $records->count()),
+                'unmarked' => max(0, ($users->count() * $days->count()) - $records->count()),
             ],
             'canManage' => $canManage,
         ]);

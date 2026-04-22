@@ -14,6 +14,14 @@ test('users can view attendance records', function (): void {
         'work_date' => '2026-05-04',
         'note' => '有給',
     ]);
+    AttendanceRecord::factory()->working()->create([
+        'user_id' => $worker->id,
+        'work_date' => '2026-04-20',
+    ]);
+    AttendanceRecord::factory()->working()->create([
+        'user_id' => $worker->id,
+        'work_date' => '2026-05-21',
+    ]);
     AttendanceRecord::factory()->leave()->create([
         'user_id' => $hiddenUser->id,
         'work_date' => '2026-05-04',
@@ -21,12 +29,17 @@ test('users can view attendance records', function (): void {
     ]);
 
     $this->actingAs($user)
-        ->get(route('attendance-records.index', ['month' => '2026-05-01']))
+        ->get(route('attendance-records.index', ['month' => '2026-04-01']))
         ->assertOk()
         ->assertInertia(fn (Assert $page): Assert => $page
             ->component('attendance-records/index')
             ->where('canManage', false)
-            ->where('filters.month', '2026-05-01')
+            ->where('filters.month', '2026-04-01')
+            ->where('filters.previous_month', '2026-03-01')
+            ->where('filters.next_month', '2026-05-01')
+            ->has('days', 30)
+            ->where('days.0.date', '2026-04-21')
+            ->where('days.29.date', '2026-05-20')
             ->has('users', 2)
             ->has('records', 1)
             ->where('records.0.user.name', '山田 太郎')
@@ -55,7 +68,7 @@ test('admins cannot view hidden users on attendance records', function (): void 
     ]);
 
     $this->actingAs($admin)
-        ->get(route('attendance-records.index', ['month' => '2026-05-01']))
+        ->get(route('attendance-records.index', ['month' => '2026-04-01']))
         ->assertOk()
         ->assertInertia(fn (Assert $page): Assert => $page
             ->component('attendance-records/index')
