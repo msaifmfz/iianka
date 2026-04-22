@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AttendanceRecord;
 use App\Models\BusinessSchedule;
 use App\Models\ConstructionSchedule;
 use App\Models\InternalNotice;
@@ -213,7 +214,7 @@ class ScheduleOverviewController extends Controller
     }
 
     /**
-     * @return array{users: Collection<int, array{id: int, name: string, email: string|null}>, events: Collection<int, array<string, mixed>>}
+     * @return array{users: Collection<int, array{id: int, name: string, email: string|null}>, events: Collection<int, array<string, mixed>>, attendanceLeaveRecords: Collection<int, array{id: int, user_id: int, user_name: string, work_date: string, note: string|null}>}
      */
     private function selectedDayTimeline(Carbon $date): array
     {
@@ -226,7 +227,31 @@ class ScheduleOverviewController extends Controller
         return [
             'users' => $this->userPayload($users),
             'events' => $this->selectedDayEvents($date, $visibleUserIds),
+            'attendanceLeaveRecords' => $this->attendanceLeaveRecords($date, $visibleUserIds),
         ];
+    }
+
+    /**
+     * @param  Collection<int, int>  $visibleUserIds
+     * @return Collection<int, array{id: int, user_id: int, user_name: string, work_date: string, note: string|null}>
+     */
+    private function attendanceLeaveRecords(Carbon $date, Collection $visibleUserIds): Collection
+    {
+        return AttendanceRecord::query()
+            ->with('user:id,name,email')
+            ->where('status', AttendanceRecord::STATUS_LEAVE)
+            ->whereDate('work_date', $date->toDateString())
+            ->whereIn('user_id', $visibleUserIds)
+            ->orderBy('work_date')
+            ->get()
+            ->map(fn (AttendanceRecord $record): array => [
+                'id' => $record->id,
+                'user_id' => $record->user_id,
+                'user_name' => $record->user->name,
+                'work_date' => $record->work_date->toDateString(),
+                'note' => $record->note,
+            ])
+            ->values();
     }
 
     /**

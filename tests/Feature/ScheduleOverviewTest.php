@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AttendanceRecord;
 use App\Models\BusinessSchedule;
 use App\Models\ConstructionSchedule;
 use App\Models\InternalNotice;
@@ -110,9 +111,27 @@ test('users can view selected day timeline for visible workers and assigned even
     $viewer = User::factory()->hiddenFromWorkers()->create();
     $firstWorker = User::factory()->create(['name' => '青木']);
     $secondWorker = User::factory()->create(['name' => '佐藤']);
-    User::factory()->create(['name' => '田中']);
+    $thirdWorker = User::factory()->create(['name' => '田中']);
     $hiddenWorker = User::factory()->hiddenFromWorkers()->create(['name' => '非表示']);
     $date = '2026-05-13';
+
+    AttendanceRecord::factory()->leave()->create([
+        'user_id' => $firstWorker->id,
+        'work_date' => $date,
+        'note' => '私用',
+    ]);
+    AttendanceRecord::factory()->working()->create([
+        'user_id' => $secondWorker->id,
+        'work_date' => $date,
+    ]);
+    AttendanceRecord::factory()->leave()->create([
+        'user_id' => $thirdWorker->id,
+        'work_date' => '2026-05-14',
+    ]);
+    AttendanceRecord::factory()->leave()->create([
+        'user_id' => $hiddenWorker->id,
+        'work_date' => $date,
+    ]);
 
     $constructionSchedule = ConstructionSchedule::factory()->create([
         'scheduled_on' => $date,
@@ -163,15 +182,24 @@ test('users can view selected day timeline for visible workers and assigned even
             ->component('schedule-overview/index')
             ->has('selectedDayTimeline.users', 3)
             ->has('selectedDayTimeline.events', 4)
+            ->has('selectedDayTimeline.attendanceLeaveRecords', 1)
         );
 
     $timeline = $response->inertiaProps('selectedDayTimeline');
     $users = collect($timeline['users']);
     $events = collect($timeline['events']);
+    $leaveRecords = collect($timeline['attendanceLeaveRecords']);
 
     expect($users->pluck('name'))->toContain('青木', '佐藤', '田中')
         ->and($users->pluck('name'))->not->toContain('非表示')
         ->and($events)->toHaveCount(4)
+        ->and($leaveRecords)->toHaveCount(1)
+        ->and($leaveRecords->first())->toMatchArray([
+            'user_id' => $firstWorker->id,
+            'user_name' => '青木',
+            'work_date' => $date,
+            'note' => '私用',
+        ])
         ->and($events->contains(fn (array $event): bool => $event['type'] === 'construction'
             && $event['title'] === '中央ビル'
             && $event['schedule_number'] === 7

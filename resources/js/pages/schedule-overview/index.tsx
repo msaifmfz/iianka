@@ -34,7 +34,7 @@ import {
 } from '@/components/ui/dialog';
 import { businessDateString } from '@/lib/dates';
 import { index as overviewIndex } from '@/routes/schedule-overview';
-import type { ConstructionUser } from '@/types';
+import type { AttendanceLeaveRecord, ConstructionUser } from '@/types';
 
 type CalendarDay = {
     date: string;
@@ -83,6 +83,7 @@ type TimelineEvent = {
 type SelectedDayTimeline = {
     users: ConstructionUser[];
     events: TimelineEvent[];
+    attendanceLeaveRecords: AttendanceLeaveRecord[];
 };
 
 type CreateSlot = {
@@ -1157,6 +1158,12 @@ function DayTimeline({
     const hasUnassignedEvents = selectedDayTimeline.events.some(
         (event) => event.assigned_users.length === 0,
     );
+    const leaveRecordsByUserId = new Map(
+        selectedDayTimeline.attendanceLeaveRecords.map((record) => [
+            record.user_id,
+            record,
+        ]),
+    );
     const rows: { id: number | null; name: string; muted?: boolean }[] = [
         ...selectedDayTimeline.users.map((user) => ({
             id: user.id,
@@ -1596,6 +1603,16 @@ function DayTimeline({
                                 )
                                     ? dragSelection
                                     : null;
+                            const leaveRecord =
+                                row.id === null
+                                    ? null
+                                    : (leaveRecordsByUserId.get(row.id) ??
+                                      null);
+                            const leaveLabel =
+                                leaveRecord?.note === null ||
+                                leaveRecord?.note === undefined
+                                    ? '休み'
+                                    : `休み: ${leaveRecord.note}`;
 
                             return (
                                 <div
@@ -1607,13 +1624,22 @@ function DayTimeline({
                                     }}
                                 >
                                     <div
-                                        className={`sticky left-0 z-40 flex min-w-0 items-center border-r border-neutral-200 px-2 py-1.5 shadow-[4px_0_10px_-8px_rgb(0_0_0_/_0.45)] dark:border-white/10 ${rowIndex % 2 === 0 ? 'bg-white dark:bg-neutral-950' : 'bg-neutral-50 dark:bg-neutral-900'}`}
+                                        className={`sticky left-0 z-40 flex min-w-0 flex-col items-start justify-center gap-1 border-r border-neutral-200 px-2 py-1.5 shadow-[4px_0_10px_-8px_rgb(0_0_0_/_0.45)] dark:border-white/10 ${rowIndex % 2 === 0 ? 'bg-white dark:bg-neutral-950' : 'bg-neutral-50 dark:bg-neutral-900'}`}
                                     >
                                         <span
-                                            className={`truncate text-sm font-semibold ${row.muted ? 'text-muted-foreground' : ''}`}
+                                            className={`max-w-full truncate text-sm font-semibold ${row.muted ? 'text-muted-foreground' : ''}`}
                                         >
                                             {row.name}
                                         </span>
+                                        {leaveRecord !== null && (
+                                            <span
+                                                className="max-w-full truncate rounded-md border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[10px] leading-none font-bold text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/50 dark:text-rose-200"
+                                                title={leaveLabel}
+                                                aria-label={`${row.name}は${leaveLabel}`}
+                                            >
+                                                {leaveLabel}
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="flex min-w-0 flex-wrap content-center gap-1 px-3 py-1">
                                         {untimedEvents.length > 0 ? (
