@@ -17,7 +17,7 @@ class AttendanceRecordController extends Controller
 {
     public function index(Request $request): Response
     {
-        $month = Carbon::parse($request->query('month', BusinessDate::today()->toDateString()))->startOfMonth();
+        $month = Carbon::parse($request->query('month', $this->defaultMonth()->toDateString()))->startOfMonth();
         $startsOn = $month->copy()->day(21);
         $endsOn = $month->copy()->addMonthNoOverflow()->day(20);
         $canManage = $request->user()?->canManageContent() === true;
@@ -91,6 +91,17 @@ class AttendanceRecordController extends Controller
         $attendanceRecord->delete();
 
         return back()->with('status', '出勤状況を未設定に戻しました。');
+    }
+
+    private function defaultMonth(): Carbon
+    {
+        $today = BusinessDate::today();
+
+        if ($today->day <= 20) {
+            return $today->subMonthNoOverflow()->startOfMonth();
+        }
+
+        return $today->startOfMonth();
     }
 
     /**

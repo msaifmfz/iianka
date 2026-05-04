@@ -2,7 +2,18 @@
 
 set -Eeuo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ORIGINAL_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [[ -z "${NIGHTLY_RUNNER_SELF_COPY:-}" ]]; then
+    self_copy="$(mktemp "${TMPDIR:-/tmp}/run-nightly-automation.XXXXXX")"
+    cp "$0" "$self_copy"
+    chmod +x "$self_copy"
+    export NIGHTLY_RUNNER_SCRIPT_DIR="$ORIGINAL_SCRIPT_DIR"
+    export NIGHTLY_RUNNER_SELF_COPY="$self_copy"
+    exec bash "$self_copy" "$@"
+fi
+
+SCRIPT_DIR="${NIGHTLY_RUNNER_SCRIPT_DIR:-$ORIGINAL_SCRIPT_DIR}"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TIMEZONE="${TIMEZONE:-Asia/Tokyo}"
 RUNS_DIR="${RUNS_DIR:-$REPO_ROOT/.codex-nightly}"
@@ -28,12 +39,23 @@ esac
 LOCK_DIR="$RUNS_DIR/lock"
 PROMPT_FILE="${PROMPT_FILE:-$REPO_ROOT/.codex/automations/nightly-github-issues.md}"
 CODEX_BIN="${CODEX_BIN:-codex}"
+CODEX_MODEL="${CODEX_MODEL:-gpt-5.5}"
 CODEX_SANDBOX="${CODEX_SANDBOX:-danger-full-access}"
 CODEX_APPROVAL_POLICY="${CODEX_APPROVAL_POLICY:-never}"
 CODEX_PROFILE="${CODEX_PROFILE:-}"
 CHECK_ONLY="0"
+LOCK_ACQUIRED="0"
 
 export PATH="$HOME/.volta/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+
+cleanup() {
+    if [[ "$LOCK_ACQUIRED" == "1" ]]; then
+        rmdir "$LOCK_DIR" 2>/dev/null || true
+    fi
+
+    rm -f "$NIGHTLY_RUNNER_SELF_COPY" 2>/dev/null || true
+}
+trap cleanup EXIT
 
 usage() {
     cat <<'USAGE'
@@ -42,7 +64,7 @@ Usage:
   .codex/scripts/run-nightly-automation.sh --check
 
 Environment overrides:
-  CODEX_BIN=codex CODEX_PROFILE=nightly_issues
+  CODEX_BIN=codex CODEX_MODEL=gpt-5.5 CODEX_PROFILE=nightly_issues
   CODEX_SANDBOX=danger-full-access CODEX_APPROVAL_POLICY=never
   TIMEZONE=Asia/Tokyo RUNS_DIR=/path/to/runtime
 USAGE
@@ -99,14 +121,10 @@ if ! mkdir "$LOCK_DIR" 2>/dev/null; then
     echo "Nightly Codex automation is already running." >&2
     exit 1
 fi
-
-cleanup() {
-    rmdir "$LOCK_DIR" 2>/dev/null || true
-}
-trap cleanup EXIT
+LOCK_ACQUIRED="1"
 
 log_file="$LOG_DIR/$(TZ="$TIMEZONE" date '+%Y-%m-%d-%H%M%S-%z').log"
-codex_args=(exec -C "$REPO_ROOT" -s "$CODEX_SANDBOX" -c "approval_policy=\"$CODEX_APPROVAL_POLICY\"")
+codex_args=(exec -C "$REPO_ROOT" -m "$CODEX_MODEL" -s "$CODEX_SANDBOX" -c "approval_policy=\"$CODEX_APPROVAL_POLICY\"")
 
 if [[ -n "$CODEX_PROFILE" ]]; then
     codex_args+=(-p "$CODEX_PROFILE")
