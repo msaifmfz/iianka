@@ -28,6 +28,7 @@ esac
 LOCK_DIR="$RUNS_DIR/lock"
 PROMPT_FILE="${PROMPT_FILE:-$REPO_ROOT/.codex/automations/nightly-github-issues.md}"
 CODEX_BIN="${CODEX_BIN:-codex}"
+CODEX_MODEL="${CODEX_MODEL:-gpt-5.5}"
 CODEX_SANDBOX="${CODEX_SANDBOX:-danger-full-access}"
 CODEX_APPROVAL_POLICY="${CODEX_APPROVAL_POLICY:-never}"
 CODEX_PROFILE="${CODEX_PROFILE:-}"
@@ -42,7 +43,7 @@ Usage:
   .codex/scripts/run-nightly-automation.sh --check
 
 Environment overrides:
-  CODEX_BIN=codex CODEX_PROFILE=nightly_issues
+  CODEX_BIN=codex CODEX_MODEL=gpt-5.5 CODEX_PROFILE=nightly_issues
   CODEX_SANDBOX=danger-full-access CODEX_APPROVAL_POLICY=never
   TIMEZONE=Asia/Tokyo RUNS_DIR=/path/to/runtime
 USAGE
@@ -106,7 +107,7 @@ cleanup() {
 trap cleanup EXIT
 
 log_file="$LOG_DIR/$(TZ="$TIMEZONE" date '+%Y-%m-%d-%H%M%S-%z').log"
-codex_args=(exec -C "$REPO_ROOT" -s "$CODEX_SANDBOX" -c "approval_policy=\"$CODEX_APPROVAL_POLICY\"")
+codex_args=(exec -C "$REPO_ROOT" -m "$CODEX_MODEL" -s "$CODEX_SANDBOX" -c "approval_policy=\"$CODEX_APPROVAL_POLICY\"")
 
 if [[ -n "$CODEX_PROFILE" ]]; then
     codex_args+=(-p "$CODEX_PROFILE")
