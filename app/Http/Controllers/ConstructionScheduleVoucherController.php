@@ -27,9 +27,12 @@ class ConstructionScheduleVoucherController extends Controller
         $date = $this->dateQuery($request->query('date'), $requestedDay ?? $today);
         $startsOn = $date->copy()->startOfMonth();
         $endsOn = $date->copy()->endOfMonth();
-        $day = $request->query('day') === 'all'
-            ? 'all'
-            : ($requestedDay ?? $today)->toDateString();
+        $day = match (true) {
+            $request->query('day') === 'all' => 'all',
+            $requestedDay instanceof Carbon => $requestedDay->toDateString(),
+            $request->query('date') !== null => 'all',
+            default => $today->toDateString(),
+        };
 
         if ($day !== 'all' && ! Carbon::parse($day)->betweenIncluded($startsOn, $endsOn)) {
             $day = 'all';
