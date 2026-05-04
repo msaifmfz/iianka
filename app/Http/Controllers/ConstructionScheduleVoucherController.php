@@ -29,7 +29,7 @@ class ConstructionScheduleVoucherController extends Controller
         $endsOn = $date->copy()->endOfMonth();
         $day = match (true) {
             $request->query('day') === 'all' => 'all',
-            $requestedDay !== null => $requestedDay->toDateString(),
+            $requestedDay instanceof Carbon => $requestedDay->toDateString(),
             $request->query('date') !== null => 'all',
             default => $today->toDateString(),
         };

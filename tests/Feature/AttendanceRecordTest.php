@@ -2,6 +2,7 @@
 
 use App\Models\AttendanceRecord;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
 
 test('users can view attendance records', function (): void {
@@ -50,6 +51,31 @@ test('users can view attendance records', function (): void {
             ))
         );
 });
+
+test('attendance records default to the current attendance period month', function (string $today, string $month, int $dayCount, string $startsOn, string $endsOn): void {
+    Carbon::setTestNow(Carbon::parse($today, 'Asia/Tokyo'));
+
+    try {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get(route('attendance-records.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page): Assert => $page
+                ->component('attendance-records/index')
+                ->where('filters.month', $month)
+                ->has('days', $dayCount)
+                ->where('days.0.date', $startsOn)
+                ->where('days.'.($dayCount - 1).'.date', $endsOn)
+            );
+    } finally {
+        Carbon::setTestNow();
+    }
+})->with([
+    'period start uses same month' => ['2026-08-21 09:00:00', '2026-08-01', 31, '2026-08-21', '2026-09-20'],
+    'period end uses previous month' => ['2026-09-20 09:00:00', '2026-08-01', 31, '2026-08-21', '2026-09-20'],
+    'next period start uses same month' => ['2026-09-21 09:00:00', '2026-09-01', 30, '2026-09-21', '2026-10-20'],
+]);
 
 test('admins cannot view hidden users on attendance records', function (): void {
     $admin = User::factory()->admin()->create();
