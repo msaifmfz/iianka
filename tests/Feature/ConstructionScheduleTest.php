@@ -631,6 +631,7 @@ test('admins can create schedules with assigned users and guide files', function
             'meeting_place' => '正面ゲート',
             'personnel' => '5名',
             'location' => '東京タワー改修',
+            'site_region' => '東京都',
             'general_contractor' => '山田建設',
             'person_in_charge' => '佐藤',
             'content' => '足場点検と資材搬入',
@@ -667,6 +668,7 @@ test('admins can create schedules with assigned users and guide files', function
     expect($schedule->subcontractors()->where('name', '新規 下請けA')->where('phone', '090-3333-4444')->exists())->toBeTrue();
     expect($schedule->subcontractors()->where('name', '新規 下請けB')->where('phone', '090-5555-6666')->exists())->toBeTrue();
     expect($schedule->schedule_number)->toBe(7);
+    expect($schedule->site_region)->toBe('東京都');
     expect($schedule->selectedGuideFiles()->whereKey($siteGuide)->exists())->toBeTrue();
     expect($uploadedGuide)->not->toBeNull();
     expect($schedule->selectedGuideFiles()->whereKey($uploadedGuide)->exists())->toBeTrue();
@@ -756,6 +758,7 @@ test('admins can update schedule subcontractors separately from assigned users',
             'status' => ConstructionSchedule::STATUS_CONFIRMED,
             'meeting_place' => '正面ゲート',
             'location' => '更新対象現場',
+            'site_region' => '神奈川県',
             'content' => '作業内容',
             'navigation_address' => '東京都千代田区1-1',
             'assigned_user_ids' => [$worker->id],
@@ -775,6 +778,7 @@ test('admins can update schedule subcontractors separately from assigned users',
     expect($schedule->subcontractors()->whereKey($oldSubcontractor)->exists())->toBeFalse();
     expect($schedule->subcontractors()->whereKey($newSubcontractor)->exists())->toBeTrue();
     expect($schedule->subcontractors()->where('name', '追加 下請け')->where('phone', '')->exists())->toBeTrue();
+    expect($schedule->site_region)->toBe('神奈川県');
 });
 
 test('uploaded guide files from a schedule become standalone library files on edit', function (): void {
@@ -788,6 +792,7 @@ test('uploaded guide files from a schedule become standalone library files on ed
             'status' => ConstructionSchedule::STATUS_SCHEDULED,
             'meeting_place' => '南口',
             'location' => '品川南口工区',
+            'site_region' => '東京都',
             'content' => '仮囲い設置',
             'navigation_address' => '東京都港区港南1-1-1',
             'guide_files' => [
@@ -812,6 +817,7 @@ test('uploaded guide files from a schedule become standalone library files on ed
         ->assertInertia(fn (Assert $page): Assert => $page
             ->component('construction-schedules/form')
             ->where('schedule.id', $schedule->id)
+            ->where('schedule.site_region', '東京都')
             ->where('schedule.selected_site_guide_file_ids', fn ($ids): bool => collect($ids)->contains($uploadedGuide->id))
             ->where('siteGuideFiles', fn ($guideFiles): bool => collect($guideFiles)
                 ->contains(fn (array $guideFile): bool => $guideFile['id'] === $uploadedGuide->id
@@ -1270,14 +1276,31 @@ test('admins can create construction schedules without optional details', functi
             'scheduled_on' => BusinessDate::today()->toDateString(),
             'status' => ConstructionSchedule::STATUS_SCHEDULED,
             'location' => '東京現場',
+            'site_region' => '   ',
         ])
         ->assertRedirect();
 
     $schedule = ConstructionSchedule::query()->where('location', '東京現場')->firstOrFail();
 
     expect($schedule->meeting_place)->toBeNull()
+        ->and($schedule->site_region)->toBeNull()
         ->and($schedule->content)->toBeNull()
         ->and($schedule->navigation_address)->toBeNull();
+});
+
+test('construction schedule site region must be a japanese prefecture', function (): void {
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)
+        ->from(route('construction-schedules.create'))
+        ->post(route('construction-schedules.store'), [
+            'scheduled_on' => BusinessDate::today()->toDateString(),
+            'status' => ConstructionSchedule::STATUS_SCHEDULED,
+            'location' => '東京現場',
+            'site_region' => '東京',
+        ])
+        ->assertRedirect(route('construction-schedules.create'))
+        ->assertSessionHasErrors(['site_region']);
 });
 
 test('construction schedule creation uses site name validation attribute', function (): void {
