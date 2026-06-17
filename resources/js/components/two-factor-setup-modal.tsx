@@ -17,6 +17,7 @@ import {
     InputOTPGroup,
     InputOTPSlot,
 } from '@/components/ui/input-otp';
+import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { useAppearance } from '@/hooks/use-appearance';
 import { useClipboard } from '@/hooks/use-clipboard';
@@ -174,6 +175,9 @@ function TwoFactorVerificationStep({
                         className="relative w-full space-y-3"
                     >
                         <div className="flex w-full flex-col items-center space-y-3 py-2">
+                            <Label htmlFor="otp" required>
+                                認証コード
+                            </Label>
                             <InputOTP
                                 id="otp"
                                 name="code"

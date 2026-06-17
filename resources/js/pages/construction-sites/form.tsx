@@ -5,8 +5,10 @@ import {
     store as guideStore,
     update as guideUpdate,
 } from '@/actions/App/Http/Controllers/ConstructionSiteController';
+import FormField from '@/components/form-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { RequiredBadge } from '@/components/ui/label';
 import type { SiteGuideFile } from '@/types';
 
 type Props = {
@@ -21,24 +23,6 @@ type GuideFileForm = {
 
 const guideFileAccept =
     'application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif';
-
-function Field({
-    label,
-    error,
-    children,
-}: {
-    label: string;
-    error?: string;
-    children: React.ReactNode;
-}) {
-    return (
-        <label className="grid gap-2 text-sm font-medium">
-            <span>{label}</span>
-            {children}
-            {error && <span className="text-xs text-destructive">{error}</span>}
-        </label>
-    );
-}
 
 export default function ConstructionSiteForm({ guideFile }: Props) {
     const { data, setData, post, processing, progress, errors } =
@@ -83,7 +67,7 @@ export default function ConstructionSiteForm({ guideFile }: Props) {
                     onSubmit={submit}
                     className="grid gap-6 rounded-2xl border bg-white p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950"
                 >
-                    <Field label="表示名" error={errors.name}>
+                    <FormField label="表示名" required error={errors.name}>
                         <Input
                             required
                             value={data.name}
@@ -91,7 +75,7 @@ export default function ConstructionSiteForm({ guideFile }: Props) {
                                 setData('name', event.target.value)
                             }
                         />
-                    </Field>
+                    </FormField>
 
                     {guideFile && (
                         <div className="rounded-2xl bg-neutral-50 p-4 text-sm dark:bg-neutral-900">
@@ -112,9 +96,12 @@ export default function ConstructionSiteForm({ guideFile }: Props) {
 
                     <label className="flex min-h-52 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground transition hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-900">
                         <UploadCloud className="size-6" />
-                        {guideFile
-                            ? 'PDF / 画像を差し替え'
-                            : 'PDF / 画像をアップロード'}
+                        <span className="inline-flex items-center gap-2">
+                            {guideFile
+                                ? 'PDF / 画像を差し替え'
+                                : 'PDF / 画像をアップロード'}
+                            {!guideFile && <RequiredBadge />}
+                        </span>
                         <span className="text-xs">
                             {guideFile
                                 ? '表示名だけを変える場合は選択不要です。'
@@ -124,6 +111,7 @@ export default function ConstructionSiteForm({ guideFile }: Props) {
                             className="hidden"
                             type="file"
                             accept={guideFileAccept}
+                            required={!guideFile}
                             onChange={(event) => {
                                 const files = Array.from(
                                     event.currentTarget.files ?? [],

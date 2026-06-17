@@ -41,7 +41,9 @@ export default function Profile({
                     {({ processing, recentlySuccessful, errors }) => (
                         <>
                             <div className="grid gap-2">
-                                <Label htmlFor="name">名前</Label>
+                                <Label htmlFor="name" required>
+                                    名前
+                                </Label>
 
                                 <Input
                                     id="name"
