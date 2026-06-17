@@ -74,6 +74,17 @@ class StoreConstructionScheduleRequest extends FormRequest
     }
 
     /**
+     * @return array<string, string>
+     */
+    #[Override]
+    public function attributes(): array
+    {
+        return [
+            'location' => '現場名',
+        ];
+    }
+
+    /**
      * @return array<int, callable>
      */
     public function after(): array

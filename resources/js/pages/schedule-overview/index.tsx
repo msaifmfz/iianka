@@ -629,7 +629,10 @@ function scheduleDetailRows(event: TimelineEvent) {
         { label: '番号', value: eventNumberLabel(event) },
         { label: '時間', value: event.time },
         { label: '担当者', value: assignedUsersLabel(event) },
-        { label: '場所', value: event.location },
+        {
+            label: event.type === 'construction' ? '現場名' : '場所',
+            value: event.location,
+        },
         { label: '内容', value: event.content },
         { label: '補足', value: event.time_note },
     ].filter((row) => row.value !== null && row.value !== '');
