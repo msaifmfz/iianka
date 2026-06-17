@@ -1280,6 +1280,39 @@ test('admins can create construction schedules without optional details', functi
         ->and($schedule->navigation_address)->toBeNull();
 });
 
+test('construction schedule creation uses site name validation attribute', function (): void {
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)
+        ->from(route('construction-schedules.create'))
+        ->post(route('construction-schedules.store'), [
+            'scheduled_on' => BusinessDate::today()->toDateString(),
+            'status' => ConstructionSchedule::STATUS_SCHEDULED,
+            'location' => '',
+        ])
+        ->assertRedirect(route('construction-schedules.create'))
+        ->assertSessionHasErrors([
+            'location' => '現場名は必須項目です。',
+        ]);
+});
+
+test('construction schedule updates use site name validation attribute', function (): void {
+    $admin = User::factory()->admin()->create();
+    $schedule = ConstructionSchedule::factory()->create();
+
+    $this->actingAs($admin)
+        ->from(route('construction-schedules.edit', $schedule))
+        ->patch(route('construction-schedules.update', $schedule), [
+            'scheduled_on' => $schedule->scheduled_on->toDateString(),
+            'status' => $schedule->status,
+            'location' => '',
+        ])
+        ->assertRedirect(route('construction-schedules.edit', $schedule))
+        ->assertSessionHasErrors([
+            'location' => '現場名は必須項目です。',
+        ]);
+});
+
 test('construction schedule times cannot overlap selected users existing schedules', function (): void {
     $admin = User::factory()->admin()->create();
     $worker = User::factory()->create();
