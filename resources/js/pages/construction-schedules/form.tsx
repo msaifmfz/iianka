@@ -67,6 +67,7 @@ type ScheduleForm = {
     meeting_place: string;
     personnel: string;
     location: string;
+    site_region: string;
     general_contractor: string;
     person_in_charge: string;
     content: string;
@@ -93,6 +94,56 @@ const statuses: { value: ConstructionScheduleStatus; label: string }[] = [
     { value: 'postponed', label: '延期' },
     { value: 'canceled', label: '中止' },
 ];
+
+const siteRegionOptions = [
+    '北海道',
+    '青森県',
+    '岩手県',
+    '宮城県',
+    '秋田県',
+    '山形県',
+    '福島県',
+    '茨城県',
+    '栃木県',
+    '群馬県',
+    '埼玉県',
+    '千葉県',
+    '東京都',
+    '神奈川県',
+    '新潟県',
+    '富山県',
+    '石川県',
+    '福井県',
+    '山梨県',
+    '長野県',
+    '岐阜県',
+    '静岡県',
+    '愛知県',
+    '三重県',
+    '滋賀県',
+    '京都府',
+    '大阪府',
+    '兵庫県',
+    '奈良県',
+    '和歌山県',
+    '鳥取県',
+    '島根県',
+    '岡山県',
+    '広島県',
+    '山口県',
+    '徳島県',
+    '香川県',
+    '愛媛県',
+    '高知県',
+    '福岡県',
+    '佐賀県',
+    '長崎県',
+    '熊本県',
+    '大分県',
+    '宮崎県',
+    '鹿児島県',
+    '沖縄県',
+] as const;
 
 const timeNotePresets = ['本日中', '午前中', '午後中', '時間未定'];
 const preferredTimeSlots = [
@@ -260,6 +311,7 @@ export default function ConstructionScheduleForm({
             meeting_place: schedule?.meeting_place ?? '',
             personnel: schedule?.personnel ?? '',
             location: schedule?.location ?? '',
+            site_region: schedule ? (schedule.site_region ?? '') : '滋賀県',
             general_contractor: schedule?.general_contractor ?? '',
             person_in_charge: schedule?.person_in_charge ?? '',
             content: schedule?.content ?? '',
@@ -1187,7 +1239,7 @@ export default function ConstructionScheduleForm({
                         </FormField>
                     </section>
 
-                    <section className="grid gap-4 md:grid-cols-2">
+                    <section className="grid gap-4 md:grid-cols-3">
                         <FormField
                             label="現場名"
                             required
@@ -1200,6 +1252,22 @@ export default function ConstructionScheduleForm({
                                     setData('location', event.target.value)
                                 }
                             />
+                        </FormField>
+                        <FormField label="現場地域" error={errors.site_region}>
+                            <select
+                                className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+                                value={data.site_region}
+                                onChange={(event) =>
+                                    setData('site_region', event.target.value)
+                                }
+                            >
+                                <option value="">選択なし</option>
+                                {siteRegionOptions.map((siteRegion) => (
+                                    <option key={siteRegion} value={siteRegion}>
+                                        {siteRegion}
+                                    </option>
+                                ))}
+                            </select>
                         </FormField>
                         <FormField
                             label="集合場所（任意）"

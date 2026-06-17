@@ -37,6 +37,7 @@ export type ConstructionSchedule = {
     meeting_place: string | null;
     personnel: string | null;
     location: string;
+    site_region: string | null;
     general_contractor: string | null;
     person_in_charge: string | null;
     content: string | null;

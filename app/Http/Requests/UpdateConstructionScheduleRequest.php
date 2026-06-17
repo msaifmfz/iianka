@@ -7,6 +7,7 @@ namespace App\Http\Requests;
 use App\Http\Requests\Concerns\ValidatesConstructionScheduleTiming;
 use App\Http\Requests\Concerns\ValidatesGuideFileUploads;
 use App\Http\Requests\Concerns\ValidatesScheduleNumber;
+use App\Models\ConstructionSchedule;
 use App\Models\SiteGuideFile;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -51,6 +52,7 @@ class UpdateConstructionScheduleRequest extends FormRequest
             'meeting_place' => ['nullable', 'string', 'max:255'],
             'personnel' => ['nullable', 'string', 'max:255'],
             'location' => ['required', 'string', 'max:255'],
+            'site_region' => ['nullable', 'string', Rule::in(ConstructionSchedule::SITE_REGIONS)],
             'general_contractor' => ['nullable', 'string', 'max:255'],
             'person_in_charge' => ['nullable', 'string', 'max:255'],
             'content' => ['nullable', 'string'],
@@ -81,6 +83,7 @@ class UpdateConstructionScheduleRequest extends FormRequest
     {
         return [
             'location' => '現場名',
+            'site_region' => '現場地域',
         ];
     }
 
