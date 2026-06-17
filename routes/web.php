@@ -44,7 +44,7 @@ Route::post('webauthn/login', [WebAuthnLoginController::class, 'login'])
 
 Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::redirect('dashboard', 'schedule-overview')->name('dashboard');
-    Route::delete('settings/passkeys/{passkey}', [SecurityController::class, 'destroyPasskey'])
+    Route::delete('settings/passkeys/{credential}', [SecurityController::class, 'destroyPasskey'])
         ->middleware('password.confirm')
         ->name('passkeys.destroy');
     Route::get('schedule-overview', ScheduleOverviewController::class)
