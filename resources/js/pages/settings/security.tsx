@@ -122,7 +122,7 @@ export default function Security({
                     {({ errors, processing, recentlySuccessful }) => (
                         <>
                             <div className="grid gap-2">
-                                <Label htmlFor="current_password">
+                                <Label htmlFor="current_password" required>
                                     現在のパスワード
                                 </Label>
 
@@ -130,6 +130,7 @@ export default function Security({
                                     id="current_password"
                                     ref={currentPasswordInput}
                                     name="current_password"
+                                    required
                                     className="mt-1 block w-full"
                                     autoComplete="current-password"
                                     placeholder="現在のパスワード"
@@ -139,7 +140,7 @@ export default function Security({
                             </div>
 
                             <div className="grid gap-2">
-                                <Label htmlFor="password">
+                                <Label htmlFor="password" required>
                                     新しいパスワード
                                 </Label>
 
@@ -147,6 +148,7 @@ export default function Security({
                                     id="password"
                                     ref={passwordInput}
                                     name="password"
+                                    required
                                     className="mt-1 block w-full"
                                     autoComplete="new-password"
                                     placeholder="新しいパスワード"
@@ -156,13 +158,14 @@ export default function Security({
                             </div>
 
                             <div className="grid gap-2">
-                                <Label htmlFor="password_confirmation">
+                                <Label htmlFor="password_confirmation" required>
                                     パスワードの確認
                                 </Label>
 
                                 <PasswordInput
                                     id="password_confirmation"
                                     name="password_confirmation"
+                                    required
                                     className="mt-1 block w-full"
                                     autoComplete="new-password"
                                     placeholder="パスワードの確認"

@@ -42,7 +42,9 @@ export default function Login({ status }: Props) {
                     <>
                         <div className="grid gap-6">
                             <div className="grid gap-2">
-                                <Label htmlFor="login_id">ログインID</Label>
+                                <Label htmlFor="login_id" required>
+                                    ログインID
+                                </Label>
                                 <Input
                                     id="login_id"
                                     type="text"
@@ -57,18 +59,9 @@ export default function Login({ status }: Props) {
                             </div>
 
                             <div className="grid gap-2">
-                                {/* <div className="flex items-center"> */}
-                                {/*     <Label htmlFor="password">パスワード</Label> */}
-                                {/*     {canResetPassword && ( */}
-                                {/*         <TextLink */}
-                                {/*             href={request()} */}
-                                {/*             className="ml-auto text-sm" */}
-                                {/*             tabIndex={5} */}
-                                {/*         > */}
-                                {/*             パスワードをお忘れですか？ */}
-                                {/*         </TextLink> */}
-                                {/*     )} */}
-                                {/* </div> */}
+                                <Label htmlFor="password" required>
+                                    パスワード
+                                </Label>
                                 <PasswordInput
                                     id="password"
                                     name="password"

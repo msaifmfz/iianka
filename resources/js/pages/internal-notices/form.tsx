@@ -5,6 +5,7 @@ import {
     update as internalNoticeUpdate,
 } from '@/actions/App/Http/Controllers/InternalNoticeController';
 import { FloatingBackButton } from '@/components/floating-back-button';
+import FormField from '@/components/form-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { businessDateString } from '@/lib/dates';
@@ -32,24 +33,6 @@ type InternalNoticeForm = {
     memo: string;
     assigned_user_ids: number[];
 };
-
-function Field({
-    label,
-    error,
-    children,
-}: {
-    label: string;
-    error?: string;
-    children: React.ReactNode;
-}) {
-    return (
-        <label className="grid gap-2 text-sm font-medium">
-            <span>{label}</span>
-            {children}
-            {error && <span className="text-xs text-destructive">{error}</span>}
-        </label>
-    );
-}
 
 function toggleNumber(values: number[], value: number) {
     return values.includes(value)
@@ -140,16 +123,21 @@ export default function InternalNoticeForm({
                     className="grid gap-6 rounded-3xl border bg-white p-4 shadow-sm sm:p-5 dark:border-neutral-800 dark:bg-neutral-950"
                 >
                     <section className="grid gap-4 md:grid-cols-4">
-                        <Field label="日付" error={errors.scheduled_on}>
+                        <FormField
+                            label="日付"
+                            required
+                            error={errors.scheduled_on}
+                        >
                             <Input
                                 type="date"
+                                required
                                 value={data.scheduled_on}
                                 onChange={(event) =>
                                     setData('scheduled_on', event.target.value)
                                 }
                             />
-                        </Field>
-                        <Field label="開始時間" error={errors.starts_at}>
+                        </FormField>
+                        <FormField label="開始時間" error={errors.starts_at}>
                             <Input
                                 type="time"
                                 value={data.starts_at}
@@ -157,8 +145,8 @@ export default function InternalNoticeForm({
                                     setData('starts_at', event.target.value)
                                 }
                             />
-                        </Field>
-                        <Field label="終了時間" error={errors.ends_at}>
+                        </FormField>
+                        <FormField label="終了時間" error={errors.ends_at}>
                             <Input
                                 type="time"
                                 value={data.ends_at}
@@ -166,8 +154,8 @@ export default function InternalNoticeForm({
                                     setData('ends_at', event.target.value)
                                 }
                             />
-                        </Field>
-                        <Field label="時間メモ" error={errors.time_note}>
+                        </FormField>
+                        <FormField label="時間メモ" error={errors.time_note}>
                             <Input
                                 value={data.time_note}
                                 onChange={(event) =>
@@ -175,7 +163,7 @@ export default function InternalNoticeForm({
                                 }
                                 placeholder="例: 本日中、午前中"
                             />
-                        </Field>
+                        </FormField>
                     </section>
 
                     <div className="rounded-2xl border p-4 dark:border-neutral-800">
@@ -216,16 +204,17 @@ export default function InternalNoticeForm({
                     </div>
 
                     <section className="grid gap-4 md:grid-cols-2">
-                        <Field label="件名" error={errors.title}>
+                        <FormField label="件名" required error={errors.title}>
                             <Input
+                                required
                                 value={data.title}
                                 onChange={(event) =>
                                     setData('title', event.target.value)
                                 }
                                 placeholder="例: 健康診断"
                             />
-                        </Field>
-                        <Field label="場所" error={errors.location}>
+                        </FormField>
+                        <FormField label="場所" error={errors.location}>
                             <Input
                                 value={data.location}
                                 onChange={(event) =>
@@ -233,11 +222,12 @@ export default function InternalNoticeForm({
                                 }
                                 placeholder="例: 本社 / 会議室"
                             />
-                        </Field>
+                        </FormField>
                     </section>
 
-                    <Field label="内容" error={errors.content}>
+                    <FormField label="内容" required error={errors.content}>
                         <textarea
+                            required
                             className="min-h-32 rounded-md border bg-transparent px-3 py-2 text-sm"
                             value={data.content}
                             onChange={(event) =>
@@ -245,9 +235,9 @@ export default function InternalNoticeForm({
                             }
                             placeholder="例: 健康診断を受診してください。"
                         />
-                    </Field>
+                    </FormField>
 
-                    <Field label="メモ" error={errors.memo}>
+                    <FormField label="メモ" error={errors.memo}>
                         <textarea
                             className="min-h-24 rounded-md border bg-transparent px-3 py-2 text-sm"
                             value={data.memo}
@@ -255,7 +245,7 @@ export default function InternalNoticeForm({
                                 setData('memo', event.target.value)
                             }
                         />
-                    </Field>
+                    </FormField>
 
                     <div className="flex justify-end">
                         <Button type="submit" disabled={processing}>

@@ -8,13 +8,16 @@ test.describe('login', () => {
         page,
     }) => {
         await page.goto('/login');
+
+        await expect(page.getByText('必須')).toHaveCount(2);
+
         await page.getByLabel('ログインID').fill(loginId);
-        await page.locator('input[name="password"]').fill(password);
+        await page.getByLabel('パスワード').fill(password);
         await page.getByRole('button', { name: 'ログイン' }).click();
 
-        await expect(page).toHaveURL(/\/construction-schedules(?:\?.*)?$/);
+        await expect(page).toHaveURL(/\/schedule-overview(?:\?.*)?$/);
         await expect(
-            page.getByRole('heading', { name: '予定表' }),
+            page.getByRole('heading', { name: /^\d{4}年\d{1,2}月$/ }),
         ).toBeVisible();
     });
 });

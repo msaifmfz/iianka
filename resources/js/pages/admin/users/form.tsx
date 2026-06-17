@@ -12,9 +12,11 @@ import {
     store as userStore,
     update as userUpdate,
 } from '@/actions/App/Http/Controllers/Admin/UserController';
+import FormField from '@/components/form-field';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { RequiredBadge } from '@/components/ui/label';
 
 type ManagedUser = {
     id: number;
@@ -69,24 +71,6 @@ const roleOptions: {
     },
 ];
 
-function Field({
-    label,
-    error,
-    children,
-}: {
-    label: string;
-    error?: string;
-    children: React.ReactNode;
-}) {
-    return (
-        <label className="grid gap-2 text-sm font-medium">
-            <span>{label}</span>
-            {children}
-            {error && <span className="text-xs text-destructive">{error}</span>}
-        </label>
-    );
-}
-
 export default function AdminUserForm({ managedUser }: Props) {
     const { data, setData, post, processing, errors } = useForm<UserForm>({
         _method: managedUser ? 'put' : '',
@@ -132,17 +116,27 @@ export default function AdminUserForm({ managedUser }: Props) {
                             <CardTitle>基本情報</CardTitle>
                         </CardHeader>
                         <CardContent className="grid gap-5">
-                            <Field label="名前" error={errors.name}>
+                            <FormField
+                                label="名前"
+                                required
+                                error={errors.name}
+                            >
                                 <Input
+                                    required
                                     value={data.name}
                                     onChange={(event) =>
                                         setData('name', event.target.value)
                                     }
                                     autoComplete="name"
                                 />
-                            </Field>
-                            <Field label="ログインID" error={errors.login_id}>
+                            </FormField>
+                            <FormField
+                                label="ログインID"
+                                required
+                                error={errors.login_id}
+                            >
                                 <Input
+                                    required
                                     value={data.login_id}
                                     onChange={(event) =>
                                         setData(
@@ -153,8 +147,11 @@ export default function AdminUserForm({ managedUser }: Props) {
                                     autoComplete="username"
                                     placeholder="例）0001"
                                 />
-                            </Field>
-                            <Field label="メールアドレス" error={errors.email}>
+                            </FormField>
+                            <FormField
+                                label="メールアドレス"
+                                error={errors.email}
+                            >
                                 <Input
                                     type="email"
                                     value={data.email}
@@ -164,18 +161,20 @@ export default function AdminUserForm({ managedUser }: Props) {
                                     autoComplete="email"
                                     placeholder="未設定でも可"
                                 />
-                            </Field>
+                            </FormField>
                             <div className="grid gap-4 sm:grid-cols-2">
-                                <Field
+                                <FormField
                                     label={
                                         managedUser
                                             ? '新しいパスワード'
                                             : 'パスワード'
                                     }
+                                    required={!managedUser}
                                     error={errors.password}
                                 >
                                     <Input
                                         type="password"
+                                        required={!managedUser}
                                         value={data.password}
                                         onChange={(event) =>
                                             setData(
@@ -190,13 +189,15 @@ export default function AdminUserForm({ managedUser }: Props) {
                                                 : ''
                                         }
                                     />
-                                </Field>
-                                <Field
+                                </FormField>
+                                <FormField
                                     label="パスワード確認"
+                                    required={!managedUser}
                                     error={errors.password_confirmation}
                                 >
                                     <Input
                                         type="password"
+                                        required={!managedUser}
                                         value={data.password_confirmation}
                                         onChange={(event) =>
                                             setData(
@@ -206,7 +207,7 @@ export default function AdminUserForm({ managedUser }: Props) {
                                         }
                                         autoComplete="new-password"
                                     />
-                                </Field>
+                                </FormField>
                             </div>
                         </CardContent>
                     </Card>
@@ -214,7 +215,10 @@ export default function AdminUserForm({ managedUser }: Props) {
                     <div className="space-y-4">
                         <Card>
                             <CardHeader>
-                                <CardTitle>権限</CardTitle>
+                                <CardTitle className="flex items-center gap-2">
+                                    権限
+                                    <RequiredBadge />
+                                </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 {roleOptions.map((role) => {
@@ -233,6 +237,7 @@ export default function AdminUserForm({ managedUser }: Props) {
                                                 type="radio"
                                                 name="role"
                                                 value={role.value}
+                                                required
                                                 checked={selected}
                                                 disabled={disabled}
                                                 onChange={() =>

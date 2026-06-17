@@ -16,6 +16,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { RequiredBadge } from '@/components/ui/label';
 import { businessDateString } from '@/lib/dates';
 import type {
     AttendanceRecord,
@@ -536,7 +537,12 @@ export default function AttendanceRecordIndex({
                                 </Button>
                             </div>
 
-                            <div className="mt-5 grid grid-cols-2 gap-2">
+                            <div className="mt-5 flex items-center gap-2 text-sm font-medium">
+                                <span>区分</span>
+                                <RequiredBadge />
+                            </div>
+
+                            <div className="mt-2 grid grid-cols-2 gap-2">
                                 {(
                                     ['working', 'leave'] as AttendanceStatus[]
                                 ).map((status) => (

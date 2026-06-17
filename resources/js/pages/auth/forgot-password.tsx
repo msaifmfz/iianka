@@ -28,11 +28,14 @@ export default function ForgotPassword({ status }: { status?: string }) {
                             </p>
 
                             <div className="grid gap-2">
-                                <Label htmlFor="email">メールアドレス</Label>
+                                <Label htmlFor="email" required>
+                                    メールアドレス
+                                </Label>
                                 <Input
                                     id="email"
                                     type="email"
                                     name="email"
+                                    required
                                     autoComplete="off"
                                     autoFocus
                                     placeholder="email@example.com"

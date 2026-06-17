@@ -10,7 +10,7 @@ async function login(page: Page) {
     await page.getByLabel('ログインID').fill(loginId);
     await page.locator('input[name="password"]').fill(password);
     await page.getByRole('button', { name: 'ログイン' }).click();
-    await expect(page).toHaveURL(/\/construction-schedules(?:\?.*)?$/);
+    await expect(page).toHaveURL(/\/schedule-overview(?:\?.*)?$/);
 }
 
 async function eventBox(locator: Locator) {

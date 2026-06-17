@@ -6,6 +6,7 @@ import {
     update as cleaningDutyRuleUpdate,
 } from '@/actions/App/Http/Controllers/CleaningDutyRuleController';
 import { index as scheduleIndex } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
+import FormField from '@/components/form-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { CleaningDutyRule, ConstructionUser } from '@/types';
@@ -31,24 +32,6 @@ type CleaningDutyRuleForm = {
     sort_order: number;
     assigned_user_ids: number[];
 };
-
-function Field({
-    label,
-    error,
-    children,
-}: {
-    label: string;
-    error?: string;
-    children: React.ReactNode;
-}) {
-    return (
-        <label className="grid gap-2 text-sm font-medium">
-            <span>{label}</span>
-            {children}
-            {error && <span className="text-xs text-destructive">{error}</span>}
-        </label>
-    );
-}
 
 function toggleNumber(values: number[], value: number) {
     return values.includes(value)
@@ -110,8 +93,9 @@ export default function CleaningDutyRuleForm({
                     className="grid gap-6 rounded-3xl border bg-white p-4 shadow-sm sm:p-5 dark:border-neutral-800 dark:bg-neutral-950"
                 >
                     <section className="grid gap-4 md:grid-cols-2">
-                        <Field label="曜日" error={errors.weekday}>
+                        <FormField label="曜日" required error={errors.weekday}>
                             <select
+                                required
                                 className="rounded-md border bg-transparent px-3 py-2 text-sm"
                                 value={data.weekday}
                                 onChange={(event) =>
@@ -130,16 +114,16 @@ export default function CleaningDutyRuleForm({
                                     </option>
                                 ))}
                             </select>
-                        </Field>
-                        <Field label="表示名" error={errors.label}>
+                        </FormField>
+                        <FormField label="表示名" error={errors.label}>
                             <Input
                                 value={data.label}
                                 onChange={(event) =>
                                     setData('label', event.target.value)
                                 }
                             />
-                        </Field>
-                        <Field label="場所" error={errors.location}>
+                        </FormField>
+                        <FormField label="場所" error={errors.location}>
                             <Input
                                 value={data.location}
                                 onChange={(event) =>
@@ -147,8 +131,8 @@ export default function CleaningDutyRuleForm({
                                 }
                                 placeholder="例: 事務所"
                             />
-                        </Field>
-                        {/* <Field label="表示順" error={errors.sort_order}> */}
+                        </FormField>
+                        {/* <FormField label="表示順" error={errors.sort_order}> */}
                         {/*     <Input */}
                         {/*         type="number" */}
                         {/*         min="0" */}
@@ -160,7 +144,7 @@ export default function CleaningDutyRuleForm({
                         {/*             ) */}
                         {/*         } */}
                         {/*     /> */}
-                        {/* </Field> */}
+                        {/* </FormField> */}
                     </section>
 
                     <label className="flex items-center gap-2 text-sm font-medium">
@@ -174,7 +158,7 @@ export default function CleaningDutyRuleForm({
                         有効にする
                     </label>
 
-                    <Field label="メモ" error={errors.notes}>
+                    <FormField label="メモ" error={errors.notes}>
                         <textarea
                             className="min-h-24 rounded-md border bg-transparent px-3 py-2 text-sm"
                             value={data.notes}
@@ -182,7 +166,7 @@ export default function CleaningDutyRuleForm({
                                 setData('notes', event.target.value)
                             }
                         />
-                    </Field>
+                    </FormField>
 
                     <div className="rounded-2xl border p-4 dark:border-neutral-800">
                         <h2 className="font-semibold">スタッフ</h2>

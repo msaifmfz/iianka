@@ -62,10 +62,7 @@ export default function DeleteUser() {
                             {({ resetAndClearErrors, processing, errors }) => (
                                 <>
                                     <div className="grid gap-2">
-                                        <Label
-                                            htmlFor="password"
-                                            className="sr-only"
-                                        >
+                                        <Label htmlFor="password" required>
                                             パスワード
                                         </Label>
 
@@ -73,6 +70,7 @@ export default function DeleteUser() {
                                             id="password"
                                             name="password"
                                             ref={passwordInput}
+                                            required
                                             placeholder="Password"
                                             autoComplete="current-password"
                                         />
