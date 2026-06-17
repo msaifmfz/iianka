@@ -15,6 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { RequiredBadge } from '@/components/ui/label';
 import { businessDateString } from '@/lib/dates';
 import type { VoucherConfirmationSchedule } from '@/types';
 
@@ -269,7 +270,10 @@ function VoucherScheduleCard({
                             }
                         />
                         <span>
-                            確認済み
+                            <span className="inline-flex items-center gap-2">
+                                確認済み
+                                <RequiredBadge />
+                            </span>
                             {!canManage && (
                                 <span className="ml-2 text-xs font-normal text-muted-foreground">
                                     管理者のみ編集できます

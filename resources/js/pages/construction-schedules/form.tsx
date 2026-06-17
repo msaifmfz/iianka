@@ -25,6 +25,7 @@ import {
     update as subcontractorUpdate,
 } from '@/actions/App/Http/Controllers/ConstructionSubcontractorController';
 import { FloatingBackButton } from '@/components/floating-back-button';
+import FormField from '@/components/form-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { businessDateString } from '@/lib/dates';
@@ -106,24 +107,6 @@ const preferredTimeSlots = [
 
 const guideFileAccept =
     'application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif';
-
-function Field({
-    label,
-    error,
-    children,
-}: {
-    label: string;
-    error?: string;
-    children: React.ReactNode;
-}) {
-    return (
-        <label className="grid gap-2 text-sm font-medium">
-            <span>{label}</span>
-            {children}
-            {error && <span className="text-xs text-destructive">{error}</span>}
-        </label>
-    );
-}
 
 function toggleNumber(values: number[], value: number) {
     return values.includes(value)
@@ -588,16 +571,21 @@ export default function ConstructionScheduleForm({
                     className="grid gap-6 rounded-3xl border bg-white p-4 shadow-sm sm:p-5 dark:border-neutral-800 dark:bg-neutral-950"
                 >
                     <section className="grid gap-4 md:grid-cols-3">
-                        <Field label="日付" error={errors.scheduled_on}>
+                        <FormField
+                            label="日付"
+                            required
+                            error={errors.scheduled_on}
+                        >
                             <Input
                                 type="date"
+                                required
                                 value={data.scheduled_on}
                                 onChange={(event) =>
                                     setData('scheduled_on', event.target.value)
                                 }
                             />
-                        </Field>
-                        <Field label="番号" error={errors.schedule_number}>
+                        </FormField>
+                        <FormField label="番号" error={errors.schedule_number}>
                             <Input
                                 type="number"
                                 min="1"
@@ -610,7 +598,7 @@ export default function ConstructionScheduleForm({
                                 }
                                 placeholder="例: 1"
                             />
-                        </Field>
+                        </FormField>
                         <div className="rounded-2xl border p-4 md:col-span-3 dark:border-neutral-800">
                             <div className="flex flex-wrap items-center justify-between gap-3">
                                 <div>
@@ -938,37 +926,51 @@ export default function ConstructionScheduleForm({
                                                     className="grid gap-2 rounded-lg border bg-background p-3 dark:border-neutral-800"
                                                 >
                                                     <div className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
-                                                        <Input
-                                                            value={
-                                                                subcontractor.name
-                                                            }
-                                                            onChange={(event) =>
-                                                                updateNewSubcontractor(
-                                                                    index,
-                                                                    'name',
-                                                                    event.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                            placeholder="名前"
-                                                        />
-                                                        <Input
-                                                            value={
-                                                                subcontractor.phone
-                                                            }
-                                                            onChange={(event) =>
-                                                                updateNewSubcontractor(
-                                                                    index,
-                                                                    'phone',
-                                                                    event.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                            placeholder="電話番号（任意）"
-                                                        />
+                                                        <FormField
+                                                            label="名前"
+                                                            required
+                                                        >
+                                                            <Input
+                                                                required
+                                                                value={
+                                                                    subcontractor.name
+                                                                }
+                                                                onChange={(
+                                                                    event,
+                                                                ) =>
+                                                                    updateNewSubcontractor(
+                                                                        index,
+                                                                        'name',
+                                                                        event
+                                                                            .target
+                                                                            .value,
+                                                                    )
+                                                                }
+                                                                placeholder="名前"
+                                                            />
+                                                        </FormField>
+                                                        <FormField label="電話番号">
+                                                            <Input
+                                                                value={
+                                                                    subcontractor.phone
+                                                                }
+                                                                onChange={(
+                                                                    event,
+                                                                ) =>
+                                                                    updateNewSubcontractor(
+                                                                        index,
+                                                                        'phone',
+                                                                        event
+                                                                            .target
+                                                                            .value,
+                                                                    )
+                                                                }
+                                                                placeholder="電話番号（任意）"
+                                                            />
+                                                        </FormField>
                                                         <button
                                                             type="button"
-                                                            className="inline-flex items-center justify-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                                            className="inline-flex items-center justify-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground md:self-end"
                                                             onClick={() =>
                                                                 removeNewSubcontractor(
                                                                     index,
@@ -1013,7 +1015,7 @@ export default function ConstructionScheduleForm({
                                 )}
                             </div>
                         </div>
-                        <Field label="開始時間" error={errors.starts_at}>
+                        <FormField label="開始時間" error={errors.starts_at}>
                             <Input
                                 type="time"
                                 value={data.starts_at}
@@ -1021,8 +1023,8 @@ export default function ConstructionScheduleForm({
                                     setStartTime(event.target.value)
                                 }
                             />
-                        </Field>
-                        <Field label="終了時間" error={errors.ends_at}>
+                        </FormField>
+                        <FormField label="終了時間" error={errors.ends_at}>
                             <Input
                                 type="time"
                                 value={data.ends_at}
@@ -1030,7 +1032,7 @@ export default function ConstructionScheduleForm({
                                     setEndTime(event.target.value)
                                 }
                             />
-                        </Field>
+                        </FormField>
                         <div className="rounded-2xl border bg-neutral-50 p-4 md:col-span-3 dark:border-neutral-800 dark:bg-neutral-900/50">
                             <div className="flex flex-wrap items-start justify-between gap-3">
                                 <div>
@@ -1124,7 +1126,7 @@ export default function ConstructionScheduleForm({
                                 </div>
                             )}
                         </div>
-                        <Field label="時間メモ" error={errors.time_note}>
+                        <FormField label="時間メモ" error={errors.time_note}>
                             <Input
                                 value={data.time_note}
                                 onChange={(event) =>
@@ -1146,9 +1148,14 @@ export default function ConstructionScheduleForm({
                                     </button>
                                 ))}
                             </div>
-                        </Field>
-                        <Field label="予定か" error={errors.status}>
+                        </FormField>
+                        <FormField
+                            label="予定か"
+                            required
+                            error={errors.status}
+                        >
                             <select
+                                required
                                 className="h-9 rounded-md border bg-transparent px-3 text-sm"
                                 value={data.status}
                                 onChange={(event) =>
@@ -1168,8 +1175,8 @@ export default function ConstructionScheduleForm({
                                     </option>
                                 ))}
                             </select>
-                        </Field>
-                        <Field label="人員" error={errors.personnel}>
+                        </FormField>
+                        <FormField label="人員" error={errors.personnel}>
                             <Input
                                 value={data.personnel}
                                 onChange={(event) =>
@@ -1177,19 +1184,24 @@ export default function ConstructionScheduleForm({
                                 }
                                 placeholder="例: 5名 / A班"
                             />
-                        </Field>
+                        </FormField>
                     </section>
 
                     <section className="grid gap-4 md:grid-cols-2">
-                        <Field label="現場名" error={errors.location}>
+                        <FormField
+                            label="現場名"
+                            required
+                            error={errors.location}
+                        >
                             <Input
+                                required
                                 value={data.location}
                                 onChange={(event) =>
                                     setData('location', event.target.value)
                                 }
                             />
-                        </Field>
-                        <Field
+                        </FormField>
+                        <FormField
                             label="集合場所（任意）"
                             error={errors.meeting_place}
                         >
@@ -1199,8 +1211,8 @@ export default function ConstructionScheduleForm({
                                     setData('meeting_place', event.target.value)
                                 }
                             />
-                        </Field>
-                        <Field
+                        </FormField>
+                        <FormField
                             label="ゼネコン会社"
                             error={errors.general_contractor}
                         >
@@ -1224,8 +1236,8 @@ export default function ConstructionScheduleForm({
                                     ),
                                 )}
                             </datalist>
-                        </Field>
-                        <Field
+                        </FormField>
+                        <FormField
                             label="現場担当者"
                             error={errors.person_in_charge}
                         >
@@ -1238,8 +1250,8 @@ export default function ConstructionScheduleForm({
                                     )
                                 }
                             />
-                        </Field>
-                        <Field
+                        </FormField>
+                        <FormField
                             label="ナビ（Google Map用住所・任意）"
                             error={errors.navigation_address}
                         >
@@ -1252,10 +1264,10 @@ export default function ConstructionScheduleForm({
                                     )
                                 }
                             />
-                        </Field>
+                        </FormField>
                     </section>
 
-                    <Field label="内容（任意）" error={errors.content}>
+                    <FormField label="内容（任意）" error={errors.content}>
                         <textarea
                             className="min-h-32 rounded-md border bg-transparent px-3 py-2 text-sm"
                             value={data.content}
@@ -1263,7 +1275,7 @@ export default function ConstructionScheduleForm({
                                 setData('content', event.target.value)
                             }
                         />
-                    </Field>
+                    </FormField>
 
                     <section className="grid gap-4">
                         <div className="rounded-2xl border p-4 dark:border-neutral-800">

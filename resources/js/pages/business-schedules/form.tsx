@@ -7,6 +7,7 @@ import {
 } from '@/actions/App/Http/Controllers/BusinessScheduleController';
 import { index as scheduleIndex } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
 import { FloatingBackButton } from '@/components/floating-back-button';
+import FormField from '@/components/form-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { businessDateString } from '@/lib/dates';
@@ -59,24 +60,6 @@ const preferredTimeSlots = [
     ['13:00', '17:00'],
     ['08:00', '17:00'],
 ] as const;
-
-function Field({
-    label,
-    error,
-    children,
-}: {
-    label: string;
-    error?: string;
-    children: React.ReactNode;
-}) {
-    return (
-        <label className="grid gap-2 text-sm font-medium">
-            <span>{label}</span>
-            {children}
-            {error && <span className="text-xs text-destructive">{error}</span>}
-        </label>
-    );
-}
 
 function toggleNumber(values: number[], value: number) {
     return values.includes(value)
@@ -386,16 +369,21 @@ export default function BusinessScheduleForm({
                     className="grid gap-6 rounded-3xl border bg-white p-4 shadow-sm sm:p-5 dark:border-neutral-800 dark:bg-neutral-950"
                 >
                     <section className="grid gap-4 md:grid-cols-3">
-                        <Field label="日付" error={errors.scheduled_on}>
+                        <FormField
+                            label="日付"
+                            required
+                            error={errors.scheduled_on}
+                        >
                             <Input
                                 type="date"
+                                required
                                 value={data.scheduled_on}
                                 onChange={(event) =>
                                     setData('scheduled_on', event.target.value)
                                 }
                             />
-                        </Field>
-                        <Field label="番号" error={errors.schedule_number}>
+                        </FormField>
+                        <FormField label="番号" error={errors.schedule_number}>
                             <Input
                                 type="number"
                                 min="1"
@@ -408,7 +396,7 @@ export default function BusinessScheduleForm({
                                 }
                                 placeholder="例: 1"
                             />
-                        </Field>
+                        </FormField>
                         <div className="rounded-2xl border p-4 md:col-span-3 dark:border-neutral-800">
                             <div className="flex flex-wrap items-center justify-between gap-3">
                                 <div>
@@ -485,7 +473,7 @@ export default function BusinessScheduleForm({
                                 </div>
                             )}
                         </div>
-                        <Field label="開始時間" error={errors.starts_at}>
+                        <FormField label="開始時間" error={errors.starts_at}>
                             <Input
                                 type="time"
                                 value={data.starts_at}
@@ -493,8 +481,8 @@ export default function BusinessScheduleForm({
                                     setStartTime(event.target.value)
                                 }
                             />
-                        </Field>
-                        <Field label="終了時間" error={errors.ends_at}>
+                        </FormField>
+                        <FormField label="終了時間" error={errors.ends_at}>
                             <Input
                                 type="time"
                                 value={data.ends_at}
@@ -502,7 +490,7 @@ export default function BusinessScheduleForm({
                                     setEndTime(event.target.value)
                                 }
                             />
-                        </Field>
+                        </FormField>
                         <div className="rounded-2xl border bg-neutral-50 p-4 md:col-span-3 dark:border-neutral-800 dark:bg-neutral-900/50">
                             <div className="flex flex-wrap items-start justify-between gap-3">
                                 <div>
@@ -596,7 +584,7 @@ export default function BusinessScheduleForm({
                                 </div>
                             )}
                         </div>
-                        <Field label="時間メモ" error={errors.time_note}>
+                        <FormField label="時間メモ" error={errors.time_note}>
                             <Input
                                 value={data.time_note}
                                 onChange={(event) =>
@@ -618,8 +606,8 @@ export default function BusinessScheduleForm({
                                     </button>
                                 ))}
                             </div>
-                        </Field>
-                        <Field label="人員" error={errors.personnel}>
+                        </FormField>
+                        <FormField label="人員" error={errors.personnel}>
                             <Input
                                 value={data.personnel}
                                 onChange={(event) =>
@@ -627,19 +615,24 @@ export default function BusinessScheduleForm({
                                 }
                                 placeholder="例: 3名"
                             />
-                        </Field>
+                        </FormField>
                     </section>
 
                     <section className="grid gap-4 md:grid-cols-2">
-                        <Field label="場所" error={errors.location}>
+                        <FormField
+                            label="場所"
+                            required
+                            error={errors.location}
+                        >
                             <Input
+                                required
                                 value={data.location}
                                 onChange={(event) =>
                                     setData('location', event.target.value)
                                 }
                             />
-                        </Field>
-                        <Field
+                        </FormField>
+                        <FormField
                             label="ゼネコン会社"
                             error={errors.general_contractor}
                         >
@@ -663,8 +656,8 @@ export default function BusinessScheduleForm({
                                     ),
                                 )}
                             </datalist>
-                        </Field>
-                        <Field label="担当" error={errors.person_in_charge}>
+                        </FormField>
+                        <FormField label="担当" error={errors.person_in_charge}>
                             <Input
                                 value={data.person_in_charge}
                                 onChange={(event) =>
@@ -675,12 +668,13 @@ export default function BusinessScheduleForm({
                                 }
                                 placeholder="例: 佐藤 / 先方担当者"
                             />
-                        </Field>
+                        </FormField>
                     </section>
 
-                    <Field label="内容" error={errors.content}>
+                    <FormField label="内容" required error={errors.content}>
                         <Input
                             list="business-content-options"
+                            required
                             value={data.content}
                             onChange={(event) =>
                                 setData('content', event.target.value)
@@ -695,9 +689,9 @@ export default function BusinessScheduleForm({
                                 <option key={content} value={content} />
                             ))}
                         </datalist>
-                    </Field>
+                    </FormField>
 
-                    <Field label="メモ" error={errors.memo}>
+                    <FormField label="メモ" error={errors.memo}>
                         <textarea
                             className="min-h-24 rounded-md border bg-transparent px-3 py-2 text-sm"
                             value={data.memo}
@@ -705,7 +699,7 @@ export default function BusinessScheduleForm({
                                 setData('memo', event.target.value)
                             }
                         />
-                    </Field>
+                    </FormField>
 
                     <div className="flex justify-end">
                         <Button type="submit" disabled={processing}>
