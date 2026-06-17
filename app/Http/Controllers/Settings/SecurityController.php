@@ -12,8 +12,8 @@ use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
-use Laragear\WebAuthn\Models\WebAuthnCredential;
 use Laravel\Fortify\Features;
+use Laravel\Passkeys\Passkey;
 
 class SecurityController extends Controller implements HasMiddleware
 {
@@ -63,38 +63,18 @@ class SecurityController extends Controller implements HasMiddleware
     }
 
     /**
-     * Remove one of the user's passkeys.
-     */
-    public function destroyPasskey(Request $request, string $credential): RedirectResponse
-    {
-        $passkey = $request->user()->webAuthnCredentials()->whereKey($credential)->firstOrFail();
-
-        $this->auditSuccess('settings.passkeys.deleted', 'A user removed a passkey.', null, [
-            'passkey_id' => $passkey->getKey(),
-            'alias' => $passkey->alias,
-            'origin' => $passkey->origin,
-        ]);
-
-        $passkey->delete();
-
-        return back();
-    }
-
-    /**
-     * @return Collection<int, array{id: string, alias: string|null, origin: string, created_at: string|null, disabled_at: string|null}>
+     * @return Collection<int, array{id: int, name: string, created_at: string|null}>
      */
     private function passkeys(Request $request): Collection
     {
         return $request->user()
-            ->webAuthnCredentials()
+            ->passkeys()
             ->latest()
             ->get()
-            ->map(fn (WebAuthnCredential $credential): array => [
-                'id' => $credential->getKey(),
-                'alias' => $credential->alias,
-                'origin' => $credential->origin,
-                'created_at' => $credential->created_at?->toISOString(),
-                'disabled_at' => $credential->disabled_at?->toISOString(),
+            ->map(fn (Passkey $passkey): array => [
+                'id' => $passkey->getKey(),
+                'name' => $passkey->name,
+                'created_at' => $passkey->created_at?->toISOString(),
             ]);
     }
 }

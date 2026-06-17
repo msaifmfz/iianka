@@ -1,5 +1,6 @@
 import { Transition } from '@headlessui/react';
 import { Form, Head, router } from '@inertiajs/react';
+import { usePasskeyRegister } from '@laravel/passkeys/react';
 import { KeyRound, ShieldCheck } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import SecurityController from '@/actions/App/Http/Controllers/Settings/SecurityController';
@@ -12,18 +13,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import { usePasskeySupport } from '@/hooks/use-passkey-support';
 import { useTwoFactorAuth } from '@/hooks/use-two-factor-auth';
-import { createPasskey, passkeyErrorMessage } from '@/lib/passkeys';
 import { edit } from '@/routes/security';
 import { disable, enable } from '@/routes/two-factor';
 
 type Passkey = {
-    id: string;
-    alias: string | null;
-    origin: string;
+    id: number;
+    name: string;
     created_at: string | null;
-    disabled_at: string | null;
 };
 
 type Props = {
@@ -54,12 +51,22 @@ export default function Security({
         errors,
     } = useTwoFactorAuth();
     const [showSetupModal, setShowSetupModal] = useState<boolean>(false);
-    const [passkeyAlias, setPasskeyAlias] = useState<string>('');
-    const passkeySupported = usePasskeySupport();
-    const [passkeyProcessing, setPasskeyProcessing] = useState<boolean>(false);
-    const [passkeyError, setPasskeyError] = useState<string | null>(null);
+    const [passkeyName, setPasskeyName] = useState<string>('');
     const [passkeySaved, setPasskeySaved] = useState<boolean>(false);
     const prevTwoFactorEnabled = useRef(twoFactorEnabled);
+
+    const {
+        register,
+        isLoading: passkeyProcessing,
+        error: passkeyError,
+        isSupported: passkeySupported,
+    } = usePasskeyRegister({
+        onSuccess: () => {
+            setPasskeyName('');
+            setPasskeySaved(true);
+            router.reload({ only: ['passkeys'] });
+        },
+    });
 
     useEffect(() => {
         if (prevTwoFactorEnabled.current && !twoFactorEnabled) {
@@ -68,23 +75,6 @@ export default function Security({
 
         prevTwoFactorEnabled.current = twoFactorEnabled;
     }, [twoFactorEnabled, clearTwoFactorAuthData]);
-
-    const addPasskey = async (): Promise<void> => {
-        setPasskeyError(null);
-        setPasskeySaved(false);
-        setPasskeyProcessing(true);
-
-        try {
-            await createPasskey(passkeyAlias.trim() || undefined);
-            setPasskeyAlias('');
-            setPasskeySaved(true);
-            router.reload({ only: ['passkeys'] });
-        } catch (error) {
-            setPasskeyError(passkeyErrorMessage(error));
-        } finally {
-            setPasskeyProcessing(false);
-        }
-    };
 
     const formattedDate = (value: string | null): string =>
         value
@@ -217,15 +207,13 @@ export default function Security({
 
                 <div className="space-y-4">
                     <div className="grid gap-2">
-                        <Label htmlFor="passkey_alias">
-                            パスキー名（任意）
-                        </Label>
+                        <Label htmlFor="passkey_name">パスキー名（任意）</Label>
                         <div className="flex flex-col gap-3 sm:flex-row">
                             <Input
-                                id="passkey_alias"
-                                value={passkeyAlias}
+                                id="passkey_name"
+                                value={passkeyName}
                                 onChange={(event) =>
-                                    setPasskeyAlias(event.target.value)
+                                    setPasskeyName(event.target.value)
                                 }
                                 placeholder="仕事用ノートパソコン、スマートフォン、またはセキュリティキー"
                                 disabled={passkeyProcessing}
@@ -234,10 +222,13 @@ export default function Security({
                                 type="button"
                                 className="sm:w-auto"
                                 disabled={
-                                    passkeySupported !== true ||
-                                    passkeyProcessing
+                                    !passkeySupported || passkeyProcessing
                                 }
-                                onClick={() => void addPasskey()}
+                                onClick={() =>
+                                    void register(
+                                        passkeyName.trim() || 'パスキー',
+                                    )
+                                }
                             >
                                 {passkeyProcessing ? <Spinner /> : <KeyRound />}
                                 パスキーを追加
@@ -268,19 +259,17 @@ export default function Security({
                                 >
                                     <div className="space-y-1">
                                         <p className="font-medium">
-                                            {passkey.alias ||
+                                            {passkey.name ||
                                                 '名前のないパスキー'}
                                         </p>
                                         <p className="text-sm text-muted-foreground">
                                             追加日:{' '}
-                                            {formattedDate(passkey.created_at)}{' '}
-                                            送信元: {passkey.origin}
+                                            {formattedDate(passkey.created_at)}
                                         </p>
                                     </div>
                                     <Form
-                                        {...SecurityController.destroyPasskey.form(
-                                            passkey.id,
-                                        )}
+                                        action={`/user/passkeys/${passkey.id}`}
+                                        method="delete"
                                         options={{ preserveScroll: true }}
                                     >
                                         {({ processing }) => (

@@ -13,10 +13,7 @@ use App\Http\Controllers\ConstructionSiteController;
 use App\Http\Controllers\ConstructionSubcontractorController;
 use App\Http\Controllers\InternalNoticeController;
 use App\Http\Controllers\ScheduleOverviewController;
-use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\SiteGuideFileController;
-use App\Http\Controllers\WebAuthn\WebAuthnLoginController;
-use App\Http\Controllers\WebAuthn\WebAuthnRegisterController;
 use Illuminate\Contracts\Routing\ResponseFactory;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -30,23 +27,8 @@ Route::get('robots.txt', fn (): ResponseFactory|Response => response("User-agent
     'Content-Type' => 'text/plain',
 ]))->name('robots');
 
-Route::middleware(['auth', 'verified', 'password.confirm'])->group(function (): void {
-    Route::post('webauthn/register/options', [WebAuthnRegisterController::class, 'createChallenge'])
-        ->name('webauthn.register.challenge');
-    Route::post('webauthn/register', [WebAuthnRegisterController::class, 'register'])
-        ->name('webauthn.register');
-});
-
-Route::post('webauthn/login/options', [WebAuthnLoginController::class, 'createChallenge'])
-    ->name('webauthn.login.challenge');
-Route::post('webauthn/login', [WebAuthnLoginController::class, 'login'])
-    ->name('webauthn.login');
-
 Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::redirect('dashboard', 'schedule-overview')->name('dashboard');
-    Route::delete('settings/passkeys/{credential}', [SecurityController::class, 'destroyPasskey'])
-        ->middleware('password.confirm')
-        ->name('passkeys.destroy');
     Route::get('schedule-overview', ScheduleOverviewController::class)
         ->name('schedule-overview.index');
     Route::get('voucher-confirmations', [ConstructionScheduleVoucherController::class, 'index'])

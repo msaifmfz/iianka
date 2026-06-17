@@ -1,6 +1,6 @@
 import { Form, Head } from '@inertiajs/react';
+import { usePasskeyVerify } from '@laravel/passkeys/react';
 import { KeyRound } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -9,12 +9,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import { usePasskeySupport } from '@/hooks/use-passkey-support';
-import {
-    isPasskeyAutofillable,
-    loginWithPasskey,
-    passkeyErrorMessage,
-} from '@/lib/passkeys';
 import { store } from '@/routes/login';
 
 type Props = {
@@ -23,50 +17,17 @@ type Props = {
 };
 
 export default function Login({ status }: Props) {
-    const rememberInput = useRef<HTMLButtonElement>(null);
-    const attemptedAutofill = useRef(false);
-    const passkeySupported = usePasskeySupport();
-    const [passkeyProcessing, setPasskeyProcessing] = useState<boolean>(false);
-    const [passkeyError, setPasskeyError] = useState<string | null>(null);
-
-    const signInWithPasskey = useCallback(
-        async (useAutofill = false): Promise<void> => {
-            setPasskeyError(null);
-            setPasskeyProcessing(true);
-
-            try {
-                const response = await loginWithPasskey({
-                    remember:
-                        rememberInput.current?.getAttribute('aria-checked') ===
-                        'true',
-                    useAutofill,
-                });
-
-                window.location.assign(response.redirect ?? '/dashboard');
-            } catch (error) {
-                if (!useAutofill) {
-                    setPasskeyError(passkeyErrorMessage(error));
-                }
-            } finally {
-                setPasskeyProcessing(false);
-            }
+    const {
+        verify,
+        isLoading: passkeyProcessing,
+        error: passkeyError,
+        isSupported: passkeySupported,
+    } = usePasskeyVerify({
+        autofill: true,
+        onSuccess: (response) => {
+            window.location.assign(response.redirect ?? '/dashboard');
         },
-        [],
-    );
-
-    useEffect(() => {
-        if (!passkeySupported || attemptedAutofill.current) {
-            return;
-        }
-
-        attemptedAutofill.current = true;
-
-        void isPasskeyAutofillable().then((autofillable) => {
-            if (autofillable) {
-                void signInWithPasskey(true);
-            }
-        });
-    }, [passkeySupported, signInWithPasskey]);
+    });
 
     return (
         <>
@@ -123,7 +84,6 @@ export default function Login({ status }: Props) {
                                 <Checkbox
                                     id="remember"
                                     name="remember"
-                                    ref={rememberInput}
                                     tabIndex={3}
                                 />
                                 <Label htmlFor="remember">
@@ -159,10 +119,9 @@ export default function Login({ status }: Props) {
                                 className="w-full"
                                 tabIndex={5}
                                 disabled={
-                                    passkeySupported !== true ||
-                                    passkeyProcessing
+                                    !passkeySupported || passkeyProcessing
                                 }
-                                onClick={() => void signInWithPasskey()}
+                                onClick={() => void verify()}
                             >
                                 {passkeyProcessing ? <Spinner /> : <KeyRound />}
                                 パスキーでサインイン
@@ -190,7 +149,9 @@ export default function Login({ status }: Props) {
                                         パスキーでサインインできませんでした
                                     </AlertTitle>
                                     <AlertDescription>
-                                        <p>{passkeyError}</p>
+                                        <p>
+                                            別のパスキーを使うか、ログインIDとパスワードでログインしてください。
+                                        </p>
                                     </AlertDescription>
                                 </Alert>
                             )}

@@ -119,6 +119,7 @@ return [
     'limiters' => [
         'login' => 'login',
         'two-factor' => 'two-factor',
+        'passkeys' => 'passkeys',
     ],
 
     /*
@@ -153,6 +154,27 @@ return [
             'confirmPassword' => true,
             // 'window' => 0
         ]),
+        Features::passkeys([
+            'confirmPassword' => true,
+        ]),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Passkeys Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Here you may configure the passkey options for your application, including
+    | the relying party ID (your domain), allowed origins, user handle secret,
+    | and the timeout for passkey ceremonies.
+    |
+    */
+
+    'passkeys' => [
+        'relying_party_id' => parse_url((string) config('app.url'), PHP_URL_HOST),
+        'allowed_origins' => [config('app.url')],
+        'user_handle_secret' => env('PASSKEYS_USER_HANDLE_SECRET', config('app.key')),
+        'timeout' => 60000,
     ],
 
 ];
