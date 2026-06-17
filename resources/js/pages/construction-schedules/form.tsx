@@ -1181,7 +1181,7 @@ export default function ConstructionScheduleForm({
                     </section>
 
                     <section className="grid gap-4 md:grid-cols-2">
-                        <Field label="場所" error={errors.location}>
+                        <Field label="現場名" error={errors.location}>
                             <Input
                                 value={data.location}
                                 onChange={(event) =>
