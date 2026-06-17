@@ -9,9 +9,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { usePasskeySupport } from '@/hooks/use-passkey-support';
 import {
     isPasskeyAutofillable,
-    isPasskeySupported,
     loginWithPasskey,
     passkeyErrorMessage,
 } from '@/lib/passkeys';
@@ -25,9 +25,7 @@ type Props = {
 export default function Login({ status }: Props) {
     const rememberInput = useRef<HTMLButtonElement>(null);
     const attemptedAutofill = useRef(false);
-    const [passkeySupported, setPasskeySupported] = useState<boolean | null>(
-        null,
-    );
+    const passkeySupported = usePasskeySupport();
     const [passkeyProcessing, setPasskeyProcessing] = useState<boolean>(false);
     const [passkeyError, setPasskeyError] = useState<string | null>(null);
 
@@ -57,10 +55,7 @@ export default function Login({ status }: Props) {
     );
 
     useEffect(() => {
-        const supported = isPasskeySupported();
-        setPasskeySupported(supported);
-
-        if (!supported || attemptedAutofill.current) {
+        if (!passkeySupported || attemptedAutofill.current) {
             return;
         }
 
@@ -71,7 +66,7 @@ export default function Login({ status }: Props) {
                 void signInWithPasskey(true);
             }
         });
-    }, [signInWithPasskey]);
+    }, [passkeySupported, signInWithPasskey]);
 
     return (
         <>

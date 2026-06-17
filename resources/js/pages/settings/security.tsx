@@ -12,12 +12,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { usePasskeySupport } from '@/hooks/use-passkey-support';
 import { useTwoFactorAuth } from '@/hooks/use-two-factor-auth';
-import {
-    createPasskey,
-    isPasskeySupported,
-    passkeyErrorMessage,
-} from '@/lib/passkeys';
+import { createPasskey, passkeyErrorMessage } from '@/lib/passkeys';
 import { edit } from '@/routes/security';
 import { disable, enable } from '@/routes/two-factor';
 
@@ -58,17 +55,11 @@ export default function Security({
     } = useTwoFactorAuth();
     const [showSetupModal, setShowSetupModal] = useState<boolean>(false);
     const [passkeyAlias, setPasskeyAlias] = useState<string>('');
-    const [passkeySupported, setPasskeySupported] = useState<boolean | null>(
-        null,
-    );
+    const passkeySupported = usePasskeySupport();
     const [passkeyProcessing, setPasskeyProcessing] = useState<boolean>(false);
     const [passkeyError, setPasskeyError] = useState<string | null>(null);
     const [passkeySaved, setPasskeySaved] = useState<boolean>(false);
     const prevTwoFactorEnabled = useRef(twoFactorEnabled);
-
-    useEffect(() => {
-        setPasskeySupported(isPasskeySupported());
-    }, []);
 
     useEffect(() => {
         if (prevTwoFactorEnabled.current && !twoFactorEnabled) {
