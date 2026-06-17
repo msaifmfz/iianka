@@ -15,18 +15,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
-use Laragear\WebAuthn\Contracts\WebAuthnAuthenticatable;
-use Laragear\WebAuthn\WebAuthnAuthentication;
-use Laragear\WebAuthn\WebAuthnData;
+use Laravel\Fortify\Contracts\PasskeyUser;
+use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Override;
 
 #[Fillable(['name', 'login_id', 'email', 'password'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
-class User extends Authenticatable implements WebAuthnAuthenticatable
+class User extends Authenticatable implements PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, TwoFactorAuthenticatable, WebAuthnAuthentication;
+    use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
 
     /**
      * Get the attributes that should be cast.
@@ -85,21 +84,6 @@ class User extends Authenticatable implements WebAuthnAuthenticatable
         $this->attributes['login_id'] = filled($value)
             ? Str::lower(trim($value))
             : null;
-    }
-
-    /**
-     * Returns displayable data to be used to create WebAuthn Credentials.
-     */
-    public function webAuthnData(): WebAuthnData
-    {
-        $identifier = $this->email
-            ?? $this->login_id
-            ?? 'user-'.$this->getKey();
-
-        return WebAuthnData::make(
-            $identifier,
-            $this->name ?? $this->login_id ?? $identifier,
-        );
     }
 
     /**

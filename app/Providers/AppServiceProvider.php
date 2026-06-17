@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\User;
+use App\Observers\PasskeyObserver;
 use App\Services\AuditLogger;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Attempting;
@@ -26,6 +27,7 @@ use Laravel\Fortify\Events\TwoFactorAuthenticationDisabled;
 use Laravel\Fortify\Events\TwoFactorAuthenticationEnabled;
 use Laravel\Fortify\Events\TwoFactorAuthenticationFailed;
 use Laravel\Fortify\Events\ValidTwoFactorAuthenticationCodeProvided;
+use Laravel\Passkeys\Passkey;
 use Override;
 
 class AppServiceProvider extends ServiceProvider
@@ -46,6 +48,8 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureAuditEvents();
+
+        Passkey::observe(PasskeyObserver::class);
     }
 
     /**

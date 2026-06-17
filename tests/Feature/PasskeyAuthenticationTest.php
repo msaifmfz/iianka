@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 use App\Models\User;
 use Carbon\Carbon;
-use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
-use Laragear\WebAuthn\Models\WebAuthnCredential;
+use Laravel\Passkeys\Passkey;
 
-test('password login still works with webauthn provider fallback', function (): void {
+test('password login still works', function (): void {
     $user = User::factory()->create();
 
     $response = $this->post(route('login.store'), [
@@ -20,33 +19,18 @@ test('password login still works with webauthn provider fallback', function (): 
     $response->assertRedirect(route('dashboard', absolute: false));
 });
 
-test('passkey registration challenge requires authentication', function (): void {
-    $this->postJson(route('webauthn.register.challenge'))
+test('passkey registration options require authentication', function (): void {
+    $this->getJson(route('passkey.registration-options'))
         ->assertUnauthorized();
 });
 
-test('authenticated users can request a passkey registration challenge', function (): void {
+test('authenticated users can request passkey registration options', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)
         ->withSession(['auth.password_confirmed_at' => Carbon::now()->getTimestamp()])
-        ->postJson(route('webauthn.register.challenge'))
-        ->assertOk()
-        ->assertJsonPath('authenticatorSelection.userVerification', 'required')
-        ->assertJsonPath('authenticatorSelection.residentKey', 'required');
-});
-
-test('authenticated users without an email address can request a passkey registration challenge', function (): void {
-    $user = User::factory()->withoutEmail()->create([
-        'login_id' => 'worker-0001',
-    ]);
-
-    $this->actingAs($user)
-        ->withSession(['auth.password_confirmed_at' => Carbon::now()->getTimestamp()])
-        ->postJson(route('webauthn.register.challenge'))
-        ->assertOk()
-        ->assertJsonPath('user.name', 'worker-0001')
-        ->assertJsonPath('user.displayName', $user->name);
+        ->getJson(route('passkey.registration-options'))
+        ->assertOk();
 });
 
 test('security page includes registered passkeys', function (): void {
@@ -60,7 +44,7 @@ test('security page includes registered passkeys', function (): void {
         ->assertInertia(fn (Assert $page): Assert => $page
             ->component('settings/security')
             ->has('passkeys', 1)
-            ->where('passkeys.0.alias', 'Work laptop'),
+            ->where('passkeys.0.name', 'Work laptop'),
         );
 });
 
@@ -72,32 +56,31 @@ test('users can remove only their own passkeys', function (): void {
 
     $this->actingAs($user)
         ->withSession(['auth.password_confirmed_at' => Carbon::now()->getTimestamp()])
-        ->delete(route('passkeys.destroy', $otherPasskey->getKey()))
-        ->assertNotFound();
+        ->deleteJson(route('passkey.destroy', $otherPasskey->getKey()))
+        ->assertForbidden();
 
-    expect(WebAuthnCredential::query()->whereKey($otherPasskey->getKey())->exists())->toBeTrue();
+    expect(Passkey::query()->whereKey($otherPasskey->getKey())->exists())->toBeTrue();
 
     $this->actingAs($user)
         ->withSession(['auth.password_confirmed_at' => Carbon::now()->getTimestamp()])
-        ->delete(route('passkeys.destroy', $passkey->getKey()))
-        ->assertRedirect();
+        ->deleteJson(route('passkey.destroy', $passkey->getKey()));
 
-    expect(WebAuthnCredential::query()->whereKey($passkey->getKey())->exists())->toBeFalse();
+    expect(Passkey::query()->whereKey($passkey->getKey())->exists())->toBeFalse();
 });
 
-function createPasskeyFor(User $user, string $alias): WebAuthnCredential
+function createPasskeyFor(User $user, string $name): Passkey
 {
-    return $user->webAuthnCredentials()->forceCreate([
-        'id' => Str::random(32),
-        'user_id' => (string) Str::uuid(),
-        'alias' => $alias,
-        'counter' => 0,
-        'rp_id' => 'localhost',
-        'origin' => 'http://localhost',
-        'transports' => ['internal'],
-        'aaguid' => null,
-        'public_key' => 'test-public-key',
-        'attestation_format' => 'none',
-        'certificates' => [],
+    return $user->passkeys()->create([
+        'name' => $name,
+        'credential_id' => fake()->unique()->sha256(),
+        'credential' => json_encode([
+            'type' => 'public-key',
+            'id' => base64_encode(random_bytes(32)),
+            'rawId' => base64_encode(random_bytes(32)),
+            'response' => [
+                'clientDataJSON' => base64_encode('{}'),
+                'attestationObject' => base64_encode('{}'),
+            ],
+        ]),
     ]);
 }
