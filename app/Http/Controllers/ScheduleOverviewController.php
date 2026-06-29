@@ -42,6 +42,8 @@ class ScheduleOverviewController extends Controller
             'monthSummary' => $this->monthSummary($calendarDays, $monthStart, $monthEnd),
             'canManageSchedules' => $request->user()?->canManageContent() === true,
             'selectedDayTimeline' => $this->selectedDayTimeline($date),
+            'highlightedSchedule' => $this->highlightedSchedule($request),
+            'returnTo' => $this->returnTo($request),
         ]);
     }
 
@@ -58,6 +60,38 @@ class ScheduleOverviewController extends Controller
         } catch (Throwable) {
             return BusinessDate::today();
         }
+    }
+
+    /**
+     * @return array{type: string|null, id: int|null}
+     */
+    private function highlightedSchedule(Request $request): array
+    {
+        $type = $request->query('highlight_type');
+        $id = $request->query('highlight_id');
+
+        if (! in_array($type, ['construction', 'business'], true) || ! is_numeric($id)) {
+            return [
+                'type' => null,
+                'id' => null,
+            ];
+        }
+
+        return [
+            'type' => $type,
+            'id' => (int) $id,
+        ];
+    }
+
+    private function returnTo(Request $request): ?string
+    {
+        $returnTo = $request->query('return_to');
+
+        if (! is_string($returnTo) || ! str_starts_with($returnTo, '/schedule-search')) {
+            return null;
+        }
+
+        return $returnTo;
     }
 
     /**

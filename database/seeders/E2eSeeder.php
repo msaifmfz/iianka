@@ -29,6 +29,18 @@ class E2eSeeder extends Seeder
             'is_hidden_from_workers' => false,
         ])->save();
 
+        $editor = new User;
+        $editor->forceFill([
+            'name' => 'E2E Editor User',
+            'login_id' => 'e2e-editor',
+            'email' => 'e2e-editor@example.test',
+            'email_verified_at' => now(),
+            'password' => 'password',
+            'role' => UserRole::Editor,
+            'is_admin' => false,
+            'is_hidden_from_workers' => false,
+        ])->save();
+
         $worker = new User;
         $worker->forceFill([
             'name' => 'E2E Timeline Worker',
@@ -98,5 +110,23 @@ class E2eSeeder extends Seeder
             'content' => 'Back to back timeline fixture',
         ]);
         $backToBackSecond->assignedUsers()->attach($worker);
+
+        for ($day = 1; $day <= 30; $day++) {
+            $searchResult = ConstructionSchedule::create([
+                'scheduled_on' => sprintf('2026-06-%02d', $day),
+                'schedule_number' => 200 + $day,
+                'starts_at' => '09:00',
+                'ends_at' => '10:00',
+                'status' => ConstructionSchedule::STATUS_SCHEDULED,
+                'meeting_place' => 'E2E Meeting Place',
+                'personnel' => '1名',
+                'location' => sprintf('E2E Search Deep %02d', $day),
+                'general_contractor' => 'E2E Search Contractor',
+                'person_in_charge' => 'E2E Person',
+                'content' => 'Search return fixture',
+                'navigation_address' => 'Tokyo',
+            ]);
+            $searchResult->assignedUsers()->attach($worker);
+        }
     }
 }

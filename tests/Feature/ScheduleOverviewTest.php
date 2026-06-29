@@ -237,6 +237,50 @@ test('admins get schedule management actions on overview', function (): void {
         );
 });
 
+test('overview accepts schedule search highlight and return query values', function (): void {
+    $user = User::factory()->create();
+    $schedule = ConstructionSchedule::factory()->create([
+        'scheduled_on' => '2026-05-13',
+    ]);
+    $returnTo = '/schedule-search?location=%E4%B8%AD%E5%A4%AE&selected_type=construction&selected_id='.$schedule->id;
+
+    $this->actingAs($user)
+        ->get(route('schedule-overview.index', [
+            'date' => '2026-05-13',
+            'highlight_type' => 'construction',
+            'highlight_id' => $schedule->id,
+            'return_to' => $returnTo,
+        ]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->where('highlightedSchedule', [
+                'type' => 'construction',
+                'id' => $schedule->id,
+            ])
+            ->where('returnTo', $returnTo)
+        );
+});
+
+test('overview ignores invalid schedule search return query values', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get(route('schedule-overview.index', [
+            'date' => '2026-05-13',
+            'highlight_type' => 'internal_notice',
+            'highlight_id' => 'abc',
+            'return_to' => 'https://example.com/schedule-search',
+        ]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->where('highlightedSchedule', [
+                'type' => null,
+                'id' => null,
+            ])
+            ->where('returnTo', null)
+        );
+});
+
 test('timeline create links can prefill schedule form values', function (string $routeName, string $component): void {
     $admin = User::factory()->admin()->create();
     $worker = User::factory()->create();
