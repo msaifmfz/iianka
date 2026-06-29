@@ -24,6 +24,14 @@ import {
     create as createInternalNotice,
     edit as editInternalNotice,
 } from '@/actions/App/Http/Controllers/InternalNoticeController';
+import { FloatingBackButton } from '@/components/floating-back-button';
+import {
+    ScheduleDetailDialog,
+    assignedUsersLabel,
+    eventNumberLabel,
+    eventTypeLabel,
+    useScheduleDetailHold,
+} from '@/components/schedule-detail-dialog';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -33,6 +41,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { businessDateString } from '@/lib/dates';
+import { rememberScheduleOverviewEditReturn } from '@/lib/schedule-overview-edit-return';
 import { index as overviewIndex } from '@/routes/schedule-overview';
 import type { AttendanceLeaveRecord, ConstructionUser } from '@/types';
 
@@ -62,9 +71,16 @@ type Props = {
     calendarDays: CalendarDay[];
     canManageSchedules: boolean;
     selectedDayTimeline: SelectedDayTimeline;
+    highlightedSchedule: HighlightedSchedule;
+    returnTo: string | null;
 };
 
 type TimelineEventType = 'construction' | 'business' | 'internal_notice';
+
+type HighlightedSchedule = {
+    type: Extract<TimelineEventType, 'construction' | 'business'> | null;
+    id: number | null;
+};
 
 type TimelineEvent = {
     id: number;
@@ -339,7 +355,6 @@ const timelineEventLaneHeight = 44;
 const timelineEventBlockHeight = 36;
 const timelineEventBlockInset = 4;
 const touchSelectionDelay = 260;
-const scheduleDetailHoldDelay = 500;
 const touchScrollTolerance = 10;
 
 function timeToMinutes(time: string | null) {
@@ -391,14 +406,6 @@ function hourLabel(minutes: number) {
     return `${String(Math.floor(minutes / timelineHour)).padStart(2, '0')}:00`;
 }
 
-function eventTypeLabel(type: TimelineEventType) {
-    return {
-        construction: '工事',
-        business: '業務予定',
-        internal_notice: '業務連絡',
-    }[type];
-}
-
 function eventTypeClass(type: TimelineEventType) {
     return {
         construction:
@@ -412,6 +419,27 @@ function eventTypeClass(type: TimelineEventType) {
 
 function eventKey(event: TimelineEvent) {
     return `${event.type}-${event.id}`;
+}
+
+function highlightedScheduleKey(highlightedSchedule: HighlightedSchedule) {
+    if (highlightedSchedule.type === null || highlightedSchedule.id === null) {
+        return null;
+    }
+
+    return `${highlightedSchedule.type}-${highlightedSchedule.id}`;
+}
+
+function searchReturnStorageKey(url: string) {
+    return `schedule-search:return:${url}`;
+}
+
+function canReturnToStoredSearchHistory(returnTo: string) {
+    return (
+        typeof window !== 'undefined' &&
+        window.history.length > 1 &&
+        window.sessionStorage.getItem(searchReturnStorageKey(returnTo)) ===
+            'true'
+    );
 }
 
 function eventRange(
@@ -489,6 +517,17 @@ function eventEditRoute(event: TimelineEvent, returnTo?: string) {
     }
 }
 
+function rememberEventEditReturn(event: TimelineEvent, returnTo: string) {
+    if (event.type === 'internal_notice') {
+        return;
+    }
+
+    rememberScheduleOverviewEditReturn(
+        eventEditRoute(event, returnTo).url,
+        returnTo,
+    );
+}
+
 function minuteInputValue(minutes: number) {
     const clampedMinutes = Math.min(Math.max(minutes, 0), 23 * 60 + 59);
 
@@ -523,10 +562,6 @@ function eventCreateRoute(
         case 'internal_notice':
             return createInternalNotice(options);
     }
-}
-
-function eventNumberLabel(event: TimelineEvent) {
-    return `#${event.schedule_number ?? '?'}`;
 }
 
 function multipleAssignedUsersCountLabel(event: TimelineEvent) {
@@ -613,110 +648,6 @@ function eventsForUser(events: TimelineEvent[], userId: number | null) {
 
         return event.assigned_users.some((user) => user.id === userId);
     });
-}
-
-function assignedUsersLabel(event: TimelineEvent) {
-    if (event.assigned_users.length === 0) {
-        return '担当者未設定';
-    }
-
-    return event.assigned_users.map((user) => user.name).join('、');
-}
-
-function scheduleDetailRows(event: TimelineEvent) {
-    return [
-        { label: '種別', value: eventTypeLabel(event.type) },
-        { label: '番号', value: eventNumberLabel(event) },
-        { label: '時間', value: event.time },
-        { label: '担当者', value: assignedUsersLabel(event) },
-        {
-            label: event.type === 'construction' ? '現場名' : '場所',
-            value: event.location,
-        },
-        { label: '内容', value: event.content },
-        { label: '補足', value: event.time_note },
-    ].filter((row) => row.value !== null && row.value !== '');
-}
-
-function useScheduleDetailHold(onOpenDetail: (event: TimelineEvent) => void) {
-    const holdTimeoutRef = useRef<number | null>(null);
-    const holdStartedAtRef = useRef<{ x: number; y: number } | null>(null);
-    const didOpenDetailRef = useRef(false);
-
-    function clearHoldTimeout() {
-        if (holdTimeoutRef.current === null) {
-            return;
-        }
-
-        window.clearTimeout(holdTimeoutRef.current);
-        holdTimeoutRef.current = null;
-    }
-
-    useEffect(() => {
-        return () => {
-            if (holdTimeoutRef.current !== null) {
-                window.clearTimeout(holdTimeoutRef.current);
-            }
-        };
-    }, []);
-
-    function startHold(
-        pointerEvent: React.PointerEvent<HTMLElement>,
-        scheduleEvent: TimelineEvent,
-    ) {
-        if (pointerEvent.button !== 0) {
-            return;
-        }
-
-        clearHoldTimeout();
-        didOpenDetailRef.current = false;
-        holdStartedAtRef.current = {
-            x: pointerEvent.clientX,
-            y: pointerEvent.clientY,
-        };
-        holdTimeoutRef.current = window.setTimeout(() => {
-            didOpenDetailRef.current = true;
-            holdTimeoutRef.current = null;
-            onOpenDetail(scheduleEvent);
-        }, scheduleDetailHoldDelay);
-    }
-
-    function updateHold(pointerEvent: React.PointerEvent<HTMLElement>) {
-        const start = holdStartedAtRef.current;
-
-        if (start === null || holdTimeoutRef.current === null) {
-            return;
-        }
-
-        const movedX = Math.abs(pointerEvent.clientX - start.x);
-        const movedY = Math.abs(pointerEvent.clientY - start.y);
-
-        if (movedX > touchScrollTolerance || movedY > touchScrollTolerance) {
-            clearHoldTimeout();
-        }
-    }
-
-    function finishHold() {
-        clearHoldTimeout();
-        holdStartedAtRef.current = null;
-    }
-
-    function consumeClickAfterHold() {
-        if (!didOpenDetailRef.current) {
-            return false;
-        }
-
-        didOpenDetailRef.current = false;
-
-        return true;
-    }
-
-    return {
-        startHold,
-        updateHold,
-        finishHold,
-        consumeClickAfterHold,
-    };
 }
 
 function slotOverlapsEvents(
@@ -874,6 +805,7 @@ function TimelineEventBlock({
     bounds,
     lane,
     isHighlighted,
+    isSearchHighlighted,
     onToggleHighlight,
     onOpenDetail,
     canManageSchedules,
@@ -883,6 +815,7 @@ function TimelineEventBlock({
     bounds: ReturnType<typeof timelineBounds>;
     lane: number;
     isHighlighted: boolean;
+    isSearchHighlighted: boolean;
     onToggleHighlight: (event: TimelineEvent) => void;
     onOpenDetail: (event: TimelineEvent) => void;
     canManageSchedules: boolean;
@@ -903,7 +836,12 @@ function TimelineEventBlock({
         .filter(Boolean)
         .join(' ');
     const hasMultipleAssignedUsers = event.assigned_users.length > 1;
-    const className = `absolute min-w-12 rounded-md border text-left shadow-sm transition ${eventTypeClass(event.type)} ${hasOpenEnd ? 'border-dashed' : ''} ${isHighlighted ? 'z-20 ring-2 ring-neutral-950 ring-offset-2 dark:ring-white dark:ring-offset-neutral-950' : 'z-10'}`;
+    const highlightClass = isSearchHighlighted
+        ? 'z-30 border-red-500 ring-4 ring-red-500 ring-offset-2 ring-offset-white dark:border-red-400 dark:ring-red-400 dark:ring-offset-neutral-950'
+        : isHighlighted
+          ? 'z-20 ring-2 ring-neutral-950 ring-offset-2 dark:ring-white dark:ring-offset-neutral-950'
+          : 'z-10';
+    const className = `absolute min-w-12 rounded-md border text-left shadow-sm transition ${eventTypeClass(event.type)} ${hasOpenEnd ? 'border-dashed' : ''} ${highlightClass}`;
     const style = {
         ...eventPositionStyle(event, bounds, lane),
         ...(hasOpenEnd
@@ -921,7 +859,12 @@ function TimelineEventBlock({
 
     if (canManageSchedules) {
         return (
-            <div className={className} style={style} title={label}>
+            <div
+                className={className}
+                style={style}
+                title={label}
+                data-search-highlight={isSearchHighlighted ? 'true' : undefined}
+            >
                 <TimelineEventBorderBadges
                     numberLabel={numberLabel}
                     multipleAssignedUsersCount={multipleAssignedUsersCount}
@@ -952,6 +895,7 @@ function TimelineEventBlock({
                 </button>
                 <Link
                     href={eventEditRoute(event, returnTo)}
+                    onClick={() => rememberEventEditReturn(event, returnTo)}
                     className="absolute top-1.5 right-1.5 inline-flex size-6 items-center justify-center rounded-md bg-white/85 shadow-sm transition hover:bg-white focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:bg-white/15 dark:text-white dark:hover:bg-white/20 dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950"
                     title={`${label} を編集`}
                     aria-label={`${label} を編集`}
@@ -968,6 +912,7 @@ function TimelineEventBlock({
             className={`${className} px-1.5 py-1 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950 ${hasMultipleAssignedUsers ? 'cursor-pointer' : 'cursor-default'}`}
             style={style}
             title={label}
+            data-search-highlight={isSearchHighlighted ? 'true' : undefined}
             aria-label={label}
             aria-pressed={hasMultipleAssignedUsers ? isHighlighted : undefined}
             onPointerDown={(pointerEvent) =>
@@ -997,6 +942,7 @@ function TimelineEventBlock({
 function UntimedEventChip({
     event,
     isHighlighted,
+    isSearchHighlighted,
     onToggleHighlight,
     onOpenDetail,
     canManageSchedules,
@@ -1004,6 +950,7 @@ function UntimedEventChip({
 }: {
     event: TimelineEvent;
     isHighlighted: boolean;
+    isSearchHighlighted: boolean;
     onToggleHighlight: (event: TimelineEvent) => void;
     onOpenDetail: (event: TimelineEvent) => void;
     canManageSchedules: boolean;
@@ -1023,12 +970,21 @@ function UntimedEventChip({
         .filter(Boolean)
         .join(' ');
     const hasMultipleAssignedUsers = event.assigned_users.length > 1;
-    const className = `relative inline-flex max-w-full items-center gap-1 rounded-md border text-left text-xs font-semibold transition ${eventTypeClass(event.type)} ${isHighlighted ? 'ring-2 ring-neutral-950 ring-offset-2 dark:ring-white dark:ring-offset-neutral-950' : ''}`;
+    const highlightClass = isSearchHighlighted
+        ? 'border-red-500 ring-4 ring-red-500 ring-offset-2 ring-offset-white dark:border-red-400 dark:ring-red-400 dark:ring-offset-neutral-950'
+        : isHighlighted
+          ? 'ring-2 ring-neutral-950 ring-offset-2 dark:ring-white dark:ring-offset-neutral-950'
+          : '';
+    const className = `relative inline-flex max-w-full items-center gap-1 rounded-md border text-left text-xs font-semibold transition ${eventTypeClass(event.type)} ${highlightClass}`;
     const content = <span className="min-w-0 truncate">{event.title}</span>;
 
     if (canManageSchedules) {
         return (
-            <span className={className} title={label}>
+            <span
+                className={className}
+                title={label}
+                data-search-highlight={isSearchHighlighted ? 'true' : undefined}
+            >
                 <TimelineEventBorderBadges
                     numberLabel={numberLabel}
                     multipleAssignedUsersCount={multipleAssignedUsersCount}
@@ -1059,6 +1015,7 @@ function UntimedEventChip({
                 </button>
                 <Link
                     href={eventEditRoute(event, returnTo)}
+                    onClick={() => rememberEventEditReturn(event, returnTo)}
                     className="inline-flex size-7 shrink-0 items-center justify-center border-l border-current/20 bg-white/60 transition hover:bg-white focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:bg-white/10 dark:hover:bg-white/20 dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950"
                     title={`${label} を編集`}
                     aria-label={`${label} を編集`}
@@ -1074,6 +1031,7 @@ function UntimedEventChip({
             type="button"
             className={`${className} overflow-visible px-2 py-1 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950 ${hasMultipleAssignedUsers ? 'cursor-pointer' : 'cursor-default'}`}
             title={label}
+            data-search-highlight={isSearchHighlighted ? 'true' : undefined}
             aria-pressed={hasMultipleAssignedUsers ? isHighlighted : undefined}
             onPointerDown={(pointerEvent) =>
                 detailHold.startHold(pointerEvent, event)
@@ -1103,14 +1061,18 @@ function DayTimeline({
     selectedDetail,
     selectedDayTimeline,
     canManageSchedules,
+    highlightedSchedule,
     returnTo,
 }: {
     selectedDetail: CalendarDay;
     selectedDayTimeline: SelectedDayTimeline;
     canManageSchedules: boolean;
+    highlightedSchedule: HighlightedSchedule;
     returnTo: string;
 }) {
     const bounds = timelineBounds(selectedDayTimeline.events);
+    const searchHighlightedEventKey =
+        highlightedScheduleKey(highlightedSchedule);
     const [highlightedEventKey, setHighlightedEventKey] = useState<
         string | null
     >(null);
@@ -1654,6 +1616,10 @@ function DayTimeline({
                                                         highlightedEventKey ===
                                                         eventKey(event)
                                                     }
+                                                    isSearchHighlighted={
+                                                        searchHighlightedEventKey ===
+                                                        eventKey(event)
+                                                    }
                                                     onToggleHighlight={
                                                         toggleHighlightedEvent
                                                     }
@@ -1797,6 +1763,10 @@ function DayTimeline({
                                                             highlightedEventKey ===
                                                             eventKey(event)
                                                         }
+                                                        isSearchHighlighted={
+                                                            searchHighlightedEventKey ===
+                                                            eventKey(event)
+                                                        }
                                                         onToggleHighlight={
                                                             toggleHighlightedEvent
                                                         }
@@ -1874,55 +1844,30 @@ function DayTimeline({
                     </div>
                 </DialogContent>
             </Dialog>
-            <Dialog
+            <ScheduleDetailDialog
+                event={detailEvent}
                 open={detailEvent !== null}
                 onOpenChange={(open) => {
                     if (!open) {
                         setDetailEvent(null);
                     }
                 }}
+                description="内容を確認して、必要に応じて編集できます。"
             >
-                <DialogContent className="sm:max-w-md">
-                    {detailEvent !== null && (
-                        <>
-                            <DialogHeader>
-                                <DialogTitle>{detailEvent.title}</DialogTitle>
-                                <DialogDescription>
-                                    内容を確認して、必要に応じて編集できます。
-                                </DialogDescription>
-                            </DialogHeader>
-                            <dl className="grid gap-3 text-sm">
-                                {scheduleDetailRows(detailEvent).map((row) => (
-                                    <div
-                                        key={row.label}
-                                        className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-3"
-                                    >
-                                        <dt className="text-muted-foreground">
-                                            {row.label}
-                                        </dt>
-                                        <dd className="min-w-0 font-medium break-words whitespace-pre-wrap">
-                                            {row.value}
-                                        </dd>
-                                    </div>
-                                ))}
-                            </dl>
-                            {canManageSchedules && (
-                                <Button asChild className="w-full rounded-md">
-                                    <Link
-                                        href={eventEditRoute(
-                                            detailEvent,
-                                            returnTo,
-                                        )}
-                                    >
-                                        <Pencil className="size-4" />
-                                        編集ページへ
-                                    </Link>
-                                </Button>
-                            )}
-                        </>
-                    )}
-                </DialogContent>
-            </Dialog>
+                {detailEvent !== null && canManageSchedules && (
+                    <Button asChild className="w-full rounded-md">
+                        <Link
+                            href={eventEditRoute(detailEvent, returnTo)}
+                            onClick={() =>
+                                rememberEventEditReturn(detailEvent, returnTo)
+                            }
+                        >
+                            <Pencil className="size-4" />
+                            編集ページへ
+                        </Link>
+                    </Button>
+                )}
+            </ScheduleDetailDialog>
         </section>
     );
 }
@@ -1934,6 +1879,8 @@ export default function ScheduleOverviewIndex({
     calendarDays,
     canManageSchedules,
     selectedDayTimeline,
+    highlightedSchedule,
+    returnTo,
 }: Props) {
     const { url } = usePage();
     const selectedDay =
@@ -1952,9 +1899,64 @@ export default function ScheduleOverviewIndex({
         schedule_count: 0,
     };
 
+    function handleReturnToSearch() {
+        if (returnTo === null) {
+            return;
+        }
+
+        if (canReturnToStoredSearchHistory(returnTo)) {
+            window.sessionStorage.removeItem(searchReturnStorageKey(returnTo));
+            window.history.back();
+
+            return;
+        }
+
+        router.visit(returnTo);
+    }
+
+    // When arriving from a search result, scroll the highlighted schedule into
+    // view so the red-bordered item is visible without manual scrolling.
+    useEffect(() => {
+        if (
+            returnTo === null ||
+            highlightedScheduleKey(highlightedSchedule) === null ||
+            typeof window === 'undefined'
+        ) {
+            return;
+        }
+
+        const frame = window.requestAnimationFrame(() => {
+            const target = document.querySelector(
+                '[data-search-highlight="true"]',
+            );
+
+            if (target !== null) {
+                target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+
+                return;
+            }
+
+            window.scrollTo({
+                top: document.body.scrollHeight,
+                behavior: 'smooth',
+            });
+        });
+
+        return () => {
+            window.cancelAnimationFrame(frame);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     return (
         <>
             <Head title="予定カレンダー" />
+            {returnTo !== null && (
+                <FloatingBackButton
+                    onClick={handleReturnToSearch}
+                    label="検索へ戻る"
+                />
+            )}
             <main className="min-h-screen bg-neutral-100 p-3 text-neutral-950 md:p-6 dark:bg-[radial-gradient(circle_at_top_left,_rgba(20,184,166,0.16),_transparent_32%),radial-gradient(circle_at_85%_12%,_rgba(245,158,11,0.14),_transparent_28%),linear-gradient(135deg,_#050505,_#171717_48%,_#0a0a0a)] dark:text-neutral-50">
                 <div className="mx-auto flex max-w-7xl flex-col gap-4">
                     {/* <header className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950"> */}
@@ -2195,6 +2197,7 @@ export default function ScheduleOverviewIndex({
                             selectedDetail={selectedDetail}
                             selectedDayTimeline={selectedDayTimeline}
                             canManageSchedules={canManageSchedules}
+                            highlightedSchedule={highlightedSchedule}
                             returnTo={url}
                         />
                     </div>

@@ -1,4 +1,4 @@
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import {
     AlertTriangle,
     CheckCircle2,
@@ -29,6 +29,7 @@ import FormField from '@/components/form-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { businessDateString } from '@/lib/dates';
+import { consumeScheduleOverviewEditReturn } from '@/lib/schedule-overview-edit-return';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import type {
@@ -290,6 +291,7 @@ export default function ConstructionScheduleForm({
     scheduleAvailability,
     attendanceLeaveRecords,
 }: Props) {
+    const { url } = usePage();
     const [guideFileSearch, setGuideFileSearch] = useState('');
     const [subcontractorSearch, setSubcontractorSearch] = useState('');
     const [editingSubcontractorId, setEditingSubcontractorId] = useState<
@@ -402,7 +404,17 @@ export default function ConstructionScheduleForm({
 
     function handleGoBack() {
         if (returnTo !== null && returnTo !== undefined) {
-            router.visit(returnTo);
+            if (
+                typeof window !== 'undefined' &&
+                window.history.length > 1 &&
+                consumeScheduleOverviewEditReturn(url, returnTo)
+            ) {
+                window.history.back();
+
+                return;
+            }
+
+            router.visit(returnTo, { replace: true });
 
             return;
         }

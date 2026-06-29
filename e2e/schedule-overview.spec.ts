@@ -3,11 +3,16 @@ import type { Locator, Page } from '@playwright/test';
 
 const password = 'password';
 const loginId = 'e2e-login';
+const editorLoginId = 'e2e-editor';
 const overlapDate = '2026-05-13';
 
-async function login(page: Page) {
+function escapeRegExp(value: string) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+async function login(page: Page, userLoginId = loginId) {
     await page.goto('/login');
-    await page.getByLabel('ログインID').fill(loginId);
+    await page.getByLabel('ログインID').fill(userLoginId);
     await page.locator('input[name="password"]').fill(password);
     await page.getByRole('button', { name: 'ログイン' }).click();
     await expect(page).toHaveURL(/\/schedule-overview(?:\?.*)?$/);
@@ -21,6 +26,62 @@ async function eventBox(locator: Locator) {
     expect(box).not.toBeNull();
 
     return box!;
+}
+
+async function scrollUntilVisible(page: Page, locator: Locator) {
+    for (let attempt = 0; attempt < 8; attempt++) {
+        if (await locator.isVisible()) {
+            return;
+        }
+
+        await page.evaluate(() => {
+            window.scrollTo(0, document.documentElement.scrollHeight);
+        });
+        await page.waitForTimeout(350);
+    }
+}
+
+async function expectSearchOverviewEditBackChain({
+    page,
+    location,
+    editUrlPattern,
+}: {
+    page: Page;
+    location: string;
+    editUrlPattern: RegExp;
+}) {
+    await page.goto(
+        `/schedule-search?location=${encodeURIComponent(location)}`,
+    );
+
+    const result = page.getByRole('button', {
+        name: new RegExp(escapeRegExp(location)),
+    });
+
+    await expect(result).toBeVisible();
+    await result.click();
+    await expect(page).toHaveURL(/\/schedule-overview\?.*return_to=/);
+
+    const overviewUrl = page.url();
+    const editLink = page
+        .getByRole('link', {
+            name: new RegExp(`${escapeRegExp(location)}.*編集`),
+        })
+        .first();
+
+    await expect(editLink).toBeVisible();
+    await editLink.click();
+    await expect(page).toHaveURL(editUrlPattern);
+
+    await page.getByRole('button', { name: '予定表へ戻る' }).click();
+    await expect(page).toHaveURL(overviewUrl);
+
+    await page.getByRole('button', { name: '検索へ戻る' }).click();
+    await expect(page).toHaveURL(/\/schedule-search\?/);
+    await expect(page).not.toHaveURL(editUrlPattern);
+    await expect(page.locator('[data-search-selected="true"]')).toContainText(
+        location,
+    );
 }
 
 test.describe('schedule overview timeline', () => {
@@ -52,5 +113,86 @@ test.describe('schedule overview timeline', () => {
         expect(
             Math.abs(backToBackFirstBox.y - backToBackSecondBox.y),
         ).toBeLessThan(2);
+    });
+});
+
+test.describe('schedule search return flow', () => {
+    test('restores the search scroll position after returning from overview', async ({
+        page,
+    }) => {
+        await page.setViewportSize({ width: 1280, height: 420 });
+        await login(page);
+        await page.goto(
+            '/schedule-search?location=E2E%20Search%20Deep&direction=asc',
+        );
+
+        const toolbar = page.locator('[data-search-toolbar="true"]');
+        const result = page.getByRole('button', {
+            name: /E2E Search Deep 25/,
+        });
+
+        await expect(toolbar).toBeVisible();
+        await scrollUntilVisible(page, result);
+        await expect(result).toBeVisible();
+        await result.scrollIntoViewIfNeeded();
+        await expect(result).toBeInViewport();
+        await expect
+            .poll(async () => page.evaluate(() => window.scrollY))
+            .toBeGreaterThan(0);
+
+        const scrollBeforeNavigate = await page.evaluate(() => window.scrollY);
+        const resultTopBefore = await result.evaluate(
+            (element) => element.getBoundingClientRect().top,
+        );
+        const toolbarTopBefore = await toolbar.evaluate(
+            (element) => element.getBoundingClientRect().top,
+        );
+
+        expect(Math.abs(toolbarTopBefore)).toBeLessThanOrEqual(1);
+
+        await result.click();
+
+        await expect(page).toHaveURL(/\/schedule-overview\?.*return_to=/);
+
+        await page.getByRole('button', { name: '検索へ戻る' }).click();
+
+        await expect(page).toHaveURL(/\/schedule-search\?/);
+        await expect(page).not.toHaveURL(/selected_type=/);
+
+        await expect
+            .poll(async () => page.evaluate(() => window.scrollY))
+            .toBeGreaterThanOrEqual(Math.max(scrollBeforeNavigate - 20, 0));
+
+        const selectedResult = page.locator('[data-search-selected="true"]');
+        await expect(selectedResult).toContainText('E2E Search Deep 25');
+        await expect(selectedResult).toBeInViewport();
+
+        const resultTopAfter = await selectedResult.evaluate(
+            (element) => element.getBoundingClientRect().top,
+        );
+        const toolbarTopAfter = await toolbar.evaluate(
+            (element) => element.getBoundingClientRect().top,
+        );
+
+        expect(Math.abs(resultTopAfter - resultTopBefore)).toBeLessThan(80);
+        expect(Math.abs(toolbarTopAfter)).toBeLessThanOrEqual(1);
+    });
+
+    test('returns from overview to search after visiting construction and business edit pages', async ({
+        page,
+    }) => {
+        await login(page, editorLoginId);
+
+        await expectSearchOverviewEditBackChain({
+            page,
+            location: 'E2E Overlap Early',
+            editUrlPattern: /\/construction-schedules\/\d+\/edit/,
+        });
+
+        await expectSearchOverviewEditBackChain({
+            page,
+            location: 'E2E Overlap Late',
+            editUrlPattern: /\/business-schedules\/\d+\/edit/,
+        });
     });
 });

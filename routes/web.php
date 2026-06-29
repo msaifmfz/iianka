@@ -13,6 +13,7 @@ use App\Http\Controllers\ConstructionSiteController;
 use App\Http\Controllers\ConstructionSubcontractorController;
 use App\Http\Controllers\InternalNoticeController;
 use App\Http\Controllers\ScheduleOverviewController;
+use App\Http\Controllers\ScheduleSearchController;
 use App\Http\Controllers\SiteGuideFileController;
 use Illuminate\Contracts\Routing\ResponseFactory;
 use Illuminate\Http\Request;
@@ -29,6 +30,8 @@ Route::get('robots.txt', fn (): ResponseFactory|Response => response("User-agent
 
 Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::redirect('dashboard', 'schedule-overview')->name('dashboard');
+    Route::get('schedule-search', ScheduleSearchController::class)
+        ->name('schedule-search.index');
     Route::get('schedule-overview', ScheduleOverviewController::class)
         ->name('schedule-overview.index');
     Route::get('voucher-confirmations', [ConstructionScheduleVoucherController::class, 'index'])
