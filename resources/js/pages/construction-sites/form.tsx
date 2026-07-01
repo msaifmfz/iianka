@@ -31,6 +31,10 @@ export default function ConstructionSiteForm({ guideFile }: Props) {
             name: guideFile?.name ?? '',
             guide_file: null,
         });
+    const submitLabel = guideFile ? '現場案内図を修正' : '現場案内図を追加';
+    const processingLabel = guideFile
+        ? '現場案内図を修正中...'
+        : '現場案内図を追加中...';
 
     function submit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -150,7 +154,7 @@ export default function ConstructionSiteForm({ guideFile }: Props) {
 
                     <div className="flex justify-end">
                         <Button type="submit" disabled={processing}>
-                            {processing ? '保存中...' : '保存'}
+                            {processing ? processingLabel : submitLabel}
                         </Button>
                     </div>
                 </form>

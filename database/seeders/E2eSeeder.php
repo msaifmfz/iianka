@@ -41,6 +41,18 @@ class E2eSeeder extends Seeder
             'is_hidden_from_workers' => false,
         ])->save();
 
+        $admin = new User;
+        $admin->forceFill([
+            'name' => 'E2E Admin User',
+            'login_id' => 'e2e-admin',
+            'email' => 'e2e-admin@example.test',
+            'email_verified_at' => now(),
+            'password' => 'password',
+            'role' => UserRole::Admin,
+            'is_admin' => true,
+            'is_hidden_from_workers' => true,
+        ])->save();
+
         $worker = new User;
         $worker->forceFill([
             'name' => 'E2E Timeline Worker',

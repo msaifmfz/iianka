@@ -282,7 +282,7 @@ export default function AdminUsersIndex({ users, filters }: Props) {
                                         className="pl-9"
                                     />
                                 </div>
-                                <Button type="submit">検索</Button>
+                                <Button type="submit">ユーザーを検索</Button>
                             </form>
                         </div>
                         <div className="flex flex-wrap gap-2 py-3">

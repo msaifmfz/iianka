@@ -379,6 +379,14 @@ function InlineScheduleNumberEditor({
         schedule.type === 'construction'
             ? scheduleUpdateNumber
             : businessScheduleUpdateNumber;
+    const submitLabel =
+        schedule.type === 'construction'
+            ? '工事予定番号を保存'
+            : '業務予定番号を保存';
+    const processingLabel =
+        schedule.type === 'construction'
+            ? '工事予定番号を保存中...'
+            : '業務予定番号を保存中...';
 
     function handleOpenChange(nextOpen: boolean) {
         setOpen(nextOpen);
@@ -473,7 +481,7 @@ function InlineScheduleNumberEditor({
                             キャンセル
                         </Button>
                         <Button type="submit" disabled={processing}>
-                            保存
+                            {processing ? processingLabel : submitLabel}
                         </Button>
                     </div>
                 </form>

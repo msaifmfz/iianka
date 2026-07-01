@@ -56,6 +56,10 @@ export default function CleaningDutyRuleForm({
             assigned_user_ids:
                 rule?.assigned_users.map((user) => user.id) ?? [],
         });
+    const submitLabel = rule ? '掃除当番設定を修正' : '掃除当番設定を作成';
+    const processingLabel = rule
+        ? '掃除当番設定を修正中...'
+        : '掃除当番設定を作成中...';
 
     function submit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -216,7 +220,7 @@ export default function CleaningDutyRuleForm({
                             </Link>
                         </Button>
                         <Button type="submit" disabled={processing}>
-                            {processing ? '保存中...' : '保存'}
+                            {processing ? processingLabel : submitLabel}
                         </Button>
                     </div>
                 </form>

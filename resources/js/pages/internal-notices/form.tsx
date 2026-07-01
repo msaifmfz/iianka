@@ -67,6 +67,10 @@ export default function InternalNoticeForm({
                 notice?.assigned_users.map((user) => user.id) ??
                 initialAssignedUserIds,
         });
+    const submitLabel = notice ? '業務連絡を修正' : '業務連絡を作成';
+    const processingLabel = notice
+        ? '業務連絡を修正中...'
+        : '業務連絡を作成中...';
 
     function submit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -249,7 +253,7 @@ export default function InternalNoticeForm({
 
                     <div className="flex justify-end">
                         <Button type="submit" disabled={processing}>
-                            {processing ? '保存中...' : '保存'}
+                            {processing ? processingLabel : submitLabel}
                         </Button>
                     </div>
                 </form>

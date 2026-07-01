@@ -385,6 +385,10 @@ export default function ConstructionScheduleForm({
         busySchedules,
     );
     const suggestedTimeSlots = availableTimeSlots(busySchedules);
+    const submitLabel = schedule ? '工事予定を修正' : '工事予定を作成';
+    const processingLabel = schedule
+        ? '工事予定を修正中...'
+        : '工事予定を作成中...';
 
     function submit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -862,7 +866,9 @@ export default function ConstructionScheduleForm({
                                                                     }
                                                                 >
                                                                     <Save className="size-3.5" />
-                                                                    保存
+                                                                    {processingSubcontractorUpdate
+                                                                        ? '下請け情報を保存中...'
+                                                                        : '下請け情報を保存'}
                                                                 </button>
                                                                 <button
                                                                     type="button"
@@ -1699,7 +1705,7 @@ export default function ConstructionScheduleForm({
                             type="submit"
                             disabled={processing || hasTimeConflict}
                         >
-                            {processing ? '保存中...' : '保存'}
+                            {processing ? processingLabel : submitLabel}
                         </Button>
                     </div>
                 </form>
