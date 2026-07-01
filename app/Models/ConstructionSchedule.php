@@ -27,6 +27,7 @@ use Override;
     'general_contractor',
     'person_in_charge',
     'content',
+    'carry_out_note',
     'navigation_address',
     'voucher_note',
     'voucher_checked_at',

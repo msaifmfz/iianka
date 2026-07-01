@@ -11,27 +11,37 @@ test('users can view company wide schedule overview counts by day', function ():
     $user = User::factory()->create();
     $date = '2026-05-13';
 
-    ConstructionSchedule::factory()->count(2)->create([
+    ConstructionSchedule::factory()->create([
         'scheduled_on' => $date,
         'voucher_checked_at' => null,
         'voucher_checked_by_user_id' => null,
+        'carry_out_note' => '発電機',
+    ]);
+    ConstructionSchedule::factory()->create([
+        'scheduled_on' => $date,
+        'voucher_checked_at' => null,
+        'voucher_checked_by_user_id' => null,
+        'carry_out_note' => '   ',
     ]);
     ConstructionSchedule::factory()->create([
         'scheduled_on' => $date,
         'voucher_checked_at' => now(),
         'voucher_checked_by_user_id' => $user->id,
+        'carry_out_note' => '測定器',
     ]);
     ConstructionSchedule::factory()->create([
         'scheduled_on' => $date,
         'status' => ConstructionSchedule::STATUS_POSTPONED,
         'voucher_checked_at' => null,
         'voucher_checked_by_user_id' => null,
+        'carry_out_note' => '延期でも持ち出し',
     ]);
     ConstructionSchedule::factory()->create([
         'scheduled_on' => $date,
         'status' => ConstructionSchedule::STATUS_CANCELED,
         'voucher_checked_at' => null,
         'voucher_checked_by_user_id' => null,
+        'carry_out_note' => '中止でも持ち出し',
     ]);
     BusinessSchedule::factory()->count(5)->create([
         'scheduled_on' => $date,
@@ -54,6 +64,7 @@ test('users can view company wide schedule overview counts by day', function ():
         'scheduled_on' => '2026-04-30',
         'voucher_checked_at' => null,
         'voucher_checked_by_user_id' => null,
+        'carry_out_note' => '脚立',
     ]);
     BusinessSchedule::factory()->create([
         'scheduled_on' => '2026-04-30',
@@ -82,6 +93,7 @@ test('users can view company wide schedule overview counts by day', function ():
                     && $day['construction_count'] === 5
                     && $day['business_count'] === 5
                     && $day['internal_notice_count'] === 1
+                    && $day['carry_out_count'] === 4
                     && $day['voucher_confirmation_count'] === 3
                     && $day['unconfirmed_voucher_count'] === 2
                     && $day['schedule_count'] === 11
@@ -91,6 +103,7 @@ test('users can view company wide schedule overview counts by day', function ():
                     && $day['construction_count'] === 1
                     && $day['business_count'] === 1
                     && $day['internal_notice_count'] === 1
+                    && $day['carry_out_count'] === 1
                     && $day['voucher_confirmation_count'] === 1
                     && $day['unconfirmed_voucher_count'] === 1
             ))
@@ -101,6 +114,7 @@ test('users can view company wide schedule overview counts by day', function ():
                 'construction_count' => 6,
                 'business_count' => 6,
                 'internal_notice_count' => 1,
+                'carry_out_count' => 4,
                 'unconfirmed_voucher_count' => 3,
                 'schedule_count' => 13,
             ])
@@ -140,6 +154,7 @@ test('users can view selected day timeline for visible workers and assigned even
         'ends_at' => '10:00',
         'location' => '中央ビル',
         'content' => '配線工事',
+        'carry_out_note' => '台車',
     ]);
     $constructionSchedule->assignedUsers()->attach([$firstWorker->id, $secondWorker->id]);
 
@@ -203,6 +218,7 @@ test('users can view selected day timeline for visible workers and assigned even
         ->and($events->contains(fn (array $event): bool => $event['type'] === 'construction'
             && $event['title'] === '中央ビル'
             && $event['schedule_number'] === 7
+            && $event['carry_out_note'] === '台車'
             && $event['starts_at'] === '08:00'
             && $event['ends_at'] === '10:00'
             && collect($event['assigned_users'])->pluck('name')->contains('青木')

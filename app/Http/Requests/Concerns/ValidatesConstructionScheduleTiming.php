@@ -12,7 +12,7 @@ trait ValidatesConstructionScheduleTiming
     {
         $values = [];
 
-        foreach (['general_contractor', 'meeting_place', 'site_region', 'content', 'navigation_address'] as $field) {
+        foreach (['general_contractor', 'meeting_place', 'site_region', 'content', 'carry_out_note', 'navigation_address'] as $field) {
             if ($this->has($field)) {
                 $value = trim((string) $this->input($field));
                 $values[$field] = $value === '' ? null : $value;

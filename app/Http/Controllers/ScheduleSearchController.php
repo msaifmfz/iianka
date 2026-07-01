@@ -156,6 +156,7 @@ class ScheduleSearchController extends Controller
             'location' => $schedule->location,
             'general_contractor' => $schedule->general_contractor,
             'content' => $schedule->content,
+            'carry_out_note' => $schedule instanceof ConstructionSchedule ? $schedule->carry_out_note : null,
             'assigned_users' => $this->userPayload(
                 $schedule->assignedUsers->whereIn('id', $visibleUserIds)->values()
             ),

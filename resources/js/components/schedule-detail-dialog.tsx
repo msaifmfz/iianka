@@ -22,6 +22,7 @@ export type ScheduleDetailEvent = {
     location: string | null;
     general_contractor?: string | null;
     content: string | null;
+    carry_out_note?: string | null;
     time: string;
     starts_at: string | null;
     ends_at: string | null;
@@ -64,6 +65,7 @@ export function scheduleDetailRows(event: ScheduleDetailEvent) {
         },
         { label: 'ゼネコン会社', value: event.general_contractor },
         { label: '内容', value: event.content },
+        { label: '持ち出し', value: event.carry_out_note },
         { label: '補足', value: event.time_note },
     ].filter(
         (row) =>

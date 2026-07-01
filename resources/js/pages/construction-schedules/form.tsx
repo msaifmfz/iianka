@@ -72,6 +72,7 @@ type ScheduleForm = {
     general_contractor: string;
     person_in_charge: string;
     content: string;
+    carry_out_note: string;
     navigation_address: string;
     assigned_user_ids: number[];
     subcontractor_ids: number[];
@@ -317,6 +318,7 @@ export default function ConstructionScheduleForm({
             general_contractor: schedule?.general_contractor ?? '',
             person_in_charge: schedule?.person_in_charge ?? '',
             content: schedule?.content ?? '',
+            carry_out_note: schedule?.carry_out_note ?? '',
             navigation_address: schedule?.navigation_address ?? '',
             assigned_user_ids:
                 schedule?.assigned_users.map((user) => user.id) ??
@@ -1353,6 +1355,19 @@ export default function ConstructionScheduleForm({
                             value={data.content}
                             onChange={(event) =>
                                 setData('content', event.target.value)
+                            }
+                        />
+                    </FormField>
+
+                    <FormField
+                        label="持ち出し（任意）"
+                        error={errors.carry_out_note}
+                    >
+                        <textarea
+                            className="min-h-32 rounded-md border bg-transparent px-3 py-2 text-sm"
+                            value={data.carry_out_note}
+                            onChange={(event) =>
+                                setData('carry_out_note', event.target.value)
                             }
                         />
                     </FormField>

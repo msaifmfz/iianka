@@ -56,6 +56,7 @@ class UpdateConstructionScheduleRequest extends FormRequest
             'general_contractor' => ['nullable', 'string', 'max:255'],
             'person_in_charge' => ['nullable', 'string', 'max:255'],
             'content' => ['nullable', 'string'],
+            'carry_out_note' => ['nullable', 'string'],
             'navigation_address' => ['nullable', 'string', 'max:255'],
             'assigned_user_ids' => ['nullable', 'array'],
             'assigned_user_ids.*' => ['integer', 'exists:users,id'],
