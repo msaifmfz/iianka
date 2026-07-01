@@ -191,6 +191,15 @@ export default function ConstructionScheduleShow({
                             </p>
                         </div>
 
+                        <div className="rounded-2xl border p-4 dark:border-neutral-800">
+                            <p className="text-sm text-muted-foreground">
+                                持ち出し
+                            </p>
+                            <p className="mt-2 leading-7 whitespace-pre-line">
+                                {schedule.carry_out_note || '未設定'}
+                            </p>
+                        </div>
+
                         {schedule.google_maps_url && (
                             <div className="grid gap-2 sm:grid-cols-2">
                                 <Button

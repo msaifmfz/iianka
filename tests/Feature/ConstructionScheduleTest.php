@@ -635,6 +635,7 @@ test('admins can create schedules with assigned users and guide files', function
             'general_contractor' => '山田建設',
             'person_in_charge' => '佐藤',
             'content' => '足場点検と資材搬入',
+            'carry_out_note' => "電動工具一式\n予備バッテリー",
             'navigation_address' => '東京都港区芝公園4丁目2-8',
             'assigned_user_ids' => [$worker->id],
             'subcontractor_ids' => [$subcontractor->id],
@@ -669,6 +670,7 @@ test('admins can create schedules with assigned users and guide files', function
     expect($schedule->subcontractors()->where('name', '新規 下請けB')->where('phone', '090-5555-6666')->exists())->toBeTrue();
     expect($schedule->schedule_number)->toBe(7);
     expect($schedule->site_region)->toBe('東京都');
+    expect($schedule->carry_out_note)->toBe("電動工具一式\n予備バッテリー");
     expect($schedule->selectedGuideFiles()->whereKey($siteGuide)->exists())->toBeTrue();
     expect($uploadedGuide)->not->toBeNull();
     expect($schedule->selectedGuideFiles()->whereKey($uploadedGuide)->exists())->toBeTrue();
@@ -685,7 +687,10 @@ test('construction schedule payloads include subcontractor phone numbers', funct
     ]);
     $schedule = ConstructionSchedule::factory()
         ->scheduledToday()
-        ->create(['location' => '電話確認現場']);
+        ->create([
+            'location' => '電話確認現場',
+            'carry_out_note' => '発電機',
+        ]);
 
     $schedule->subcontractors()->attach($subcontractor);
 
@@ -695,6 +700,7 @@ test('construction schedule payloads include subcontractor phone numbers', funct
         ->assertInertia(fn (Assert $page): Assert => $page
             ->component('construction-schedules/index')
             ->where('teamSchedules.0.location', '電話確認現場')
+            ->where('teamSchedules.0.carry_out_note', '発電機')
             ->where('teamSchedules.0.subcontractors.0.name', '田中 下請け')
             ->where('teamSchedules.0.subcontractors.0.phone', '090-7777-8888')
         );
@@ -704,6 +710,7 @@ test('construction schedule payloads include subcontractor phone numbers', funct
         ->assertOk()
         ->assertInertia(fn (Assert $page): Assert => $page
             ->component('construction-schedules/show')
+            ->where('schedule.carry_out_note', '発電機')
             ->where('schedule.subcontractors.0.name', '田中 下請け')
             ->where('schedule.subcontractors.0.phone', '090-7777-8888')
             ->etc()
@@ -760,6 +767,7 @@ test('admins can update schedule subcontractors separately from assigned users',
             'location' => '更新対象現場',
             'site_region' => '神奈川県',
             'content' => '作業内容',
+            'carry_out_note' => '測定器',
             'navigation_address' => '東京都千代田区1-1',
             'assigned_user_ids' => [$worker->id],
             'subcontractor_ids' => [$newSubcontractor->id],
@@ -779,6 +787,7 @@ test('admins can update schedule subcontractors separately from assigned users',
     expect($schedule->subcontractors()->whereKey($newSubcontractor)->exists())->toBeTrue();
     expect($schedule->subcontractors()->where('name', '追加 下請け')->where('phone', '')->exists())->toBeTrue();
     expect($schedule->site_region)->toBe('神奈川県');
+    expect($schedule->carry_out_note)->toBe('測定器');
 });
 
 test('uploaded guide files from a schedule become standalone library files on edit', function (): void {
@@ -794,6 +803,7 @@ test('uploaded guide files from a schedule become standalone library files on ed
             'location' => '品川南口工区',
             'site_region' => '東京都',
             'content' => '仮囲い設置',
+            'carry_out_note' => 'カラーコーン',
             'navigation_address' => '東京都港区港南1-1-1',
             'guide_files' => [
                 UploadedFile::fake()->create('追加案内図.png', 100, 'image/png'),
@@ -818,6 +828,7 @@ test('uploaded guide files from a schedule become standalone library files on ed
             ->component('construction-schedules/form')
             ->where('schedule.id', $schedule->id)
             ->where('schedule.site_region', '東京都')
+            ->where('schedule.carry_out_note', 'カラーコーン')
             ->where('schedule.selected_site_guide_file_ids', fn ($ids): bool => collect($ids)->contains($uploadedGuide->id))
             ->where('siteGuideFiles', fn ($guideFiles): bool => collect($guideFiles)
                 ->contains(fn (array $guideFile): bool => $guideFile['id'] === $uploadedGuide->id
@@ -1277,6 +1288,7 @@ test('admins can create construction schedules without optional details', functi
             'status' => ConstructionSchedule::STATUS_SCHEDULED,
             'location' => '東京現場',
             'site_region' => '   ',
+            'carry_out_note' => '   ',
         ])
         ->assertRedirect();
 
@@ -1285,6 +1297,7 @@ test('admins can create construction schedules without optional details', functi
     expect($schedule->meeting_place)->toBeNull()
         ->and($schedule->site_region)->toBeNull()
         ->and($schedule->content)->toBeNull()
+        ->and($schedule->carry_out_note)->toBeNull()
         ->and($schedule->navigation_address)->toBeNull();
 });
 

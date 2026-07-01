@@ -41,6 +41,7 @@ export type ConstructionSchedule = {
     general_contractor: string | null;
     person_in_charge: string | null;
     content: string | null;
+    carry_out_note: string | null;
     navigation_address: string | null;
     google_maps_url: string | null;
     voucher_checked: boolean;

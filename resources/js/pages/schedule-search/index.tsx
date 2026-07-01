@@ -49,6 +49,7 @@ type SearchSchedule = {
     location: string;
     general_contractor: string | null;
     content: string | null;
+    carry_out_note: string | null;
     assigned_users: ConstructionUser[];
 };
 
@@ -358,6 +359,7 @@ function scheduleDetailEvent(schedule: SearchSchedule): ScheduleDetailEvent {
         location: schedule.location,
         general_contractor: schedule.general_contractor,
         content: schedule.content,
+        carry_out_note: schedule.carry_out_note,
         time: schedule.time,
         starts_at: schedule.starts_at,
         ends_at: schedule.ends_at,

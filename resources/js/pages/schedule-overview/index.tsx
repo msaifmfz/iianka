@@ -50,6 +50,7 @@ type CalendarDay = {
     construction_count: number;
     business_count: number;
     internal_notice_count: number;
+    carry_out_count: number;
     voucher_confirmation_count: number;
     unconfirmed_voucher_count: number;
     schedule_count: number;
@@ -89,6 +90,7 @@ type TimelineEvent = {
     title: string;
     location: string | null;
     content: string | null;
+    carry_out_note?: string | null;
     time: string;
     starts_at: string | null;
     ends_at: string | null;
@@ -191,6 +193,7 @@ function calendarCells(
             construction_count: 0,
             business_count: 0,
             internal_notice_count: 0,
+            carry_out_count: 0,
             voucher_confirmation_count: 0,
             unconfirmed_voucher_count: 0,
             schedule_count: 0,
@@ -1894,6 +1897,7 @@ export default function ScheduleOverviewIndex({
         construction_count: 0,
         business_count: 0,
         internal_notice_count: 0,
+        carry_out_count: 0,
         voucher_confirmation_count: 0,
         unconfirmed_voucher_count: 0,
         schedule_count: 0,
@@ -2081,7 +2085,7 @@ export default function ScheduleOverviewIndex({
                                                                 ? 'date'
                                                                 : undefined
                                                         }
-                                                        aria-label={`${day.date}: 混雑度${heatLabel(heatLevel(day, busiestScheduleCount))}、工事${day.construction_count}件、業務予定${day.business_count}件、業務連絡${day.internal_notice_count}件、伝票${voucherConfirmationValue(day)}、未確認伝票${day.unconfirmed_voucher_count}件`}
+                                                        aria-label={`${day.date}: 混雑度${heatLabel(heatLevel(day, busiestScheduleCount))}、工事${day.construction_count}件、業務予定${day.business_count}件、業務連絡${day.internal_notice_count}件、持ち出し${day.carry_out_count}件、伝票${voucherConfirmationValue(day)}、未確認伝票${day.unconfirmed_voucher_count}件`}
                                                         preserveScroll
                                                     >
                                                         {day.isToday
@@ -2090,7 +2094,84 @@ export default function ScheduleOverviewIndex({
                                                     </Link>
                                                 </span>
                                                 <hr className="my-1 border-neutral-200/70 dark:border-white/10" />
-                                                <span className="relative flex flex-col gap-0.5">
+                                                <span className="relative grid grid-cols-2 gap-0.5">
+                                                    <span className="grid min-w-0 gap-0.5">
+                                                        <Link
+                                                            href={scheduleIndex(
+                                                                {
+                                                                    query: {
+                                                                        range: 'today',
+                                                                        date: day.date,
+                                                                        type: [
+                                                                            'construction',
+                                                                            'business',
+                                                                        ],
+                                                                    },
+                                                                },
+                                                            )}
+                                                            className="pointer-events-auto relative z-10 flex min-w-0 rounded-md focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950"
+                                                            aria-label={`${day.date} の工事予定を確認`}
+                                                        >
+                                                            <MetricPill
+                                                                label="工"
+                                                                value={
+                                                                    day.construction_count
+                                                                }
+                                                                shortLabel="工"
+                                                                className="w-full justify-between"
+                                                            />
+                                                        </Link>
+                                                        <Link
+                                                            href={scheduleIndex(
+                                                                {
+                                                                    query: {
+                                                                        range: 'today',
+                                                                        date: day.date,
+                                                                        type: [
+                                                                            'construction',
+                                                                            'business',
+                                                                        ],
+                                                                    },
+                                                                },
+                                                            )}
+                                                            className="pointer-events-auto relative z-10 flex min-w-0 rounded-md focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950"
+                                                            aria-label={`${day.date} の業務予定を確認`}
+                                                        >
+                                                            <MetricPill
+                                                                label="業"
+                                                                value={
+                                                                    day.business_count
+                                                                }
+                                                                shortLabel="業"
+                                                                className="w-full justify-between"
+                                                            />
+                                                        </Link>
+                                                        <Link
+                                                            href={scheduleIndex(
+                                                                {
+                                                                    query: {
+                                                                        range: 'today',
+                                                                        date: day.date,
+                                                                        type: [
+                                                                            'construction',
+                                                                            'business',
+                                                                        ],
+                                                                    },
+                                                                },
+                                                            )}
+                                                            className="pointer-events-auto relative z-10 flex min-w-0 rounded-md focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950"
+                                                            aria-label={`${day.date} の業務連絡を確認`}
+                                                        >
+                                                            <MetricPill
+                                                                label="連"
+                                                                value={
+                                                                    day.internal_notice_count
+                                                                }
+                                                                shortLabel="連"
+                                                                className="w-full justify-between"
+                                                            />
+                                                        </Link>
+                                                    </span>
                                                     <Link
                                                         href={scheduleIndex({
                                                             query: {
@@ -2098,66 +2179,22 @@ export default function ScheduleOverviewIndex({
                                                                 date: day.date,
                                                                 type: [
                                                                     'construction',
-                                                                    'business',
                                                                 ],
                                                             },
                                                         })}
-                                                        className="pointer-events-auto relative z-10 flex rounded-md focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950"
-                                                        aria-label={`${day.date} の工事予定を確認`}
+                                                        className="pointer-events-auto relative z-10 flex min-w-0 self-start rounded-md focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950"
+                                                        aria-label={`${day.date} の持ち出しがある工事予定を確認`}
                                                     >
                                                         <MetricPill
-                                                            label="工"
+                                                            label="機"
                                                             value={
-                                                                day.construction_count
+                                                                day.carry_out_count
                                                             }
-                                                            shortLabel="工"
+                                                            shortLabel="機"
+                                                            className="w-full justify-between"
                                                         />
                                                     </Link>
-                                                    <Link
-                                                        href={scheduleIndex({
-                                                            query: {
-                                                                range: 'today',
-                                                                date: day.date,
-                                                                type: [
-                                                                    'construction',
-                                                                    'business',
-                                                                ],
-                                                            },
-                                                        })}
-                                                        className="pointer-events-auto relative z-10 flex rounded-md focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950"
-                                                        aria-label={`${day.date} の業務予定を確認`}
-                                                    >
-                                                        <MetricPill
-                                                            label="業"
-                                                            value={
-                                                                day.business_count
-                                                            }
-                                                            shortLabel="業"
-                                                        />
-                                                    </Link>
-                                                    <Link
-                                                        href={scheduleIndex({
-                                                            query: {
-                                                                range: 'today',
-                                                                date: day.date,
-                                                                type: [
-                                                                    'construction',
-                                                                    'business',
-                                                                ],
-                                                            },
-                                                        })}
-                                                        className="pointer-events-auto relative z-10 flex rounded-md focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950"
-                                                        aria-label={`${day.date} の業務連絡を確認`}
-                                                    >
-                                                        <MetricPill
-                                                            label="連"
-                                                            value={
-                                                                day.internal_notice_count
-                                                            }
-                                                            shortLabel="連"
-                                                        />
-                                                    </Link>
-                                                    <hr className="my-0.5 border-neutral-200/70 dark:border-white/10" />
+                                                    <hr className="col-span-2 my-0.5 border-neutral-200/70 dark:border-white/10" />
                                                     <Link
                                                         href={voucherIndex({
                                                             query: {
@@ -2167,7 +2204,7 @@ export default function ScheduleOverviewIndex({
                                                                     'unchecked',
                                                             },
                                                         })}
-                                                        className="pointer-events-auto relative z-10 flex items-center gap-1 rounded-md focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950"
+                                                        className="pointer-events-auto relative z-10 col-span-2 flex items-center gap-1 rounded-md focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950"
                                                         aria-label={`${day.date} の未確認伝票を確認`}
                                                     >
                                                         <MetricPill

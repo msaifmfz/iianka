@@ -497,6 +497,7 @@ class ConstructionScheduleController extends Controller
                 'general_contractor',
                 'person_in_charge',
                 'content',
+                'carry_out_note',
                 'navigation_address',
             ])
             ->all();
@@ -865,6 +866,7 @@ class ConstructionScheduleController extends Controller
             'general_contractor' => $schedule->general_contractor,
             'person_in_charge' => $schedule->person_in_charge,
             'content' => $schedule->content,
+            'carry_out_note' => $schedule->carry_out_note,
             'navigation_address' => $schedule->navigation_address,
             'google_maps_url' => $schedule->googleMapsUrl(),
             'voucher_checked' => $schedule->voucher_checked_at !== null,

@@ -95,7 +95,7 @@ class ScheduleOverviewController extends Controller
     }
 
     /**
-     * @return Collection<int, array{date: string, construction_count: int, business_count: int, internal_notice_count: int, voucher_confirmation_count: int, unconfirmed_voucher_count: int, schedule_count: int}>
+     * @return Collection<int, array{date: string, construction_count: int, business_count: int, internal_notice_count: int, carry_out_count: int, voucher_confirmation_count: int, unconfirmed_voucher_count: int, schedule_count: int}>
      */
     private function calendarDays(Carbon $calendarStart, Carbon $calendarEnd): Collection
     {
@@ -109,6 +109,7 @@ class ScheduleOverviewController extends Controller
                 'construction_count' => 0,
                 'business_count' => 0,
                 'internal_notice_count' => 0,
+                'carry_out_count' => 0,
                 'voucher_confirmation_count' => 0,
                 'unconfirmed_voucher_count' => 0,
                 'schedule_count' => 0,
@@ -127,6 +128,7 @@ class ScheduleOverviewController extends Controller
 
                 $constructionCount = (int) $schedule->construction_count;
                 $day['construction_count'] = $constructionCount;
+                $day['carry_out_count'] = (int) $schedule->carry_out_count;
                 $day['voucher_confirmation_count'] = (int) $schedule->voucher_confirmation_count;
                 $day['unconfirmed_voucher_count'] = (int) $schedule->unconfirmed_voucher_count;
                 $day['schedule_count'] = $this->dayScheduleCount($day);
@@ -183,7 +185,7 @@ class ScheduleOverviewController extends Controller
     {
         return ConstructionSchedule::query()
             ->selectRaw(
-                'scheduled_on, count(*) as construction_count, sum(case when status not in (?, ?) then 1 else 0 end) as voucher_confirmation_count, sum(case when status not in (?, ?) and voucher_checked_at is null then 1 else 0 end) as unconfirmed_voucher_count',
+                'scheduled_on, count(*) as construction_count, sum(case when carry_out_note is not null and trim(carry_out_note) != \'\' then 1 else 0 end) as carry_out_count, sum(case when status not in (?, ?) then 1 else 0 end) as voucher_confirmation_count, sum(case when status not in (?, ?) and voucher_checked_at is null then 1 else 0 end) as unconfirmed_voucher_count',
                 [
                     ...ConstructionSchedule::VOUCHER_CONFIRMATION_EXCLUDED_STATUSES,
                     ...ConstructionSchedule::VOUCHER_CONFIRMATION_EXCLUDED_STATUSES,
@@ -222,8 +224,8 @@ class ScheduleOverviewController extends Controller
     }
 
     /**
-     * @param  Collection<int, array{date: string, construction_count: int, business_count: int, internal_notice_count: int, unconfirmed_voucher_count: int, schedule_count: int}>  $calendarDays
-     * @return array{construction_count: int, business_count: int, internal_notice_count: int, unconfirmed_voucher_count: int, schedule_count: int}
+     * @param  Collection<int, array{date: string, construction_count: int, business_count: int, internal_notice_count: int, carry_out_count: int, unconfirmed_voucher_count: int, schedule_count: int}>  $calendarDays
+     * @return array{construction_count: int, business_count: int, internal_notice_count: int, carry_out_count: int, unconfirmed_voucher_count: int, schedule_count: int}
      */
     private function monthSummary(Collection $calendarDays, Carbon $monthStart, Carbon $monthEnd): array
     {
@@ -234,6 +236,7 @@ class ScheduleOverviewController extends Controller
                     'construction_count' => $summary['construction_count'] + $day['construction_count'],
                     'business_count' => $summary['business_count'] + $day['business_count'],
                     'internal_notice_count' => $summary['internal_notice_count'] + $day['internal_notice_count'],
+                    'carry_out_count' => $summary['carry_out_count'] + $day['carry_out_count'],
                     'unconfirmed_voucher_count' => $summary['unconfirmed_voucher_count'] + $day['unconfirmed_voucher_count'],
                     'schedule_count' => $summary['schedule_count'] + $day['schedule_count'],
                 ],
@@ -241,6 +244,7 @@ class ScheduleOverviewController extends Controller
                     'construction_count' => 0,
                     'business_count' => 0,
                     'internal_notice_count' => 0,
+                    'carry_out_count' => 0,
                     'unconfirmed_voucher_count' => 0,
                     'schedule_count' => 0,
                 ],
@@ -306,6 +310,7 @@ class ScheduleOverviewController extends Controller
                 'time_note',
                 'location',
                 'content',
+                'carry_out_note',
             ])
             ->toBase()
             ->map(fn (ConstructionSchedule $schedule): array => [
@@ -315,6 +320,7 @@ class ScheduleOverviewController extends Controller
                 'title' => $schedule->location,
                 'location' => $schedule->location,
                 'content' => $schedule->content,
+                'carry_out_note' => $schedule->carry_out_note,
                 'time' => $schedule->formattedTime(),
                 'starts_at' => $schedule->starts_at,
                 'ends_at' => $schedule->ends_at,
