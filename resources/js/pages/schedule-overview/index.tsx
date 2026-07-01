@@ -2202,29 +2202,31 @@ export default function ScheduleOverviewIndex({
                                                                 className="w-full justify-between"
                                                             />
                                                         </Link>
+                                                        <Link
+                                                            href={scheduleIndex(
+                                                                {
+                                                                    query: {
+                                                                        range: 'today',
+                                                                        date: day.date,
+                                                                        type: [
+                                                                            'construction',
+                                                                        ],
+                                                                    },
+                                                                },
+                                                            )}
+                                                            className="pointer-events-auto relative z-10 flex min-w-0 rounded-md focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950"
+                                                            aria-label={`${day.date} の持ち出しがある工事予定を確認`}
+                                                        >
+                                                            <MetricPill
+                                                                label="機"
+                                                                value={
+                                                                    day.carry_out_count
+                                                                }
+                                                                shortLabel="機"
+                                                                className="w-full justify-between"
+                                                            />
+                                                        </Link>
                                                     </span>
-                                                    <Link
-                                                        href={scheduleIndex({
-                                                            query: {
-                                                                range: 'today',
-                                                                date: day.date,
-                                                                type: [
-                                                                    'construction',
-                                                                ],
-                                                            },
-                                                        })}
-                                                        className="pointer-events-auto relative z-10 flex min-w-0 self-start rounded-md focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950"
-                                                        aria-label={`${day.date} の持ち出しがある工事予定を確認`}
-                                                    >
-                                                        <MetricPill
-                                                            label="機"
-                                                            value={
-                                                                day.carry_out_count
-                                                            }
-                                                            shortLabel="機"
-                                                            className="w-full justify-between"
-                                                        />
-                                                    </Link>
                                                     <hr className="col-span-2 my-0.5 border-neutral-200/70 dark:border-white/10" />
                                                     <Link
                                                         href={voucherIndex({
