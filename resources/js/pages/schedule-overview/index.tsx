@@ -219,20 +219,20 @@ function overviewQuery(date: string) {
     };
 }
 
-function maxScheduleCount(days: CalendarCell[]) {
-    return Math.max(...days.map((day) => day.schedule_count), 0);
+function maxConstructionCount(days: CalendarCell[]) {
+    return Math.max(...days.map((day) => day.construction_count), 0);
 }
 
 function heatLevel(day: CalendarCell, maxCount: number) {
-    if (day.schedule_count <= 0 || maxCount <= 0) {
+    if (day.construction_count <= 0 || maxCount <= 0) {
         return 0;
     }
 
     if (maxCount <= 4) {
-        return Math.min(day.schedule_count, 4);
+        return Math.min(day.construction_count, 4);
     }
 
-    const ratio = day.schedule_count / maxCount;
+    const ratio = day.construction_count / maxCount;
 
     if (ratio <= 0.25) {
         return 1;
@@ -1889,7 +1889,7 @@ export default function ScheduleOverviewIndex({
     const selectedDay =
         calendarDays.find((day) => day.date === filters.date) ?? null;
     const cells = calendarCells(filters.date, todayDate, month, calendarDays);
-    const busiestScheduleCount = maxScheduleCount(cells);
+    const busiestConstructionCount = maxConstructionCount(cells);
     const previousMonthDate = adjacentMonthDate(filters.date, -1);
     const nextMonthDate = adjacentMonthDate(filters.date, 1);
     const selectedDetail = selectedDay ?? {
@@ -2070,7 +2070,7 @@ export default function ScheduleOverviewIndex({
                                         {cells.map((day) => (
                                             <div
                                                 key={day.date}
-                                                className={`relative min-h-[5.75rem] rounded-lg border p-1 shadow-sm transition sm:min-h-28 sm:p-2 dark:shadow-black/20 ${dayCellClass(day, busiestScheduleCount)}`}
+                                                className={`relative min-h-[5.75rem] rounded-lg border p-1 shadow-sm transition sm:min-h-28 sm:p-2 dark:shadow-black/20 ${dayCellClass(day, busiestConstructionCount)}`}
                                             >
                                                 <span className="relative flex items-center justify-between gap-1">
                                                     <Link
@@ -2085,7 +2085,7 @@ export default function ScheduleOverviewIndex({
                                                                 ? 'date'
                                                                 : undefined
                                                         }
-                                                        aria-label={`${day.date}: 混雑度${heatLabel(heatLevel(day, busiestScheduleCount))}、工事${day.construction_count}件、業務予定${day.business_count}件、業務連絡${day.internal_notice_count}件、持ち出し${day.carry_out_count}件、伝票${voucherConfirmationValue(day)}、未確認伝票${day.unconfirmed_voucher_count}件`}
+                                                        aria-label={`${day.date}: 混雑度${heatLabel(heatLevel(day, busiestConstructionCount))}、工事${day.construction_count}件、業務予定${day.business_count}件、業務連絡${day.internal_notice_count}件、持ち出し${day.carry_out_count}件、伝票${voucherConfirmationValue(day)}、未確認伝票${day.unconfirmed_voucher_count}件`}
                                                         preserveScroll
                                                     >
                                                         {day.isToday
