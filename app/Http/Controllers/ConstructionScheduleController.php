@@ -210,7 +210,12 @@ class ConstructionScheduleController extends Controller
         ]);
 
         $returnTo = $this->returnTo($request);
-        $this->flashToast('工事予定を作成しました。');
+        $this->flashToast('工事予定を作成しました。', resource: [
+            'type' => 'construction_schedule',
+            'id' => $schedule->id,
+            'action' => 'created',
+            'label' => $schedule->location,
+        ]);
 
         if ($returnTo !== null) {
             return redirect($returnTo);
@@ -264,7 +269,12 @@ class ConstructionScheduleController extends Controller
         ]);
 
         $returnTo = $this->returnTo($request);
-        $this->flashToast('工事予定を修正しました。');
+        $this->flashToast('工事予定を修正しました。', resource: [
+            'type' => 'construction_schedule',
+            'id' => $constructionSchedule->id,
+            'action' => 'updated',
+            'label' => $constructionSchedule->location,
+        ]);
 
         if ($returnTo !== null) {
             return redirect($returnTo);
@@ -286,7 +296,12 @@ class ConstructionScheduleController extends Controller
             'schedule_number' => $constructionSchedule->schedule_number,
         ]);
 
-        $this->flashToast('工事予定の番号を更新しました。');
+        $this->flashToast('工事予定の番号を更新しました。', resource: [
+            'type' => 'construction_schedule',
+            'id' => $constructionSchedule->id,
+            'action' => 'saved',
+            'label' => $constructionSchedule->location,
+        ]);
 
         return back();
     }

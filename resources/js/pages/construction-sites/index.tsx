@@ -6,8 +6,17 @@ import {
     edit as guideEdit,
     index as guideIndex,
 } from '@/actions/App/Http/Controllers/ConstructionSiteController';
+import {
+    RecentResourceBadge,
+    recentResourceHighlightClass,
+} from '@/components/recent-resource-feedback';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+    recentResourceMatches,
+    useRecentResource,
+} from '@/hooks/use-recent-resource';
+import { cn } from '@/lib/utils';
 import type { SiteGuideFile } from '@/types';
 
 type Props = {
@@ -31,6 +40,8 @@ export default function ConstructionSitesIndex({
     guideFiles,
     canManage,
 }: Props) {
+    const recentResource = useRecentResource();
+
     function deleteGuideFile(file: SiteGuideFile) {
         if (!confirm(`${file.name} を削除しますか？`)) {
             return;
@@ -80,71 +91,95 @@ export default function ConstructionSitesIndex({
                 </section>
 
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                    {guideFiles.map((file) => (
-                        <Card
-                            key={file.id}
-                            className="rounded-2xl border-neutral-200/80 shadow-sm dark:border-neutral-800"
-                        >
-                            <CardContent className="grid gap-4 p-4">
-                                <div className="flex min-w-0 items-start gap-3">
-                                    <div className="rounded-lg bg-neutral-100 p-2 dark:bg-neutral-900">
-                                        <FileText className="size-5 text-muted-foreground" />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <h2 className="truncate font-semibold">
-                                            {file.name}
-                                        </h2>
-                                        <p className="mt-1 text-xs text-muted-foreground">
-                                            {guideFileTypeLabel(file)}
-                                        </p>
-                                    </div>
-                                </div>
+                    {guideFiles.map((file) => {
+                        const isRecentResource = recentResourceMatches(
+                            recentResource,
+                            'site_guide_file',
+                            file.id,
+                        );
 
-                                <div className="flex flex-wrap gap-2">
-                                    <Button
-                                        asChild
-                                        variant="outline"
-                                        size="sm"
-                                        className="flex-1 justify-center"
-                                    >
-                                        <a
-                                            href={file.url}
-                                            target="_blank"
-                                            rel="noreferrer"
+                        return (
+                            <Card
+                                key={file.id}
+                                className={cn(
+                                    'rounded-2xl border-neutral-200/80 shadow-sm transition motion-reduce:transition-none dark:border-neutral-800',
+                                    isRecentResource &&
+                                        recentResourceHighlightClass,
+                                )}
+                            >
+                                <CardContent className="grid gap-4 p-4">
+                                    <div className="flex min-w-0 items-start gap-3">
+                                        <div className="rounded-lg bg-neutral-100 p-2 dark:bg-neutral-900">
+                                            <FileText className="size-5 text-muted-foreground" />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <h2 className="truncate font-semibold">
+                                                {file.name}
+                                            </h2>
+                                            <p className="mt-1 text-xs text-muted-foreground">
+                                                {guideFileTypeLabel(file)}
+                                            </p>
+                                        </div>
+                                        {isRecentResource &&
+                                            recentResource !== null && (
+                                                <RecentResourceBadge
+                                                    action={
+                                                        recentResource.action
+                                                    }
+                                                />
+                                            )}
+                                    </div>
+
+                                    <div className="flex flex-wrap gap-2">
+                                        <Button
+                                            asChild
+                                            variant="outline"
+                                            size="sm"
+                                            className="flex-1 justify-center"
                                         >
-                                            <ExternalLink className="size-4" />
-                                            確認
-                                        </a>
-                                    </Button>
-                                    {canManage && (
-                                        <>
-                                            <Button
-                                                asChild
-                                                variant="outline"
-                                                size="sm"
+                                            <a
+                                                href={file.url}
+                                                target="_blank"
+                                                rel="noreferrer"
                                             >
-                                                <Link href={guideEdit(file.id)}>
-                                                    <Pencil className="size-4" />
-                                                    編集
-                                                </Link>
-                                            </Button>
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() =>
-                                                    deleteGuideFile(file)
-                                                }
-                                            >
-                                                <Trash2 className="size-4" />
-                                                削除
-                                            </Button>
-                                        </>
-                                    )}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
+                                                <ExternalLink className="size-4" />
+                                                確認
+                                            </a>
+                                        </Button>
+                                        {canManage && (
+                                            <>
+                                                <Button
+                                                    asChild
+                                                    variant="outline"
+                                                    size="sm"
+                                                >
+                                                    <Link
+                                                        href={guideEdit(
+                                                            file.id,
+                                                        )}
+                                                    >
+                                                        <Pencil className="size-4" />
+                                                        編集
+                                                    </Link>
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                        deleteGuideFile(file)
+                                                    }
+                                                >
+                                                    <Trash2 className="size-4" />
+                                                    削除
+                                                </Button>
+                                            </>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
                     {guideFiles.length === 0 && (
                         <div className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground md:col-span-2 xl:col-span-3 dark:border-neutral-800">
                             現場案内図はまだ登録されていません。

@@ -44,7 +44,12 @@ class InternalNoticeController extends Controller
         ]);
 
         $returnTo = $this->returnTo($request);
-        $this->flashToast('業務連絡を作成しました。');
+        $this->flashToast('業務連絡を作成しました。', resource: [
+            'type' => 'internal_notice',
+            'id' => $notice->id,
+            'action' => 'created',
+            'label' => $notice->title,
+        ]);
 
         if ($returnTo !== null) {
             return redirect($returnTo);
@@ -94,7 +99,12 @@ class InternalNoticeController extends Controller
         ]);
 
         $returnTo = $this->returnTo($request);
-        $this->flashToast('業務連絡を修正しました。');
+        $this->flashToast('業務連絡を修正しました。', resource: [
+            'type' => 'internal_notice',
+            'id' => $internalNotice->id,
+            'action' => 'updated',
+            'label' => $internalNotice->title,
+        ]);
 
         if ($returnTo !== null) {
             return redirect($returnTo);

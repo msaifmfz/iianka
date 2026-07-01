@@ -88,7 +88,12 @@ class UserController extends Controller
             'is_hidden_from_workers' => $user->is_hidden_from_workers,
         ]);
 
-        $this->flashToast('ユーザーを追加しました。');
+        $this->flashToast('ユーザーを追加しました。', resource: [
+            'type' => 'admin_user',
+            'id' => $user->id,
+            'action' => 'created',
+            'label' => $user->name,
+        ]);
 
         return redirect()
             ->route('admin.users.index');
@@ -127,7 +132,12 @@ class UserController extends Controller
             'changed' => array_values(array_diff(array_keys($user->getChanges()), ['updated_at'])),
         ]);
 
-        $this->flashToast('ユーザー情報を修正しました。');
+        $this->flashToast('ユーザー情報を修正しました。', resource: [
+            'type' => 'admin_user',
+            'id' => $user->id,
+            'action' => 'updated',
+            'label' => $user->name,
+        ]);
 
         return redirect()
             ->route('admin.users.index');

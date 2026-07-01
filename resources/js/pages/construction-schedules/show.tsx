@@ -6,8 +6,17 @@ import {
     index as scheduleIndex,
 } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
 import { FloatingBackButton } from '@/components/floating-back-button';
+import {
+    RecentResourceBadge,
+    recentResourceHighlightClass,
+} from '@/components/recent-resource-feedback';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    recentResourceMatches,
+    useRecentResource,
+} from '@/hooks/use-recent-resource';
+import { cn } from '@/lib/utils';
 import type { ConstructionSchedule } from '@/types';
 
 type Props = {
@@ -41,6 +50,12 @@ export default function ConstructionScheduleShow({
     canManage,
     returnTo,
 }: Props) {
+    const recentResource = useRecentResource();
+    const isRecentResource = recentResourceMatches(
+        recentResource,
+        'construction_schedule',
+        schedule.id,
+    );
     const primaryGuideFile = schedule.guide_files[0] ?? null;
     const guideFilesHref =
         schedule.guide_files.length === 1 && primaryGuideFile !== null
@@ -100,7 +115,12 @@ export default function ConstructionScheduleShow({
                     )}
                 </div>
 
-                <Card className="xl:rounded-3xl">
+                <Card
+                    className={cn(
+                        'transition motion-reduce:transition-none xl:rounded-3xl',
+                        isRecentResource && recentResourceHighlightClass,
+                    )}
+                >
                     <CardHeader className="xl:px-8">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                             <div>
@@ -114,6 +134,11 @@ export default function ConstructionScheduleShow({
                             <span className="rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-900 dark:bg-amber-950 dark:text-amber-200">
                                 {statusLabels[schedule.status]}
                             </span>
+                            {isRecentResource && recentResource !== null && (
+                                <RecentResourceBadge
+                                    action={recentResource.action}
+                                />
+                            )}
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-6 xl:px-8">

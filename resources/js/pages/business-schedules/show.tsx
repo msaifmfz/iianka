@@ -6,8 +6,17 @@ import {
 } from '@/actions/App/Http/Controllers/BusinessScheduleController';
 import { index as scheduleIndex } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
 import { FloatingBackButton } from '@/components/floating-back-button';
+import {
+    RecentResourceBadge,
+    recentResourceHighlightClass,
+} from '@/components/recent-resource-feedback';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    recentResourceMatches,
+    useRecentResource,
+} from '@/hooks/use-recent-resource';
+import { cn } from '@/lib/utils';
 import type { BusinessSchedule } from '@/types';
 
 type Props = {
@@ -30,6 +39,12 @@ export default function BusinessScheduleShow({
     canManage,
     returnTo,
 }: Props) {
+    const recentResource = useRecentResource();
+    const isRecentResource = recentResourceMatches(
+        recentResource,
+        'business_schedule',
+        schedule.id,
+    );
     const fallbackReturnTo = scheduleIndex({
         query: {
             range: 'today',
@@ -82,7 +97,12 @@ export default function BusinessScheduleShow({
                     )}
                 </div>
 
-                <Card className="xl:rounded-3xl">
+                <Card
+                    className={cn(
+                        'transition motion-reduce:transition-none xl:rounded-3xl',
+                        isRecentResource && recentResourceHighlightClass,
+                    )}
+                >
                     <CardHeader className="xl:px-8">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                             <div>
@@ -97,6 +117,11 @@ export default function BusinessScheduleShow({
                                 <BriefcaseBusiness className="size-4" />
                                 業務
                             </span>
+                            {isRecentResource && recentResource !== null && (
+                                <RecentResourceBadge
+                                    action={recentResource.action}
+                                />
+                            )}
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-6 xl:px-8">

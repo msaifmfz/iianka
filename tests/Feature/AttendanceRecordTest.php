@@ -123,7 +123,11 @@ test('admins can mark and clear attendance records', function (): void {
         ])
         ->assertRedirect()
         ->assertInertiaFlash('toast.type', 'success')
-        ->assertInertiaFlash('toast.message', '出勤状況を更新しました。');
+        ->assertInertiaFlash('toast.message', '出勤状況を更新しました。')
+        ->assertInertiaFlash('toast.resource.type', 'attendance_cell')
+        ->assertInertiaFlash('toast.resource.id', "{$worker->id}-2026-05-04")
+        ->assertInertiaFlash('toast.resource.action', 'saved')
+        ->assertInertiaFlash('toast.resource.label', "{$worker->name} / 2026-05-04");
 
     $record = AttendanceRecord::query()->sole();
 

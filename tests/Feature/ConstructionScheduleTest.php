@@ -659,7 +659,10 @@ test('admins can create schedules with assigned users and guide files', function
         ])
         ->assertRedirect()
         ->assertInertiaFlash('toast.type', 'success')
-        ->assertInertiaFlash('toast.message', '工事予定を作成しました。');
+        ->assertInertiaFlash('toast.message', '工事予定を作成しました。')
+        ->assertInertiaFlash('toast.resource.type', 'construction_schedule')
+        ->assertInertiaFlash('toast.resource.action', 'created')
+        ->assertInertiaFlash('toast.resource.label', '東京タワー改修');
 
     $schedule = ConstructionSchedule::query()->where('location', '東京タワー改修')->firstOrFail();
     $uploadedGuide = SiteGuideFile::query()
@@ -782,7 +785,11 @@ test('admins can update schedule subcontractors separately from assigned users',
         ])
         ->assertRedirect(route('construction-schedules.show', $schedule))
         ->assertInertiaFlash('toast.type', 'success')
-        ->assertInertiaFlash('toast.message', '工事予定を修正しました。');
+        ->assertInertiaFlash('toast.message', '工事予定を修正しました。')
+        ->assertInertiaFlash('toast.resource.type', 'construction_schedule')
+        ->assertInertiaFlash('toast.resource.id', $schedule->id)
+        ->assertInertiaFlash('toast.resource.action', 'updated')
+        ->assertInertiaFlash('toast.resource.label', '更新対象現場');
 
     $schedule->refresh();
 
@@ -1029,7 +1036,11 @@ test('admins can update subcontractors from schedule forms', function (): void {
         ])
         ->assertRedirect(route('construction-schedules.create'))
         ->assertInertiaFlash('toast.type', 'success')
-        ->assertInertiaFlash('toast.message', '下請けを修正しました。');
+        ->assertInertiaFlash('toast.message', '下請けを修正しました。')
+        ->assertInertiaFlash('toast.resource.type', 'construction_subcontractor')
+        ->assertInertiaFlash('toast.resource.id', $subcontractor->id)
+        ->assertInertiaFlash('toast.resource.action', 'updated')
+        ->assertInertiaFlash('toast.resource.label', '更新後 下請け');
 
     expect($subcontractor->refresh())
         ->name->toBe('更新後 下請け')
@@ -1157,7 +1168,11 @@ test('admins can update a construction schedule number from the index flow', fun
             'date' => '2026-05-04',
         ]))
         ->assertInertiaFlash('toast.type', 'success')
-        ->assertInertiaFlash('toast.message', '工事予定の番号を更新しました。');
+        ->assertInertiaFlash('toast.message', '工事予定の番号を更新しました。')
+        ->assertInertiaFlash('toast.resource.type', 'construction_schedule')
+        ->assertInertiaFlash('toast.resource.id', $schedule->id)
+        ->assertInertiaFlash('toast.resource.action', 'saved')
+        ->assertInertiaFlash('toast.resource.label', $schedule->location);
 
     expect($schedule->fresh()->schedule_number)->toBe(9);
 });
@@ -1184,7 +1199,11 @@ test('admins can update a business schedule number from the index flow', functio
             'type' => 'business',
         ]))
         ->assertInertiaFlash('toast.type', 'success')
-        ->assertInertiaFlash('toast.message', '業務予定の番号を更新しました。');
+        ->assertInertiaFlash('toast.message', '業務予定の番号を更新しました。')
+        ->assertInertiaFlash('toast.resource.type', 'business_schedule')
+        ->assertInertiaFlash('toast.resource.id', $schedule->id)
+        ->assertInertiaFlash('toast.resource.action', 'saved')
+        ->assertInertiaFlash('toast.resource.label', $schedule->location);
 
     expect($schedule->fresh()->schedule_number)->toBe(8);
 });
@@ -1448,7 +1467,10 @@ test('admins can create business schedules with assigned users', function (): vo
             'type' => 'business',
         ]))
         ->assertInertiaFlash('toast.type', 'success')
-        ->assertInertiaFlash('toast.message', '業務予定を作成しました。');
+        ->assertInertiaFlash('toast.message', '業務予定を作成しました。')
+        ->assertInertiaFlash('toast.resource.type', 'business_schedule')
+        ->assertInertiaFlash('toast.resource.action', 'created')
+        ->assertInertiaFlash('toast.resource.label', '本社会議室');
 
     $schedule = BusinessSchedule::query()->where('location', '本社会議室')->firstOrFail();
 

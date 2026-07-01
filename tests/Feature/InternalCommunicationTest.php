@@ -30,7 +30,10 @@ test('admins can create internal notices with assigned users', function (): void
             'type' => 'internal_notice',
         ]))
         ->assertInertiaFlash('toast.type', 'success')
-        ->assertInertiaFlash('toast.message', '業務連絡を作成しました。');
+        ->assertInertiaFlash('toast.message', '業務連絡を作成しました。')
+        ->assertInertiaFlash('toast.resource.type', 'internal_notice')
+        ->assertInertiaFlash('toast.resource.action', 'created')
+        ->assertInertiaFlash('toast.resource.label', '健康診断');
 
     $notice = InternalNotice::query()->where('title', '健康診断')->firstOrFail();
 
@@ -52,7 +55,10 @@ test('admins can create cleaning duty rules with assigned users', function (): v
         ])
         ->assertRedirect(route('cleaning-duty-rules.index'))
         ->assertInertiaFlash('toast.type', 'success')
-        ->assertInertiaFlash('toast.message', '掃除当番設定を作成しました。');
+        ->assertInertiaFlash('toast.message', '掃除当番設定を作成しました。')
+        ->assertInertiaFlash('toast.resource.type', 'cleaning_duty_rule')
+        ->assertInertiaFlash('toast.resource.action', 'created')
+        ->assertInertiaFlash('toast.resource.label', '掃除当番');
 
     $rule = CleaningDutyRule::query()->where('label', '掃除当番')->firstOrFail();
 
@@ -79,7 +85,11 @@ test('admins can update and delete cleaning duty rules', function (): void {
         ])
         ->assertRedirect(route('cleaning-duty-rules.index'))
         ->assertInertiaFlash('toast.type', 'success')
-        ->assertInertiaFlash('toast.message', '掃除当番設定を修正しました。');
+        ->assertInertiaFlash('toast.message', '掃除当番設定を修正しました。')
+        ->assertInertiaFlash('toast.resource.type', 'cleaning_duty_rule')
+        ->assertInertiaFlash('toast.resource.id', $rule->id)
+        ->assertInertiaFlash('toast.resource.action', 'updated')
+        ->assertInertiaFlash('toast.resource.label', '玄関掃除');
 
     $rule->refresh();
 

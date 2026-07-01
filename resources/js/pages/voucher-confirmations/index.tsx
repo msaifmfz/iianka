@@ -12,12 +12,22 @@ import {
     index as voucherIndex,
     update as voucherUpdate,
 } from '@/actions/App/Http/Controllers/ConstructionScheduleVoucherController';
+import {
+    RecentResourceBadge,
+    recentResourceHighlightClass,
+} from '@/components/recent-resource-feedback';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RequiredBadge } from '@/components/ui/label';
+import {
+    recentResourceMatches,
+    useRecentResource,
+} from '@/hooks/use-recent-resource';
 import { businessDateString } from '@/lib/dates';
+import { cn } from '@/lib/utils';
 import type { VoucherConfirmationSchedule } from '@/types';
+import type { FlashResource } from '@/types/ui';
 
 type CheckedFilter = 'all' | 'unchecked' | 'checked';
 type DayFilter = string | 'all';
@@ -198,15 +208,22 @@ function StatusBadge({ schedule }: { schedule: VoucherConfirmationSchedule }) {
 function VoucherScheduleCard({
     schedule,
     canManage,
+    recentResource,
 }: {
     schedule: VoucherConfirmationSchedule;
     canManage: boolean;
+    recentResource: FlashResource | null;
 }) {
     const { data, setData, patch, processing, errors } = useForm<VoucherForm>({
         voucher_checked: schedule.voucher_checked,
         voucher_note: schedule.voucher_note ?? '',
     });
     const checkedAt = formatDateTime(schedule.voucher_checked_at);
+    const isRecentResource = recentResourceMatches(
+        recentResource,
+        'voucher_confirmation',
+        schedule.id,
+    );
 
     function submit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -217,10 +234,22 @@ function VoucherScheduleCard({
     }
 
     return (
-        <Card className="overflow-hidden">
+        <Card
+            className={cn(
+                'overflow-hidden transition motion-reduce:transition-none',
+                isRecentResource && recentResourceHighlightClass,
+            )}
+        >
             <CardHeader className="gap-4 md:flex-row md:items-start md:justify-between">
                 <div className="min-w-0 space-y-2">
-                    <StatusBadge schedule={schedule} />
+                    <div className="flex flex-wrap items-center gap-2">
+                        <StatusBadge schedule={schedule} />
+                        {isRecentResource && recentResource !== null && (
+                            <RecentResourceBadge
+                                action={recentResource.action}
+                            />
+                        )}
+                    </div>
                     <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                         <span>{formatDate(schedule.scheduled_on)}</span>
                         <span>{schedule.time}</span>
@@ -329,6 +358,7 @@ export default function VoucherConfirmationsIndex({
     schedules,
     canManage,
 }: Props) {
+    const recentResource = useRecentResource();
     const previousMonthDate = adjacentMonthDate(filters.date, -1);
     const nextMonthDate = adjacentMonthDate(filters.date, 1);
     const monthTitle = new Intl.DateTimeFormat('ja-JP', {
@@ -502,6 +532,7 @@ export default function VoucherConfirmationsIndex({
                                 key={schedule.id}
                                 schedule={schedule}
                                 canManage={canManage}
+                                recentResource={recentResource}
                             />
                         ))}
                     </div>

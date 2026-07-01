@@ -51,7 +51,12 @@ class CleaningDutyRuleController extends Controller
             'assigned_user_ids' => $request->input('assigned_user_ids', []),
         ]);
 
-        $this->flashToast('掃除当番設定を作成しました。');
+        $this->flashToast('掃除当番設定を作成しました。', resource: [
+            'type' => 'cleaning_duty_rule',
+            'id' => $rule->id,
+            'action' => 'created',
+            'label' => $rule->label,
+        ]);
 
         return redirect()
             ->route('cleaning-duty-rules.index');
@@ -92,7 +97,12 @@ class CleaningDutyRuleController extends Controller
             'assigned_user_ids' => $request->input('assigned_user_ids', []),
         ]);
 
-        $this->flashToast('掃除当番設定を修正しました。');
+        $this->flashToast('掃除当番設定を修正しました。', resource: [
+            'type' => 'cleaning_duty_rule',
+            'id' => $cleaningDutyRule->id,
+            'action' => 'updated',
+            'label' => $cleaningDutyRule->label,
+        ]);
 
         return redirect()
             ->route('cleaning-duty-rules.index');

@@ -48,7 +48,10 @@ test('admins can create users', function (): void {
         ])
         ->assertRedirect(route('admin.users.index'))
         ->assertInertiaFlash('toast.type', 'success')
-        ->assertInertiaFlash('toast.message', 'ユーザーを追加しました。');
+        ->assertInertiaFlash('toast.message', 'ユーザーを追加しました。')
+        ->assertInertiaFlash('toast.resource.type', 'admin_user')
+        ->assertInertiaFlash('toast.resource.action', 'created')
+        ->assertInertiaFlash('toast.resource.label', 'New Member');
 
     expect(User::query()->where('login_id', 'new-member')->where('role', UserRole::Editor->value)->exists())->toBeTrue()
         ->and(User::query()->where('login_id', 'new-member')->value('email'))->toBeNull()
@@ -71,7 +74,11 @@ test('admins can update user roles', function (): void {
         ])
         ->assertRedirect(route('admin.users.index'))
         ->assertInertiaFlash('toast.type', 'success')
-        ->assertInertiaFlash('toast.message', 'ユーザー情報を修正しました。');
+        ->assertInertiaFlash('toast.message', 'ユーザー情報を修正しました。')
+        ->assertInertiaFlash('toast.resource.type', 'admin_user')
+        ->assertInertiaFlash('toast.resource.id', $member->id)
+        ->assertInertiaFlash('toast.resource.action', 'updated')
+        ->assertInertiaFlash('toast.resource.label', 'Promoted Member');
 
     $member->refresh();
 

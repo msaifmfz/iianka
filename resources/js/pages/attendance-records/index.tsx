@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import {
     CalendarCheck2,
+    CheckCircle2,
     ChevronLeft,
     ChevronRight,
     Eraser,
@@ -17,7 +18,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RequiredBadge } from '@/components/ui/label';
+import {
+    recentResourceMatches,
+    useRecentResource,
+} from '@/hooks/use-recent-resource';
 import { businessDateString } from '@/lib/dates';
+import { cn } from '@/lib/utils';
 import type {
     AttendanceRecord,
     AttendanceStatus,
@@ -148,6 +154,7 @@ function AttendanceCell({
     record,
     canManage,
     showWeekday = false,
+    isRecentResource = false,
     onSelect,
     onClear,
 }: {
@@ -156,6 +163,7 @@ function AttendanceCell({
     record?: AttendanceRecord;
     canManage: boolean;
     showWeekday?: boolean;
+    isRecentResource?: boolean;
     onSelect: (
         user: ConstructionUser,
         day: AttendanceDay,
@@ -165,6 +173,9 @@ function AttendanceCell({
 }) {
     const todayClass = day.is_today
         ? 'ring-2 ring-amber-500 ring-offset-2 ring-offset-white dark:ring-amber-300 dark:ring-offset-neutral-950'
+        : '';
+    const recentClass = isRecentResource
+        ? 'ring-2 ring-emerald-500 ring-offset-2 ring-offset-white dark:ring-emerald-300 dark:ring-offset-neutral-950'
         : '';
     const content = (
         <>
@@ -182,11 +193,21 @@ function AttendanceCell({
 
     if (!canManage) {
         return (
-            <div
-                className={`grid ${showWeekday ? 'h-16' : 'h-14'} place-items-center content-center gap-0.5 rounded-md border px-1 text-center ${statusClass(record?.status)} ${showWeekday ? todayClass : ''}`}
-                title={record?.note ?? undefined}
-            >
-                {content}
+            <div className="relative">
+                <div
+                    className={cn(
+                        `grid ${showWeekday ? 'h-16' : 'h-14'} place-items-center content-center gap-0.5 rounded-md border px-1 text-center ${statusClass(record?.status)} ${showWeekday ? todayClass : ''}`,
+                        recentClass,
+                    )}
+                    title={record?.note ?? undefined}
+                >
+                    {content}
+                </div>
+                {isRecentResource && (
+                    <span className="absolute -bottom-1 -left-1 grid size-5 place-items-center rounded-full bg-emerald-600 text-white shadow-sm dark:bg-emerald-400 dark:text-emerald-950">
+                        <CheckCircle2 className="size-3" />
+                    </span>
+                )}
             </div>
         );
     }
@@ -195,12 +216,20 @@ function AttendanceCell({
         <div className="relative">
             <button
                 type="button"
-                className={`grid ${showWeekday ? 'h-16' : 'h-14'} w-full place-items-center content-center gap-0.5 rounded-md border px-1 text-center transition ${statusClass(record?.status)} ${showWeekday ? todayClass : ''}`}
+                className={cn(
+                    `grid ${showWeekday ? 'h-16' : 'h-14'} w-full place-items-center content-center gap-0.5 rounded-md border px-1 text-center transition motion-reduce:transition-none ${statusClass(record?.status)} ${showWeekday ? todayClass : ''}`,
+                    recentClass,
+                )}
                 onClick={() => onSelect(user, day, record)}
                 title={record?.note ?? undefined}
             >
                 {content}
             </button>
+            {isRecentResource && (
+                <span className="absolute -bottom-1 -left-1 grid size-5 place-items-center rounded-full bg-emerald-600 text-white shadow-sm dark:bg-emerald-400 dark:text-emerald-950">
+                    <CheckCircle2 className="size-3" />
+                </span>
+            )}
             {record ? (
                 <button
                     type="button"
@@ -222,6 +251,7 @@ export default function AttendanceRecordIndex({
     records,
     canManage,
 }: Props) {
+    const recentResource = useRecentResource();
     const [selectedRecord, setSelectedRecord] =
         useState<AttendanceRecord | null>(null);
     const [selectedUser, setSelectedUser] = useState<ConstructionUser | null>(
@@ -468,6 +498,11 @@ export default function AttendanceRecordIndex({
                                                 recordKey(user.id, day.date),
                                             )}
                                             canManage={canManage}
+                                            isRecentResource={recentResourceMatches(
+                                                recentResource,
+                                                'attendance_cell',
+                                                recordKey(user.id, day.date),
+                                            )}
                                             onSelect={openEditor}
                                             onClear={clearRecord}
                                         />
@@ -507,6 +542,11 @@ export default function AttendanceRecordIndex({
                                             )}
                                             canManage={canManage}
                                             showWeekday
+                                            isRecentResource={recentResourceMatches(
+                                                recentResource,
+                                                'attendance_cell',
+                                                recordKey(user.id, day.date),
+                                            )}
                                             onSelect={openEditor}
                                             onClear={clearRecord}
                                         />

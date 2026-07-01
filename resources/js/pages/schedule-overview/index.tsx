@@ -25,6 +25,7 @@ import {
     edit as editInternalNotice,
 } from '@/actions/App/Http/Controllers/InternalNoticeController';
 import { FloatingBackButton } from '@/components/floating-back-button';
+import { recentResourceHighlightClass } from '@/components/recent-resource-feedback';
 import {
     ScheduleDetailDialog,
     assignedUsersLabel,
@@ -40,10 +41,15 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import {
+    recentResourceMatches,
+    useRecentResource,
+} from '@/hooks/use-recent-resource';
 import { businessDateString } from '@/lib/dates';
 import { rememberScheduleOverviewEditReturn } from '@/lib/schedule-overview-edit-return';
 import { index as overviewIndex } from '@/routes/schedule-overview';
 import type { AttendanceLeaveRecord, ConstructionUser } from '@/types';
+import type { FlashResource, FlashResourceType } from '@/types/ui';
 
 type CalendarDay = {
     date: string;
@@ -411,6 +417,18 @@ function eventTypeClass(type: TimelineEventType) {
 
 function eventKey(event: TimelineEvent) {
     return `${event.type}-${event.id}`;
+}
+
+function eventResourceType(event: TimelineEvent): FlashResourceType {
+    if (event.type === 'construction') {
+        return 'construction_schedule';
+    }
+
+    if (event.type === 'business') {
+        return 'business_schedule';
+    }
+
+    return 'internal_notice';
 }
 
 function highlightedScheduleKey(highlightedSchedule: HighlightedSchedule) {
@@ -798,6 +816,7 @@ function TimelineEventBlock({
     lane,
     isHighlighted,
     isSearchHighlighted,
+    isRecentResource,
     onToggleHighlight,
     onOpenDetail,
     canManageSchedules,
@@ -808,6 +827,7 @@ function TimelineEventBlock({
     lane: number;
     isHighlighted: boolean;
     isSearchHighlighted: boolean;
+    isRecentResource: boolean;
     onToggleHighlight: (event: TimelineEvent) => void;
     onOpenDetail: (event: TimelineEvent) => void;
     canManageSchedules: boolean;
@@ -830,9 +850,11 @@ function TimelineEventBlock({
     const hasMultipleAssignedUsers = event.assigned_users.length > 1;
     const highlightClass = isSearchHighlighted
         ? 'z-30 border-red-500 ring-4 ring-red-500 ring-offset-2 ring-offset-white dark:border-red-400 dark:ring-red-400 dark:ring-offset-neutral-950'
-        : isHighlighted
-          ? 'z-20 ring-2 ring-neutral-950 ring-offset-2 dark:ring-white dark:ring-offset-neutral-950'
-          : 'z-10';
+        : isRecentResource
+          ? `z-20 ${recentResourceHighlightClass}`
+          : isHighlighted
+            ? 'z-20 ring-2 ring-neutral-950 ring-offset-2 dark:ring-white dark:ring-offset-neutral-950'
+            : 'z-10';
     const className = `absolute min-w-12 rounded-md border text-left shadow-sm transition ${eventTypeClass(event.type)} ${hasOpenEnd ? 'border-dashed' : ''} ${highlightClass}`;
     const style = {
         ...eventPositionStyle(event, bounds, lane),
@@ -935,6 +957,7 @@ function UntimedEventChip({
     event,
     isHighlighted,
     isSearchHighlighted,
+    isRecentResource,
     onToggleHighlight,
     onOpenDetail,
     canManageSchedules,
@@ -943,6 +966,7 @@ function UntimedEventChip({
     event: TimelineEvent;
     isHighlighted: boolean;
     isSearchHighlighted: boolean;
+    isRecentResource: boolean;
     onToggleHighlight: (event: TimelineEvent) => void;
     onOpenDetail: (event: TimelineEvent) => void;
     canManageSchedules: boolean;
@@ -964,9 +988,11 @@ function UntimedEventChip({
     const hasMultipleAssignedUsers = event.assigned_users.length > 1;
     const highlightClass = isSearchHighlighted
         ? 'border-red-500 ring-4 ring-red-500 ring-offset-2 ring-offset-white dark:border-red-400 dark:ring-red-400 dark:ring-offset-neutral-950'
-        : isHighlighted
-          ? 'ring-2 ring-neutral-950 ring-offset-2 dark:ring-white dark:ring-offset-neutral-950'
-          : '';
+        : isRecentResource
+          ? recentResourceHighlightClass
+          : isHighlighted
+            ? 'ring-2 ring-neutral-950 ring-offset-2 dark:ring-white dark:ring-offset-neutral-950'
+            : '';
     const className = `relative inline-flex max-w-full items-center gap-1 rounded-md border text-left text-xs font-semibold transition ${eventTypeClass(event.type)} ${highlightClass}`;
     const content = <span className="min-w-0 truncate">{event.title}</span>;
 
@@ -1054,12 +1080,14 @@ function DayTimeline({
     selectedDayTimeline,
     canManageSchedules,
     highlightedSchedule,
+    recentResource,
     returnTo,
 }: {
     selectedDetail: CalendarDay;
     selectedDayTimeline: SelectedDayTimeline;
     canManageSchedules: boolean;
     highlightedSchedule: HighlightedSchedule;
+    recentResource: FlashResource | null;
     returnTo: string;
 }) {
     const bounds = timelineBounds(selectedDayTimeline.events);
@@ -1612,6 +1640,13 @@ function DayTimeline({
                                                         searchHighlightedEventKey ===
                                                         eventKey(event)
                                                     }
+                                                    isRecentResource={recentResourceMatches(
+                                                        recentResource,
+                                                        eventResourceType(
+                                                            event,
+                                                        ),
+                                                        event.id,
+                                                    )}
                                                     onToggleHighlight={
                                                         toggleHighlightedEvent
                                                     }
@@ -1759,6 +1794,13 @@ function DayTimeline({
                                                             searchHighlightedEventKey ===
                                                             eventKey(event)
                                                         }
+                                                        isRecentResource={recentResourceMatches(
+                                                            recentResource,
+                                                            eventResourceType(
+                                                                event,
+                                                            ),
+                                                            event.id,
+                                                        )}
                                                         onToggleHighlight={
                                                             toggleHighlightedEvent
                                                         }
@@ -1875,6 +1917,7 @@ export default function ScheduleOverviewIndex({
     returnTo,
 }: Props) {
     const { url } = usePage();
+    const recentResource = useRecentResource();
     const selectedDay =
         calendarDays.find((day) => day.date === filters.date) ?? null;
     const cells = calendarCells(filters.date, todayDate, month, calendarDays);
@@ -2223,6 +2266,7 @@ export default function ScheduleOverviewIndex({
                             selectedDayTimeline={selectedDayTimeline}
                             canManageSchedules={canManageSchedules}
                             highlightedSchedule={highlightedSchedule}
+                            recentResource={recentResource}
                             returnTo={url}
                         />
                     </div>

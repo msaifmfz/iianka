@@ -69,7 +69,12 @@ class BusinessScheduleController extends Controller
         ]);
 
         $returnTo = $this->returnTo($request);
-        $this->flashToast('業務予定を作成しました。');
+        $this->flashToast('業務予定を作成しました。', resource: [
+            'type' => 'business_schedule',
+            'id' => $schedule->id,
+            'action' => 'created',
+            'label' => $schedule->location,
+        ]);
 
         if ($returnTo !== null) {
             return redirect($returnTo);
@@ -120,7 +125,12 @@ class BusinessScheduleController extends Controller
         ]);
 
         $returnTo = $this->returnTo($request);
-        $this->flashToast('業務予定を修正しました。');
+        $this->flashToast('業務予定を修正しました。', resource: [
+            'type' => 'business_schedule',
+            'id' => $businessSchedule->id,
+            'action' => 'updated',
+            'label' => $businessSchedule->location,
+        ]);
 
         if ($returnTo !== null) {
             return redirect($returnTo);
@@ -142,7 +152,12 @@ class BusinessScheduleController extends Controller
             'schedule_number' => $businessSchedule->schedule_number,
         ]);
 
-        $this->flashToast('業務予定の番号を更新しました。');
+        $this->flashToast('業務予定の番号を更新しました。', resource: [
+            'type' => 'business_schedule',
+            'id' => $businessSchedule->id,
+            'action' => 'saved',
+            'label' => $businessSchedule->location,
+        ]);
 
         return back();
     }

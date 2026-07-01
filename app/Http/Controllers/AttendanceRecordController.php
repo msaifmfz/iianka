@@ -76,7 +76,14 @@ class AttendanceRecordController extends Controller
             'status' => $record->status,
         ]);
 
-        $this->flashToast('出勤状況を更新しました。');
+        $record->load('user:id,name,email,is_hidden_from_workers');
+
+        $this->flashToast('出勤状況を更新しました。', resource: [
+            'type' => 'attendance_cell',
+            'id' => "{$record->user_id}-{$record->work_date->toDateString()}",
+            'action' => 'saved',
+            'label' => "{$record->user->name} / {$record->work_date->toDateString()}",
+        ]);
 
         return back();
     }

@@ -44,6 +44,10 @@ import {
     edit as internalNoticeEdit,
     show as internalNoticeShow,
 } from '@/actions/App/Http/Controllers/InternalNoticeController';
+import {
+    RecentResourceBadge,
+    recentResourceHighlightClass,
+} from '@/components/recent-resource-feedback';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -55,12 +59,18 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import {
+    recentResourceMatches,
+    useRecentResource,
+} from '@/hooks/use-recent-resource';
 import { businessDateString } from '@/lib/dates';
+import { cn } from '@/lib/utils';
 import type {
     ConstructionSchedule,
     ConstructionUser,
     ScheduleEvent,
 } from '@/types';
+import type { FlashResource, FlashResourceType } from '@/types/ui';
 
 type CalendarDay = {
     date: string;
@@ -318,6 +328,26 @@ function sortSchedulesByPriority(schedules: ScheduleEvent[]) {
 
 function scheduleKey(schedule: ScheduleEvent) {
     return `${schedule.type}-${schedule.id}-${schedule.scheduled_on}`;
+}
+
+function scheduleResourceType(schedule: ScheduleEvent): FlashResourceType {
+    if (schedule.type === 'construction') {
+        return 'construction_schedule';
+    }
+
+    if (schedule.type === 'business') {
+        return 'business_schedule';
+    }
+
+    if (schedule.type === 'internal_notice') {
+        return 'internal_notice';
+    }
+
+    return 'cleaning_duty_rule';
+}
+
+function scheduleResourceId(schedule: ScheduleEvent) {
+    return schedule.type === 'cleaning_duty' ? schedule.rule_id : schedule.id;
 }
 
 function scheduleNumberClasses(schedule: ScheduleEvent) {
@@ -622,11 +652,13 @@ function ScheduleCard({
     canManage,
     currentUserId,
     returnTo,
+    recentResource,
 }: {
     schedule: ScheduleEvent;
     canManage: boolean;
     currentUserId: number;
     returnTo: string;
+    recentResource: FlashResource | null;
 }) {
     const scheduleDetail =
         schedule.type === 'construction'
@@ -709,6 +741,11 @@ function ScheduleCard({
         (schedule.type === 'construction' || schedule.type === 'business')
             ? schedule
             : null;
+    const isRecentResource = recentResourceMatches(
+        recentResource,
+        scheduleResourceType(schedule),
+        scheduleResourceId(schedule),
+    );
     function deleteSchedule() {
         const confirmation = scheduleDeleteConfirmation(schedule);
 
@@ -825,6 +862,11 @@ function ScheduleCard({
                                     : '自分'}
                             </span>
                         )}
+                        {isRecentResource && recentResource !== null && (
+                            <RecentResourceBadge
+                                action={recentResource.action}
+                            />
+                        )}
                     </div>
                 </div>
                 <div className="flex flex-wrap gap-2 text-sm text-neutral-700 dark:text-neutral-300">
@@ -896,7 +938,13 @@ function ScheduleCard({
 
     return (
         <Card
-            className={`gap-0 overflow-hidden py-0 shadow-sm transition hover:shadow-md ${isAssignedToCurrentUser ? 'border-amber-200 bg-amber-50/70 hover:border-amber-300 dark:border-amber-900/60 dark:bg-amber-950/10 dark:hover:border-amber-800' : 'border-neutral-200 bg-white/95 hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-950/85 dark:hover:border-neutral-700'}`}
+            className={cn(
+                'gap-0 overflow-hidden py-0 shadow-sm transition hover:shadow-md motion-reduce:transition-none',
+                isAssignedToCurrentUser
+                    ? 'border-amber-200 bg-amber-50/70 hover:border-amber-300 dark:border-amber-900/60 dark:bg-amber-950/10 dark:hover:border-amber-800'
+                    : 'border-neutral-200 bg-white/95 hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-950/85 dark:hover:border-neutral-700',
+                isRecentResource && recentResourceHighlightClass,
+            )}
         >
             <div>{cardBody}</div>
             <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
@@ -967,6 +1015,7 @@ function ScheduleSection({
     canManage,
     currentUserId,
     returnTo,
+    recentResource,
     id,
     sectionRef,
 }: {
@@ -976,6 +1025,7 @@ function ScheduleSection({
     canManage: boolean;
     currentUserId: number;
     returnTo: string;
+    recentResource: FlashResource | null;
     id?: string;
     sectionRef?: RefObject<HTMLElement | null>;
 }) {
@@ -1005,6 +1055,7 @@ function ScheduleSection({
                             canManage={canManage}
                             currentUserId={currentUserId}
                             returnTo={returnTo}
+                            recentResource={recentResource}
                         />
                     ))}
                 </div>
@@ -1025,6 +1076,7 @@ export default function ConstructionSchedulesIndex({
     userOptions,
 }: Props) {
     const page = usePage();
+    const recentResource = useRecentResource();
     const {
         auth: { permissions, user },
     } = page.props;
@@ -1783,6 +1835,7 @@ export default function ConstructionSchedulesIndex({
                                 canManage={canManage}
                                 currentUserId={user.id}
                                 returnTo={returnTo}
+                                recentResource={recentResource}
                             />
                         ) : (
                             <>
@@ -1795,6 +1848,7 @@ export default function ConstructionSchedulesIndex({
                                     canManage={canManage}
                                     currentUserId={user.id}
                                     returnTo={returnTo}
+                                    recentResource={recentResource}
                                 />
                                 <ScheduleSection
                                     title="全体の予定"
@@ -1803,6 +1857,7 @@ export default function ConstructionSchedulesIndex({
                                     canManage={canManage}
                                     currentUserId={user.id}
                                     returnTo={returnTo}
+                                    recentResource={recentResource}
                                 />
                             </>
                         )}

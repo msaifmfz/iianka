@@ -43,13 +43,20 @@ abstract class Controller
 
     /**
      * @param  'success'|'error'|'warning'|'info'  $type
+     * @param  array{type: string, id: int|string, action: 'created'|'updated'|'saved', label: string}|null  $resource
      */
-    protected function flashToast(string $message, string $type = 'success'): void
+    protected function flashToast(string $message, string $type = 'success', ?array $resource = null): void
     {
-        Inertia::flash('toast', [
+        $toast = [
             'id' => (string) Str::uuid(),
             'type' => $type,
             'message' => $message,
-        ]);
+        ];
+
+        if ($resource !== null) {
+            $toast['resource'] = $resource;
+        }
+
+        Inertia::flash('toast', $toast);
     }
 }

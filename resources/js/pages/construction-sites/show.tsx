@@ -4,8 +4,17 @@ import {
     edit as guideEdit,
     index as guideIndex,
 } from '@/actions/App/Http/Controllers/ConstructionSiteController';
+import {
+    RecentResourceBadge,
+    recentResourceHighlightClass,
+} from '@/components/recent-resource-feedback';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    recentResourceMatches,
+    useRecentResource,
+} from '@/hooks/use-recent-resource';
+import { cn } from '@/lib/utils';
 import type { SiteGuideFile } from '@/types';
 
 type Props = {
@@ -26,6 +35,13 @@ function guideFileTypeLabel(file: SiteGuideFile) {
 }
 
 export default function ConstructionSiteShow({ guideFile, canManage }: Props) {
+    const recentResource = useRecentResource();
+    const isRecentResource = recentResourceMatches(
+        recentResource,
+        'site_guide_file',
+        guideFile.id,
+    );
+
     return (
         <>
             <Head title={`${guideFile.name} - 現場案内図`} />
@@ -47,7 +63,12 @@ export default function ConstructionSiteShow({ guideFile, canManage }: Props) {
                     )}
                 </div>
 
-                <Card className="rounded-2xl border-neutral-200/80 shadow-sm dark:border-neutral-800">
+                <Card
+                    className={cn(
+                        'rounded-2xl border-neutral-200/80 shadow-sm transition motion-reduce:transition-none dark:border-neutral-800',
+                        isRecentResource && recentResourceHighlightClass,
+                    )}
+                >
                     <CardHeader className="space-y-3 xl:px-8 xl:pt-8">
                         <p className="text-sm text-muted-foreground">
                             Site guide library
@@ -59,6 +80,11 @@ export default function ConstructionSiteShow({ guideFile, canManage }: Props) {
                         <p className="text-sm text-muted-foreground">
                             {guideFileTypeLabel(guideFile)}
                         </p>
+                        {isRecentResource && recentResource !== null && (
+                            <RecentResourceBadge
+                                action={recentResource.action}
+                            />
+                        )}
                     </CardHeader>
                     <CardContent className="xl:px-8 xl:pb-8">
                         <Button asChild className="min-h-11">

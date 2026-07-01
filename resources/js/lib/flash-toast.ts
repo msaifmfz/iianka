@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import type { FlashToast, FlashToastType } from '@/types/ui';
+import type { FlashResource, FlashToast, FlashToastType } from '@/types/ui';
 
 function toastId(): string {
     return (
@@ -10,10 +10,12 @@ function toastId(): string {
 export function flashToast(
     message: string,
     type: FlashToastType = 'success',
+    resource?: FlashResource,
 ): void {
     router.flash('toast', {
         id: toastId(),
         type,
         message,
+        ...(resource === undefined ? {} : { resource }),
     } satisfies FlashToast);
 }

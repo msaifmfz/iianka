@@ -103,7 +103,12 @@ class ConstructionScheduleVoucherController extends Controller
             'voucher_checked' => $voucherChecked,
         ]);
 
-        $this->flashToast('伝票確認を保存しました。');
+        $this->flashToast('伝票確認を保存しました。', resource: [
+            'type' => 'voucher_confirmation',
+            'id' => $constructionSchedule->id,
+            'action' => 'saved',
+            'label' => $constructionSchedule->location,
+        ]);
 
         return back();
     }

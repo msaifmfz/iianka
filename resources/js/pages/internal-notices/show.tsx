@@ -6,8 +6,17 @@ import {
     edit as internalNoticeEdit,
 } from '@/actions/App/Http/Controllers/InternalNoticeController';
 import { FloatingBackButton } from '@/components/floating-back-button';
+import {
+    RecentResourceBadge,
+    recentResourceHighlightClass,
+} from '@/components/recent-resource-feedback';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    recentResourceMatches,
+    useRecentResource,
+} from '@/hooks/use-recent-resource';
+import { cn } from '@/lib/utils';
 import type { InternalNotice } from '@/types';
 
 type Props = {
@@ -30,6 +39,12 @@ export default function InternalNoticeShow({
     canManage,
     returnTo,
 }: Props) {
+    const recentResource = useRecentResource();
+    const isRecentResource = recentResourceMatches(
+        recentResource,
+        'internal_notice',
+        notice.id,
+    );
     const fallbackReturnTo = scheduleIndex({
         query: {
             range: 'today',
@@ -82,7 +97,12 @@ export default function InternalNoticeShow({
                     )}
                 </div>
 
-                <Card className="xl:rounded-3xl">
+                <Card
+                    className={cn(
+                        'transition motion-reduce:transition-none xl:rounded-3xl',
+                        isRecentResource && recentResourceHighlightClass,
+                    )}
+                >
                     <CardHeader className="xl:px-8">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                             <div>
@@ -97,6 +117,11 @@ export default function InternalNoticeShow({
                                 <Megaphone className="size-4" />
                                 業務連絡
                             </span>
+                            {isRecentResource && recentResource !== null && (
+                                <RecentResourceBadge
+                                    action={recentResource.action}
+                                />
+                            )}
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-6 xl:px-8">

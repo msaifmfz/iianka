@@ -61,7 +61,11 @@ test('admins can check vouchers and add notes', function (): void {
         ])
         ->assertRedirect()
         ->assertInertiaFlash('toast.type', 'success')
-        ->assertInertiaFlash('toast.message', '伝票確認を保存しました。');
+        ->assertInertiaFlash('toast.message', '伝票確認を保存しました。')
+        ->assertInertiaFlash('toast.resource.type', 'voucher_confirmation')
+        ->assertInertiaFlash('toast.resource.id', $schedule->id)
+        ->assertInertiaFlash('toast.resource.action', 'saved')
+        ->assertInertiaFlash('toast.resource.label', $schedule->location);
 
     $schedule->refresh();
 

@@ -26,8 +26,16 @@ import {
 } from '@/actions/App/Http/Controllers/ConstructionSubcontractorController';
 import { FloatingBackButton } from '@/components/floating-back-button';
 import FormField from '@/components/form-field';
+import {
+    RecentResourceBadge,
+    recentResourceHighlightClass,
+} from '@/components/recent-resource-feedback';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+    recentResourceMatches,
+    useRecentResource,
+} from '@/hooks/use-recent-resource';
 import { businessDateString } from '@/lib/dates';
 import { consumeScheduleOverviewEditReturn } from '@/lib/schedule-overview-edit-return';
 import { cn } from '@/lib/utils';
@@ -293,6 +301,7 @@ export default function ConstructionScheduleForm({
     attendanceLeaveRecords,
 }: Props) {
     const { url } = usePage();
+    const recentResource = useRecentResource();
     const [guideFileSearch, setGuideFileSearch] = useState('');
     const [subcontractorSearch, setSubcontractorSearch] = useState('');
     const [editingSubcontractorId, setEditingSubcontractorId] = useState<
@@ -787,17 +796,25 @@ export default function ConstructionScheduleForm({
                                             const isEditing =
                                                 editingSubcontractorId ===
                                                 subcontractor.id;
+                                            const isRecentResource =
+                                                recentResourceMatches(
+                                                    recentResource,
+                                                    'construction_subcontractor',
+                                                    subcontractor.id,
+                                                );
 
                                             return (
                                                 <div
                                                     key={subcontractor.id}
                                                     className={cn(
-                                                        'flex items-start justify-between gap-3 rounded-xl border p-3 text-sm transition',
+                                                        'flex items-start justify-between gap-3 rounded-xl border p-3 text-sm transition motion-reduce:transition-none',
                                                         isSelected
                                                             ? 'border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100'
                                                             : 'border-neutral-200 hover:bg-muted/50 dark:border-neutral-800',
                                                         isEditing &&
                                                             'border-sky-300 bg-sky-50 text-sky-950 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-100',
+                                                        isRecentResource &&
+                                                            recentResourceHighlightClass,
                                                     )}
                                                 >
                                                     {isEditing ? (
@@ -907,6 +924,16 @@ export default function ConstructionScheduleForm({
                                                                             subcontractor.name
                                                                         }
                                                                     </span>
+                                                                    {isRecentResource &&
+                                                                        recentResource !==
+                                                                            null && (
+                                                                            <RecentResourceBadge
+                                                                                action={
+                                                                                    recentResource.action
+                                                                                }
+                                                                                className="mt-2"
+                                                                            />
+                                                                        )}
                                                                     {subcontractor.phone && (
                                                                         <a
                                                                             href={phoneHref(

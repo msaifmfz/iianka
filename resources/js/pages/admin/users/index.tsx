@@ -15,10 +15,20 @@ import {
     edit as userEdit,
     index as userIndex,
 } from '@/actions/App/Http/Controllers/Admin/UserController';
+import {
+    RecentResourceBadge,
+    recentResourceHighlightClass,
+} from '@/components/recent-resource-feedback';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import {
+    recentResourceMatches,
+    useRecentResource,
+} from '@/hooks/use-recent-resource';
+import { cn } from '@/lib/utils';
+import type { FlashResourceAction } from '@/types/ui';
 
 type ManagedUser = {
     id: number;
@@ -124,7 +134,13 @@ function UserAvatar({ name }: { name: string }) {
     );
 }
 
-function UserIdentity({ user }: { user: ManagedUser }) {
+function UserIdentity({
+    user,
+    recentAction,
+}: {
+    user: ManagedUser;
+    recentAction?: FlashResourceAction;
+}) {
     return (
         <div className="flex min-w-0 items-center gap-3">
             <UserAvatar name={user.name} />
@@ -147,6 +163,12 @@ function UserIdentity({ user }: { user: ManagedUser }) {
                 <p className="truncate text-muted-foreground">
                     {user.email ?? 'メール未登録'}
                 </p>
+                {recentAction !== undefined && (
+                    <RecentResourceBadge
+                        action={recentAction}
+                        className="mt-2"
+                    />
+                )}
             </div>
         </div>
     );
@@ -225,6 +247,7 @@ function UserActions({ user }: { user: ManagedUser }) {
 
 export default function AdminUsersIndex({ users, filters }: Props) {
     const [search, setSearch] = useState(filters.search);
+    const recentResource = useRecentResource();
 
     function submit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -299,42 +322,63 @@ export default function AdminUsersIndex({ users, filters }: Props) {
                     </CardHeader>
                     <CardContent className="p-0">
                         <div className="grid gap-3 p-3 md:hidden">
-                            {users.data.map((user) => (
-                                <article
-                                    key={user.id}
-                                    className="rounded-2xl border bg-card p-4 shadow-xs transition hover:bg-neutral-50/80 dark:border-neutral-800 dark:hover:bg-neutral-900/60"
-                                >
-                                    <div className="flex items-start justify-between gap-3">
-                                        <UserIdentity user={user} />
-                                        <UserRoleBadge user={user} />
-                                    </div>
+                            {users.data.map((user) => {
+                                const isRecentResource = recentResourceMatches(
+                                    recentResource,
+                                    'admin_user',
+                                    user.id,
+                                );
 
-                                    <dl className="mt-4 grid gap-3 text-sm">
-                                        <div className="flex items-center justify-between gap-3">
-                                            <dt className="text-muted-foreground">
-                                                作成日
-                                            </dt>
-                                            <dd className="font-medium">
-                                                {formatDate(user.created_at)}
-                                            </dd>
+                                return (
+                                    <article
+                                        key={user.id}
+                                        className={cn(
+                                            'rounded-2xl border bg-card p-4 shadow-xs transition hover:bg-neutral-50/80 motion-reduce:transition-none dark:border-neutral-800 dark:hover:bg-neutral-900/60',
+                                            isRecentResource &&
+                                                recentResourceHighlightClass,
+                                        )}
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <UserIdentity
+                                                user={user}
+                                                recentAction={
+                                                    isRecentResource
+                                                        ? recentResource?.action
+                                                        : undefined
+                                                }
+                                            />
+                                            <UserRoleBadge user={user} />
                                         </div>
-                                        {/* <div className="grid gap-2"> */}
-                                        {/*     <dt className="text-muted-foreground"> */}
-                                        {/*         セキュリティ */}
-                                        {/*     </dt> */}
-                                        {/*     <dd> */}
-                                        {/*         <UserSecurityBadges */}
-                                        {/*             user={user} */}
-                                        {/*         /> */}
-                                        {/*     </dd> */}
-                                        {/* </div> */}
-                                    </dl>
 
-                                    <div className="mt-4 border-t pt-4 dark:border-neutral-800">
-                                        <UserActions user={user} />
-                                    </div>
-                                </article>
-                            ))}
+                                        <dl className="mt-4 grid gap-3 text-sm">
+                                            <div className="flex items-center justify-between gap-3">
+                                                <dt className="text-muted-foreground">
+                                                    作成日
+                                                </dt>
+                                                <dd className="font-medium">
+                                                    {formatDate(
+                                                        user.created_at,
+                                                    )}
+                                                </dd>
+                                            </div>
+                                            {/* <div className="grid gap-2"> */}
+                                            {/*     <dt className="text-muted-foreground"> */}
+                                            {/*         セキュリティ */}
+                                            {/*     </dt> */}
+                                            {/*     <dd> */}
+                                            {/*         <UserSecurityBadges */}
+                                            {/*             user={user} */}
+                                            {/*         /> */}
+                                            {/*     </dd> */}
+                                            {/* </div> */}
+                                        </dl>
+
+                                        <div className="mt-4 border-t pt-4 dark:border-neutral-800">
+                                            <UserActions user={user} />
+                                        </div>
+                                    </article>
+                                );
+                            })}
                         </div>
 
                         <div className="hidden overflow-x-auto md:block">
@@ -353,30 +397,54 @@ export default function AdminUsersIndex({ users, filters }: Props) {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y dark:divide-neutral-800">
-                                    {users.data.map((user) => (
-                                        <tr
-                                            key={user.id}
-                                            className="transition hover:bg-neutral-50/80 dark:hover:bg-neutral-900/60"
-                                        >
-                                            <td className="px-5 py-4">
-                                                <UserIdentity user={user} />
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                <UserRoleBadge user={user} />
-                                            </td>
-                                            {/* <td className="px-5 py-4"> */}
-                                            {/*     <UserSecurityBadges */}
-                                            {/*         user={user} */}
-                                            {/*     /> */}
-                                            {/* </td> */}
-                                            <td className="px-5 py-4 text-muted-foreground">
-                                                {formatDate(user.created_at)}
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                <UserActions user={user} />
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {users.data.map((user) => {
+                                        const isRecentResource =
+                                            recentResourceMatches(
+                                                recentResource,
+                                                'admin_user',
+                                                user.id,
+                                            );
+
+                                        return (
+                                            <tr
+                                                key={user.id}
+                                                className={cn(
+                                                    'transition hover:bg-neutral-50/80 motion-reduce:transition-none dark:hover:bg-neutral-900/60',
+                                                    isRecentResource &&
+                                                        'bg-emerald-50/80 dark:bg-emerald-950/30',
+                                                )}
+                                            >
+                                                <td className="px-5 py-4">
+                                                    <UserIdentity
+                                                        user={user}
+                                                        recentAction={
+                                                            isRecentResource
+                                                                ? recentResource?.action
+                                                                : undefined
+                                                        }
+                                                    />
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <UserRoleBadge
+                                                        user={user}
+                                                    />
+                                                </td>
+                                                {/* <td className="px-5 py-4"> */}
+                                                {/*     <UserSecurityBadges */}
+                                                {/*         user={user} */}
+                                                {/*     /> */}
+                                                {/* </td> */}
+                                                <td className="px-5 py-4 text-muted-foreground">
+                                                    {formatDate(
+                                                        user.created_at,
+                                                    )}
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <UserActions user={user} />
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>

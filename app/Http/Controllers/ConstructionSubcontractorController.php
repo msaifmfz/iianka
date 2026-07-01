@@ -15,7 +15,12 @@ class ConstructionSubcontractorController extends Controller
 
         $this->auditSuccess('construction_subcontractors.updated', 'A construction subcontractor was updated.', $constructionSubcontractor);
 
-        $this->flashToast('下請けを修正しました。');
+        $this->flashToast('下請けを修正しました。', resource: [
+            'type' => 'construction_subcontractor',
+            'id' => $constructionSubcontractor->id,
+            'action' => 'updated',
+            'label' => $constructionSubcontractor->name,
+        ]);
 
         return back();
     }

@@ -92,9 +92,16 @@ export default function FlashNotifications() {
                         aria-hidden="true"
                         className={cn('mt-0.5 size-5 shrink-0', variant.icon)}
                     />
-                    <p className="min-w-0 flex-1 text-sm leading-5 break-words">
-                        {toast.message}
-                    </p>
+                    <div className="min-w-0 flex-1">
+                        <p className="text-sm leading-5 break-words">
+                            {toast.message}
+                        </p>
+                        {toast.resource?.label && (
+                            <p className="mt-1 truncate text-xs text-muted-foreground">
+                                {toast.resource.label}
+                            </p>
+                        )}
+                    </div>
                     <button
                         type="button"
                         aria-label="通知を閉じる"

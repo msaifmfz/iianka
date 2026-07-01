@@ -5,8 +5,17 @@ import {
     edit as cleaningDutyRuleEdit,
 } from '@/actions/App/Http/Controllers/CleaningDutyRuleController';
 import { index as scheduleIndex } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
+import {
+    RecentResourceBadge,
+    recentResourceHighlightClass,
+} from '@/components/recent-resource-feedback';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    recentResourceMatches,
+    useRecentResource,
+} from '@/hooks/use-recent-resource';
+import { cn } from '@/lib/utils';
 import type { CleaningDutyRule } from '@/types';
 
 type Props = {
@@ -15,6 +24,8 @@ type Props = {
 };
 
 export default function CleaningDutyRuleIndex({ rules, canManage }: Props) {
+    const recentResource = useRecentResource();
+
     return (
         <>
             <Head title="掃除当番設定" />
@@ -74,75 +85,100 @@ export default function CleaningDutyRuleIndex({ rules, canManage }: Props) {
                             掃除当番設定はまだありません。
                         </div>
                     ) : (
-                        rules.map((rule) => (
-                            <Card
-                                key={rule.id}
-                                className="rounded-2xl border-neutral-200/80 shadow-sm dark:border-neutral-800"
-                            >
-                                <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                                    <div className="min-w-0">
-                                        <p className="text-sm text-muted-foreground">
-                                            {rule.weekday_label}
-                                        </p>
-                                        <CardTitle className="mt-1 flex min-w-0 items-start gap-2 text-lg leading-6">
-                                            <ClipboardList className="size-5 text-emerald-600" />
-                                            <span className="min-w-0 break-words">
-                                                {rule.label}
-                                            </span>
-                                        </CardTitle>
-                                    </div>
-                                    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                                        <span
-                                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${rule.is_active ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200' : 'bg-neutral-100 text-neutral-700 dark:bg-neutral-900 dark:text-neutral-300'}`}
-                                        >
-                                            {rule.is_active ? '有効' : '無効'}
-                                        </span>
-                                        {canManage && (
-                                            <Button
-                                                asChild
-                                                variant="outline"
-                                                size="sm"
-                                                className="grow sm:grow-0"
-                                            >
-                                                <Link
-                                                    href={cleaningDutyRuleEdit(
-                                                        rule.id,
-                                                    )}
-                                                >
-                                                    <Pencil className="size-4" />
-                                                    編集
-                                                </Link>
-                                            </Button>
-                                        )}
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="space-y-3 text-sm">
-                                    {rule.location && (
-                                        <p>
-                                            <span className="text-muted-foreground">
-                                                場所:
-                                            </span>{' '}
-                                            {rule.location}
-                                        </p>
+                        rules.map((rule) => {
+                            const isRecentResource = recentResourceMatches(
+                                recentResource,
+                                'cleaning_duty_rule',
+                                rule.id,
+                            );
+
+                            return (
+                                <Card
+                                    key={rule.id}
+                                    className={cn(
+                                        'rounded-2xl border-neutral-200/80 shadow-sm transition motion-reduce:transition-none dark:border-neutral-800',
+                                        isRecentResource &&
+                                            recentResourceHighlightClass,
                                     )}
-                                    {rule.notes && (
-                                        <p className="leading-6 whitespace-pre-line">
-                                            {rule.notes}
-                                        </p>
-                                    )}
-                                    {rule.assigned_users.length > 0 && (
-                                        <div className="flex flex-wrap items-start gap-2 text-muted-foreground">
-                                            <Users className="size-4" />
-                                            <span className="min-w-0 flex-1 break-words">
-                                                {rule.assigned_users
-                                                    .map((user) => user.name)
-                                                    .join('、')}
-                                            </span>
+                                >
+                                    <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                        <div className="min-w-0">
+                                            <p className="text-sm text-muted-foreground">
+                                                {rule.weekday_label}
+                                            </p>
+                                            <CardTitle className="mt-1 flex min-w-0 items-start gap-2 text-lg leading-6">
+                                                <ClipboardList className="size-5 text-emerald-600" />
+                                                <span className="min-w-0 break-words">
+                                                    {rule.label}
+                                                </span>
+                                            </CardTitle>
+                                            {isRecentResource &&
+                                                recentResource !== null && (
+                                                    <RecentResourceBadge
+                                                        action={
+                                                            recentResource.action
+                                                        }
+                                                        className="mt-3"
+                                                    />
+                                                )}
                                         </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        ))
+                                        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                                            <span
+                                                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${rule.is_active ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200' : 'bg-neutral-100 text-neutral-700 dark:bg-neutral-900 dark:text-neutral-300'}`}
+                                            >
+                                                {rule.is_active
+                                                    ? '有効'
+                                                    : '無効'}
+                                            </span>
+                                            {canManage && (
+                                                <Button
+                                                    asChild
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="grow sm:grow-0"
+                                                >
+                                                    <Link
+                                                        href={cleaningDutyRuleEdit(
+                                                            rule.id,
+                                                        )}
+                                                    >
+                                                        <Pencil className="size-4" />
+                                                        編集
+                                                    </Link>
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="space-y-3 text-sm">
+                                        {rule.location && (
+                                            <p>
+                                                <span className="text-muted-foreground">
+                                                    場所:
+                                                </span>{' '}
+                                                {rule.location}
+                                            </p>
+                                        )}
+                                        {rule.notes && (
+                                            <p className="leading-6 whitespace-pre-line">
+                                                {rule.notes}
+                                            </p>
+                                        )}
+                                        {rule.assigned_users.length > 0 && (
+                                            <div className="flex flex-wrap items-start gap-2 text-muted-foreground">
+                                                <Users className="size-4" />
+                                                <span className="min-w-0 flex-1 break-words">
+                                                    {rule.assigned_users
+                                                        .map(
+                                                            (user) => user.name,
+                                                        )
+                                                        .join('、')}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            );
+                        })
                     )}
                 </div>
             </div>
