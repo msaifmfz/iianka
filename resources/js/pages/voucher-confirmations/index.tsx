@@ -310,7 +310,9 @@ function VoucherScheduleCard({
                         <div className="flex justify-end">
                             <Button type="submit" disabled={processing}>
                                 <Save className="size-4" />
-                                {processing ? '保存中...' : '保存'}
+                                {processing
+                                    ? '伝票確認を保存中...'
+                                    : '伝票確認を保存'}
                             </Button>
                         </div>
                     )}

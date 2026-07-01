@@ -113,7 +113,9 @@ export default function Profile({
                                     disabled={processing}
                                     data-test="update-profile-button"
                                 >
-                                    保存
+                                    {processing
+                                        ? 'プロフィールを保存中...'
+                                        : 'プロフィールを保存'}
                                 </Button>
 
                                 <Transition

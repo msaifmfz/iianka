@@ -256,6 +256,10 @@ export default function BusinessScheduleForm({
         rememberedContentOptions,
         data.content ? [data.content] : [],
     );
+    const submitLabel = schedule ? '業務予定を修正' : '業務予定を作成';
+    const processingLabel = schedule
+        ? '業務予定を修正中...'
+        : '業務予定を作成中...';
 
     function rememberContentOption(value: string) {
         const normalizedValue = normalizeAutocompleteOption(value);
@@ -715,7 +719,7 @@ export default function BusinessScheduleForm({
 
                     <div className="flex justify-end">
                         <Button type="submit" disabled={processing}>
-                            {processing ? '保存中...' : '保存'}
+                            {processing ? processingLabel : submitLabel}
                         </Button>
                     </div>
                 </form>

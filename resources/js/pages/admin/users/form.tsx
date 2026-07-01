@@ -82,6 +82,10 @@ export default function AdminUserForm({ managedUser }: Props) {
         role: managedUser?.role ?? 'viewer',
         is_hidden_from_workers: managedUser?.is_hidden_from_workers ?? false,
     });
+    const submitLabel = managedUser ? 'ユーザーを修正' : 'ユーザーを追加';
+    const processingLabel = managedUser
+        ? 'ユーザーを修正中...'
+        : 'ユーザーを追加中...';
 
     function submit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -314,7 +318,7 @@ export default function AdminUserForm({ managedUser }: Props) {
                                     disabled={processing}
                                     className="w-full"
                                 >
-                                    {processing ? '保存中...' : '保存'}
+                                    {processing ? processingLabel : submitLabel}
                                 </Button>
                                 <Button
                                     asChild

@@ -272,6 +272,10 @@ export default function AttendanceRecordIndex({
         (record) => record.status === 'leave' && record.work_date === today,
     );
     const periodLabel = attendancePeriodLabel(days);
+    const submitLabel = selectedRecord ? '出勤状況を修正' : '出勤状況を登録';
+    const processingLabel = selectedRecord
+        ? '出勤状況を修正中...'
+        : '出勤状況を登録中...';
 
     function openEditor(
         user: ConstructionUser,
@@ -596,7 +600,7 @@ export default function AttendanceRecordIndex({
                                     <span />
                                 )}
                                 <Button type="submit" disabled={processing}>
-                                    保存
+                                    {processing ? processingLabel : submitLabel}
                                 </Button>
                             </div>
                         </form>

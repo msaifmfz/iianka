@@ -289,7 +289,7 @@ export default function AuditLogsIndex({ logs, filters, options }: Props) {
                             </div>
 
                             <div className="flex flex-wrap gap-2 py-2">
-                                <Button type="submit">検索</Button>
+                                <Button type="submit">監査ログを検索</Button>
                                 <Button asChild variant="outline">
                                     <Link href={auditLogIndex()}>
                                         フィルター解除
