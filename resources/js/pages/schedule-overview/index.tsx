@@ -141,7 +141,10 @@ type CalendarCell = CalendarDay & {
     isCurrentMonth: boolean;
 };
 
+type HeatLevel = 0 | 1 | 2 | 3 | 4;
+
 const weekdayLabels = ['日', '月', '火', '水', '木', '金', '土'];
+const heatLevels: HeatLevel[] = [0, 1, 2, 3, 4];
 
 function parseDate(date: string) {
     return new Date(`${date}T00:00:00`);
@@ -219,53 +222,45 @@ function overviewQuery(date: string) {
     };
 }
 
-function maxConstructionCount(days: CalendarCell[]) {
-    return Math.max(...days.map((day) => day.construction_count), 0);
-}
-
-function heatLevel(day: CalendarCell, maxCount: number) {
-    if (day.construction_count <= 0 || maxCount <= 0) {
-        return 0;
+function heatLevel(day: CalendarCell): HeatLevel {
+    if (day.construction_count >= 13) {
+        return 4;
     }
 
-    if (maxCount <= 4) {
-        return Math.min(day.construction_count, 4);
-    }
-
-    const ratio = day.construction_count / maxCount;
-
-    if (ratio <= 0.25) {
-        return 1;
-    }
-
-    if (ratio <= 0.5) {
-        return 2;
-    }
-
-    if (ratio <= 0.75) {
+    if (day.construction_count >= 11) {
         return 3;
     }
 
-    return 4;
+    if (day.construction_count >= 8) {
+        return 2;
+    }
+
+    if (day.construction_count >= 5) {
+        return 1;
+    }
+
+    return 0;
 }
 
-function heatLabel(level: number) {
+function heatLabel(level: HeatLevel) {
     switch (level) {
+        case 0:
+            return '0〜4件';
         case 1:
-            return '少なめ';
+            return '5〜7件';
         case 2:
-            return '通常';
+            return '8〜10件';
         case 3:
-            return '多め';
+            return '11〜12件';
         case 4:
-            return '非常に多い';
-        default:
-            return '予定なし';
+            return '13件以上';
     }
 }
 
-function heatCellClass(level: number) {
+function heatCellClass(level: HeatLevel) {
     switch (level) {
+        case 0:
+            return 'border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-900/70 dark:text-neutral-100 dark:hover:border-white/20 dark:hover:bg-neutral-900';
         case 1:
             return 'border-sky-200 bg-sky-50 text-sky-950 hover:border-sky-300 hover:bg-sky-100 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-50 dark:hover:border-sky-400/50 dark:hover:bg-sky-500/15';
         case 2:
@@ -274,13 +269,11 @@ function heatCellClass(level: number) {
             return 'border-teal-400 bg-teal-200 text-teal-950 hover:border-teal-500 hover:bg-teal-300/80 dark:border-teal-300/45 dark:bg-teal-500/20 dark:text-teal-50 dark:hover:border-teal-200/60 dark:hover:bg-teal-500/25';
         case 4:
             return 'border-amber-500 bg-amber-300 text-amber-950 hover:border-amber-600 hover:bg-amber-400/80 dark:border-amber-300/65 dark:bg-amber-500/25 dark:text-amber-50 dark:hover:border-amber-200/80 dark:hover:bg-amber-500/30';
-        default:
-            return 'border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-900/70 dark:text-neutral-100 dark:hover:border-white/20 dark:hover:bg-neutral-900';
     }
 }
 
-function dayCellClass(day: CalendarCell, maxCount: number) {
-    const level = heatLevel(day, maxCount);
+function dayCellClass(day: CalendarCell) {
+    const level = heatLevel(day);
     const heatClass = heatCellClass(level);
 
     if (day.isSelected) {
@@ -288,11 +281,7 @@ function dayCellClass(day: CalendarCell, maxCount: number) {
     }
 
     if (!day.isCurrentMonth) {
-        if (level > 0) {
-            return `${heatClass} opacity-65`;
-        }
-
-        return 'border-neutral-200 bg-neutral-50 text-neutral-400 hover:border-neutral-300 hover:bg-white dark:border-white/5 dark:bg-neutral-950/45 dark:text-neutral-500 dark:hover:border-white/15 dark:hover:bg-neutral-900/70';
+        return `${heatClass} opacity-65`;
     }
 
     return heatClass;
@@ -1889,7 +1878,6 @@ export default function ScheduleOverviewIndex({
     const selectedDay =
         calendarDays.find((day) => day.date === filters.date) ?? null;
     const cells = calendarCells(filters.date, todayDate, month, calendarDays);
-    const busiestConstructionCount = maxConstructionCount(cells);
     const previousMonthDate = adjacentMonthDate(filters.date, -1);
     const nextMonthDate = adjacentMonthDate(filters.date, 1);
     const selectedDetail = selectedDay ?? {
@@ -2038,7 +2026,7 @@ export default function ScheduleOverviewIndex({
                                 >
                                     予定の多さ:
                                     <span>少</span>
-                                    {[0, 1, 2, 3, 4].map((level) => (
+                                    {heatLevels.map((level) => (
                                         <span
                                             key={level}
                                             className={`size-5 rounded-md border shadow-sm ${heatCellClass(level)}`}
@@ -2070,7 +2058,7 @@ export default function ScheduleOverviewIndex({
                                         {cells.map((day) => (
                                             <div
                                                 key={day.date}
-                                                className={`relative min-h-[5.75rem] rounded-lg border p-1 shadow-sm transition sm:min-h-28 sm:p-2 dark:shadow-black/20 ${dayCellClass(day, busiestConstructionCount)}`}
+                                                className={`relative min-h-[5.75rem] rounded-lg border p-1 shadow-sm transition sm:min-h-28 sm:p-2 dark:shadow-black/20 ${dayCellClass(day)}`}
                                             >
                                                 <span className="relative flex items-center justify-between gap-1">
                                                     <Link
@@ -2085,7 +2073,7 @@ export default function ScheduleOverviewIndex({
                                                                 ? 'date'
                                                                 : undefined
                                                         }
-                                                        aria-label={`${day.date}: 混雑度${heatLabel(heatLevel(day, busiestConstructionCount))}、工事${day.construction_count}件、業務予定${day.business_count}件、業務連絡${day.internal_notice_count}件、持ち出し${day.carry_out_count}件、伝票${voucherConfirmationValue(day)}、未確認伝票${day.unconfirmed_voucher_count}件`}
+                                                        aria-label={`${day.date}: 混雑度${heatLabel(heatLevel(day))}、工事${day.construction_count}件、業務予定${day.business_count}件、業務連絡${day.internal_notice_count}件、持ち出し${day.carry_out_count}件、伝票${voucherConfirmationValue(day)}、未確認伝票${day.unconfirmed_voucher_count}件`}
                                                         preserveScroll
                                                     >
                                                         {day.isToday
