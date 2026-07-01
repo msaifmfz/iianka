@@ -42,6 +42,8 @@ class ProfileController extends Controller
             'changed' => array_values(array_diff(array_keys($request->user()->getChanges()), ['updated_at'])),
         ]);
 
+        $this->flashToast('プロフィールを保存しました。');
+
         return to_route('profile.edit');
     }
 

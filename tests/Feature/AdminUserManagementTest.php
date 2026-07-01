@@ -46,7 +46,9 @@ test('admins can create users', function (): void {
             'role' => UserRole::Editor->value,
             'is_hidden_from_workers' => true,
         ])
-        ->assertRedirect(route('admin.users.index'));
+        ->assertRedirect(route('admin.users.index'))
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', 'ユーザーを追加しました。');
 
     expect(User::query()->where('login_id', 'new-member')->where('role', UserRole::Editor->value)->exists())->toBeTrue()
         ->and(User::query()->where('login_id', 'new-member')->value('email'))->toBeNull()
@@ -67,7 +69,9 @@ test('admins can update user roles', function (): void {
             'role' => UserRole::Admin->value,
             'is_hidden_from_workers' => true,
         ])
-        ->assertRedirect(route('admin.users.index'));
+        ->assertRedirect(route('admin.users.index'))
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', 'ユーザー情報を修正しました。');
 
     $member->refresh();
 
@@ -119,7 +123,9 @@ test('admins can delete other users but not themselves', function (): void {
 
     $this->actingAs($admin)
         ->delete(route('admin.users.destroy', $member))
-        ->assertRedirect(route('admin.users.index'));
+        ->assertRedirect(route('admin.users.index'))
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', 'ユーザーを削除しました。');
 
     expect(User::query()->whereKey($member)->exists())->toBeFalse();
 

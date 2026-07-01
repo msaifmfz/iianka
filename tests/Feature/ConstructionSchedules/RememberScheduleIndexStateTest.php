@@ -138,7 +138,9 @@ it('redirects construction schedule saves back to schedule overview when request
             'status' => 'scheduled',
             'location' => '新規現場',
         ])
-        ->assertRedirect($returnTo);
+        ->assertRedirect($returnTo)
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '工事予定を作成しました。');
 
     $this->actingAs($admin)
         ->put(route('construction-schedules.update', [
@@ -149,7 +151,9 @@ it('redirects construction schedule saves back to schedule overview when request
             'status' => 'scheduled',
             'location' => '更新後の現場',
         ])
-        ->assertRedirect($returnTo);
+        ->assertRedirect($returnTo)
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '工事予定を修正しました。');
 });
 
 it('redirects business schedule saves back to schedule overview when requested', function (): void {
@@ -167,7 +171,9 @@ it('redirects business schedule saves back to schedule overview when requested',
             'location' => '新規会議室',
             'content' => '新規内容',
         ])
-        ->assertRedirect($returnTo);
+        ->assertRedirect($returnTo)
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '業務予定を作成しました。');
 
     $this->actingAs($admin)
         ->put(route('business-schedules.update', [
@@ -178,7 +184,9 @@ it('redirects business schedule saves back to schedule overview when requested',
             'location' => '更新後の会議室',
             'content' => '更新後の内容',
         ])
-        ->assertRedirect($returnTo);
+        ->assertRedirect($returnTo)
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '業務予定を修正しました。');
 });
 
 it('redirects internal notice saves back to schedule overview when requested', function (): void {
@@ -196,7 +204,9 @@ it('redirects internal notice saves back to schedule overview when requested', f
             'title' => '新規連絡',
             'content' => '新規内容',
         ])
-        ->assertRedirect($returnTo);
+        ->assertRedirect($returnTo)
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '業務連絡を作成しました。');
 
     $this->actingAs($admin)
         ->put(route('internal-notices.update', [
@@ -207,5 +217,7 @@ it('redirects internal notice saves back to schedule overview when requested', f
             'title' => '更新後の連絡',
             'content' => '更新後の内容',
         ])
-        ->assertRedirect($returnTo);
+        ->assertRedirect($returnTo)
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '業務連絡を修正しました。');
 });

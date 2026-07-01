@@ -59,7 +59,9 @@ test('admins can check vouchers and add notes', function (): void {
             'voucher_checked' => true,
             'voucher_note' => 'ゼネコン名を確認してください。',
         ])
-        ->assertRedirect();
+        ->assertRedirect()
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '伝票確認を保存しました。');
 
     $schedule->refresh();
 

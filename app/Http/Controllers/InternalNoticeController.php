@@ -44,10 +44,10 @@ class InternalNoticeController extends Controller
         ]);
 
         $returnTo = $this->returnTo($request);
+        $this->flashToast('業務連絡を作成しました。');
 
         if ($returnTo !== null) {
-            return redirect($returnTo)
-                ->with('status', '業務連絡を作成しました。');
+            return redirect($returnTo);
         }
 
         return redirect()
@@ -55,8 +55,7 @@ class InternalNoticeController extends Controller
                 'range' => 'today',
                 'date' => $notice->scheduled_on->toDateString(),
                 'type' => 'internal_notice',
-            ])
-            ->with('status', '業務連絡を作成しました。');
+            ]);
     }
 
     public function show(Request $request, InternalNotice $internalNotice): Response
@@ -95,15 +94,14 @@ class InternalNoticeController extends Controller
         ]);
 
         $returnTo = $this->returnTo($request);
+        $this->flashToast('業務連絡を修正しました。');
 
         if ($returnTo !== null) {
-            return redirect($returnTo)
-                ->with('status', '業務連絡を更新しました。');
+            return redirect($returnTo);
         }
 
         return redirect()
-            ->route('internal-notices.show', $internalNotice)
-            ->with('status', '業務連絡を更新しました。');
+            ->route('internal-notices.show', $internalNotice);
     }
 
     public function destroy(Request $request, InternalNotice $internalNotice): RedirectResponse
@@ -114,9 +112,10 @@ class InternalNoticeController extends Controller
 
         $internalNotice->delete();
 
+        $this->flashToast('業務連絡を削除しました。');
+
         return redirect()
-            ->route('construction-schedules.index', ['type' => 'internal_notice'])
-            ->with('status', '業務連絡を削除しました。');
+            ->route('construction-schedules.index', ['type' => 'internal_notice']);
     }
 
     private function returnTo(Request $request): ?string

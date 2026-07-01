@@ -108,7 +108,9 @@ test('admins can create standalone site guide files', function (): void {
             'name' => '横浜駅前_搬入口',
             'guide_file' => UploadedFile::fake()->create('original.pdf', 100, 'application/pdf'),
         ])
-        ->assertRedirect(route('construction-sites.index'));
+        ->assertRedirect(route('construction-sites.index'))
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '現場案内図を追加しました。');
 
     $guideFiles = SiteGuideFile::query()->orderBy('name')->get();
 
@@ -243,7 +245,9 @@ test('admins can rename a standalone site guide file', function (): void {
         ->put(route('construction-sites.update', $guideFile), [
             'name' => '名古屋駅前_追加案内図.pdf',
         ])
-        ->assertRedirect(route('construction-sites.show', $guideFile));
+        ->assertRedirect(route('construction-sites.show', $guideFile))
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '現場案内図を修正しました。');
 
     expect($guideFile->refresh()->name)->toBe('名古屋駅前_追加案内図.pdf');
 
@@ -255,6 +259,19 @@ test('admins can rename a standalone site guide file', function (): void {
             ->where('guideFiles.0.id', $guideFile->id)
             ->where('guideFiles.0.name', '名古屋駅前_追加案内図.pdf')
         );
+});
+
+test('admins can delete standalone site guide files', function (): void {
+    $admin = User::factory()->admin()->create();
+    $guideFile = SiteGuideFile::factory()->create();
+
+    $this->actingAs($admin)
+        ->delete(route('construction-sites.destroy', $guideFile))
+        ->assertRedirect(route('construction-sites.index'))
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '現場案内図を削除しました。');
+
+    $this->assertModelMissing($guideFile);
 });
 
 test('admins must provide a unique name when renaming a standalone site guide file', function (): void {

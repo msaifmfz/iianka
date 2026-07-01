@@ -657,7 +657,9 @@ test('admins can create schedules with assigned users and guide files', function
                 '現場全体図',
             ],
         ])
-        ->assertRedirect();
+        ->assertRedirect()
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '工事予定を作成しました。');
 
     $schedule = ConstructionSchedule::query()->where('location', '東京タワー改修')->firstOrFail();
     $uploadedGuide = SiteGuideFile::query()
@@ -778,7 +780,9 @@ test('admins can update schedule subcontractors separately from assigned users',
                 ],
             ],
         ])
-        ->assertRedirect(route('construction-schedules.show', $schedule));
+        ->assertRedirect(route('construction-schedules.show', $schedule))
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '工事予定を修正しました。');
 
     $schedule->refresh();
 
@@ -967,7 +971,9 @@ test('deleted subcontractors are hidden from new schedules but kept on existing 
 
     $this->actingAs($admin)
         ->delete(route('construction-subcontractors.destroy', $subcontractor))
-        ->assertRedirect();
+        ->assertRedirect()
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '下請けを削除しました。');
 
     $this->assertSoftDeleted($subcontractor);
 
@@ -1021,7 +1027,9 @@ test('admins can update subcontractors from schedule forms', function (): void {
             'name' => '更新後 下請け',
             'phone' => '090-3333-4444',
         ])
-        ->assertRedirect(route('construction-schedules.create'));
+        ->assertRedirect(route('construction-schedules.create'))
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '下請けを修正しました。');
 
     expect($subcontractor->refresh())
         ->name->toBe('更新後 下請け')
@@ -1055,7 +1063,9 @@ test('admins can delete construction schedules', function (): void {
 
     $this->actingAs($admin)
         ->delete(route('construction-schedules.destroy', $schedule))
-        ->assertRedirect(route('construction-schedules.index'));
+        ->assertRedirect(route('construction-schedules.index'))
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '工事予定を削除しました。');
 
     $this->assertModelMissing($schedule);
 });
@@ -1081,7 +1091,9 @@ test('admins can delete business schedules', function (): void {
         ->delete(route('business-schedules.destroy', $schedule))
         ->assertRedirect(route('construction-schedules.index', [
             'type' => 'business',
-        ]));
+        ]))
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '業務予定を削除しました。');
 
     $this->assertModelMissing($schedule);
 });
@@ -1107,7 +1119,9 @@ test('admins can delete internal notices', function (): void {
         ->delete(route('internal-notices.destroy', $notice))
         ->assertRedirect(route('construction-schedules.index', [
             'type' => 'internal_notice',
-        ]));
+        ]))
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '業務連絡を削除しました。');
 
     $this->assertModelMissing($notice);
 });
@@ -1141,7 +1155,9 @@ test('admins can update a construction schedule number from the index flow', fun
         ->assertRedirect(route('construction-schedules.index', [
             'range' => 'today',
             'date' => '2026-05-04',
-        ]));
+        ]))
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '工事予定の番号を更新しました。');
 
     expect($schedule->fresh()->schedule_number)->toBe(9);
 });
@@ -1166,7 +1182,9 @@ test('admins can update a business schedule number from the index flow', functio
             'range' => 'today',
             'date' => '2026-05-04',
             'type' => 'business',
-        ]));
+        ]))
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '業務予定の番号を更新しました。');
 
     expect($schedule->fresh()->schedule_number)->toBe(8);
 });
@@ -1428,7 +1446,9 @@ test('admins can create business schedules with assigned users', function (): vo
             'range' => 'today',
             'date' => BusinessDate::today()->toDateString(),
             'type' => 'business',
-        ]));
+        ]))
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '業務予定を作成しました。');
 
     $schedule = BusinessSchedule::query()->where('location', '本社会議室')->firstOrFail();
 

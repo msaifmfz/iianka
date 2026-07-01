@@ -1,4 +1,3 @@
-import { Transition } from '@headlessui/react';
 import { Form, Head, router } from '@inertiajs/react';
 import { usePasskeyRegister } from '@laravel/passkeys/react';
 import { KeyRound, ShieldCheck } from 'lucide-react';
@@ -14,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { useTwoFactorAuth } from '@/hooks/use-two-factor-auth';
+import { flashToast } from '@/lib/flash-toast';
 import { edit } from '@/routes/security';
 import { disable, enable } from '@/routes/two-factor';
 
@@ -52,7 +52,6 @@ export default function Security({
     } = useTwoFactorAuth();
     const [showSetupModal, setShowSetupModal] = useState<boolean>(false);
     const [passkeyName, setPasskeyName] = useState<string>('');
-    const [passkeySaved, setPasskeySaved] = useState<boolean>(false);
     const prevTwoFactorEnabled = useRef(twoFactorEnabled);
 
     const {
@@ -63,8 +62,10 @@ export default function Security({
     } = usePasskeyRegister({
         onSuccess: () => {
             setPasskeyName('');
-            setPasskeySaved(true);
-            router.reload({ only: ['passkeys'] });
+            router.reload({
+                only: ['passkeys'],
+                onSuccess: () => flashToast('パスキーを追加しました。'),
+            });
         },
     });
 
@@ -119,7 +120,7 @@ export default function Security({
                     }}
                     className="space-y-6"
                 >
-                    {({ errors, processing, recentlySuccessful }) => (
+                    {({ errors, processing }) => (
                         <>
                             <div className="grid gap-2">
                                 <Label htmlFor="current_password" required>
@@ -176,25 +177,13 @@ export default function Security({
                                 />
                             </div>
 
-                            <div className="flex items-center gap-4">
+                            <div>
                                 <Button
                                     disabled={processing}
                                     data-test="update-password-button"
                                 >
                                     パスワードを保存
                                 </Button>
-
-                                <Transition
-                                    show={recentlySuccessful}
-                                    enter="transition ease-in-out"
-                                    enterFrom="opacity-0"
-                                    leave="transition ease-in-out"
-                                    leaveTo="opacity-0"
-                                >
-                                    <p className="text-sm text-neutral-600">
-                                        保存しました
-                                    </p>
-                                </Transition>
                             </div>
                         </>
                     )}
@@ -245,11 +234,6 @@ export default function Security({
                                 このブラウザまたはデバイスは、ユーザー確認付きのパスキーに対応していません。
                             </p>
                         )}
-                        {passkeySaved && (
-                            <p className="text-sm text-neutral-600">
-                                パスキーを保存しました。
-                            </p>
-                        )}
                         <InputError message={passkeyError ?? undefined} />
                     </div>
 
@@ -274,6 +258,11 @@ export default function Security({
                                         action={`/user/passkeys/${passkey.id}`}
                                         method="delete"
                                         options={{ preserveScroll: true }}
+                                        onSuccess={() =>
+                                            flashToast(
+                                                'パスキーを削除しました。',
+                                            )
+                                        }
                                     >
                                         {({ processing }) => (
                                             <Button

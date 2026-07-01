@@ -59,6 +59,8 @@ class SecurityController extends Controller implements HasMiddleware
 
         $this->auditSuccess('settings.password.updated', 'A user updated their password.', $request->user());
 
+        $this->flashToast('パスワードを更新しました。');
+
         return back();
     }
 

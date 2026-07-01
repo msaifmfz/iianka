@@ -28,11 +28,72 @@ test('admins can create internal notices with assigned users', function (): void
             'range' => 'today',
             'date' => '2026-04-08',
             'type' => 'internal_notice',
-        ]));
+        ]))
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '業務連絡を作成しました。');
 
     $notice = InternalNotice::query()->where('title', '健康診断')->firstOrFail();
 
     expect($notice->assignedUsers()->whereKey($worker)->exists())->toBeTrue();
+});
+
+test('admins can create cleaning duty rules with assigned users', function (): void {
+    $admin = User::factory()->admin()->create();
+    $worker = User::factory()->create();
+
+    $this->actingAs($admin)
+        ->post(route('cleaning-duty-rules.store'), [
+            'weekday' => 1,
+            'label' => '掃除当番',
+            'location' => '事務所',
+            'notes' => 'ゴミ出し',
+            'is_active' => true,
+            'assigned_user_ids' => [$worker->id],
+        ])
+        ->assertRedirect(route('cleaning-duty-rules.index'))
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '掃除当番設定を作成しました。');
+
+    $rule = CleaningDutyRule::query()->where('label', '掃除当番')->firstOrFail();
+
+    expect($rule->assignedUsers()->whereKey($worker)->exists())->toBeTrue();
+});
+
+test('admins can update and delete cleaning duty rules', function (): void {
+    $admin = User::factory()->admin()->create();
+    $worker = User::factory()->create();
+    $rule = CleaningDutyRule::factory()->create([
+        'weekday' => 1,
+        'label' => '掃除当番',
+        'location' => '事務所',
+    ]);
+
+    $this->actingAs($admin)
+        ->put(route('cleaning-duty-rules.update', $rule), [
+            'weekday' => 2,
+            'label' => '玄関掃除',
+            'location' => '玄関',
+            'notes' => '水拭き',
+            'is_active' => true,
+            'assigned_user_ids' => [$worker->id],
+        ])
+        ->assertRedirect(route('cleaning-duty-rules.index'))
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '掃除当番設定を修正しました。');
+
+    $rule->refresh();
+
+    expect($rule->weekday)->toBe(2)
+        ->and($rule->label)->toBe('玄関掃除')
+        ->and($rule->assignedUsers()->whereKey($worker)->exists())->toBeTrue();
+
+    $this->actingAs($admin)
+        ->delete(route('cleaning-duty-rules.destroy', $rule))
+        ->assertRedirect(route('cleaning-duty-rules.index'))
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '掃除当番設定を削除しました。');
+
+    $this->assertModelMissing($rule);
 });
 
 test('calendar includes internal notices in personal schedules and filters', function (): void {

@@ -76,7 +76,9 @@ class AttendanceRecordController extends Controller
             'status' => $record->status,
         ]);
 
-        return back()->with('status', '出勤状況を更新しました。');
+        $this->flashToast('出勤状況を更新しました。');
+
+        return back();
     }
 
     public function destroy(Request $request, AttendanceRecord $attendanceRecord): RedirectResponse
@@ -90,7 +92,9 @@ class AttendanceRecordController extends Controller
 
         $attendanceRecord->delete();
 
-        return back()->with('status', '出勤状況を未設定に戻しました。');
+        $this->flashToast('出勤状況を未設定に戻しました。');
+
+        return back();
     }
 
     private function defaultMonth(): Carbon

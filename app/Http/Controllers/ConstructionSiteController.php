@@ -54,9 +54,10 @@ class ConstructionSiteController extends Controller
             'size' => $siteGuideFile->size,
         ]);
 
+        $this->flashToast('現場案内図を追加しました。');
+
         return redirect()
-            ->route('construction-sites.index')
-            ->with('status', '現場案内図を追加しました。');
+            ->route('construction-sites.index');
     }
 
     public function show(SiteGuideFile $siteGuideFile): Response
@@ -99,9 +100,10 @@ class ConstructionSiteController extends Controller
             'replaced_file' => $request->hasFile('guide_file'),
         ]);
 
+        $this->flashToast('現場案内図を修正しました。');
+
         return redirect()
-            ->route('construction-sites.show', $siteGuideFile)
-            ->with('status', '現場案内図を更新しました。');
+            ->route('construction-sites.show', $siteGuideFile);
     }
 
     public function destroy(Request $request, SiteGuideFile $siteGuideFile): RedirectResponse
@@ -112,9 +114,10 @@ class ConstructionSiteController extends Controller
 
         $siteGuideFile->delete();
 
+        $this->flashToast('現場案内図を削除しました。');
+
         return redirect()
-            ->route('construction-sites.index')
-            ->with('status', '現場案内図を削除しました。');
+            ->route('construction-sites.index');
     }
 
     /**

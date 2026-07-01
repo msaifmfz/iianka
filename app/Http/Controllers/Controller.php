@@ -8,6 +8,8 @@ use App\Services\AuditLogger;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Inertia\Inertia;
 
 abstract class Controller
 {
@@ -37,5 +39,17 @@ abstract class Controller
         ?Request $request = null,
     ): void {
         app(AuditLogger::class)->failure($event, $description, $subject, $metadata, $actor, $request);
+    }
+
+    /**
+     * @param  'success'|'error'|'warning'|'info'  $type
+     */
+    protected function flashToast(string $message, string $type = 'success'): void
+    {
+        Inertia::flash('toast', [
+            'id' => (string) Str::uuid(),
+            'type' => $type,
+            'message' => $message,
+        ]);
     }
 }

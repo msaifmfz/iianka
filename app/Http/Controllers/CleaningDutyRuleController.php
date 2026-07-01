@@ -51,9 +51,10 @@ class CleaningDutyRuleController extends Controller
             'assigned_user_ids' => $request->input('assigned_user_ids', []),
         ]);
 
+        $this->flashToast('掃除当番設定を作成しました。');
+
         return redirect()
-            ->route('cleaning-duty-rules.index')
-            ->with('status', '掃除当番設定を作成しました。');
+            ->route('cleaning-duty-rules.index');
     }
 
     public function show(Request $request, CleaningDutyRule $cleaningDutyRule): Response
@@ -91,9 +92,10 @@ class CleaningDutyRuleController extends Controller
             'assigned_user_ids' => $request->input('assigned_user_ids', []),
         ]);
 
+        $this->flashToast('掃除当番設定を修正しました。');
+
         return redirect()
-            ->route('cleaning-duty-rules.index')
-            ->with('status', '掃除当番設定を更新しました。');
+            ->route('cleaning-duty-rules.index');
     }
 
     public function destroy(Request $request, CleaningDutyRule $cleaningDutyRule): RedirectResponse
@@ -104,9 +106,10 @@ class CleaningDutyRuleController extends Controller
 
         $cleaningDutyRule->delete();
 
+        $this->flashToast('掃除当番設定を削除しました。');
+
         return redirect()
-            ->route('cleaning-duty-rules.index')
-            ->with('status', '掃除当番設定を削除しました。');
+            ->route('cleaning-duty-rules.index');
     }
 
     private function returnTo(Request $request): ?string

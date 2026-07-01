@@ -121,7 +121,9 @@ test('admins can mark and clear attendance records', function (): void {
             'status' => AttendanceRecord::STATUS_LEAVE,
             'note' => '午前休',
         ])
-        ->assertRedirect();
+        ->assertRedirect()
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '出勤状況を更新しました。');
 
     $record = AttendanceRecord::query()->sole();
 
@@ -132,7 +134,9 @@ test('admins can mark and clear attendance records', function (): void {
 
     $this->actingAs($admin)
         ->delete(route('attendance-records.destroy', $record))
-        ->assertRedirect();
+        ->assertRedirect()
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '出勤状況を未設定に戻しました。');
 
     expect(AttendanceRecord::query()->exists())->toBeFalse();
 });

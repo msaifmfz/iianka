@@ -88,9 +88,10 @@ class UserController extends Controller
             'is_hidden_from_workers' => $user->is_hidden_from_workers,
         ]);
 
+        $this->flashToast('ユーザーを追加しました。');
+
         return redirect()
-            ->route('admin.users.index')
-            ->with('status', 'ユーザーを作成しました。');
+            ->route('admin.users.index');
     }
 
     public function edit(Request $request, User $user): Response
@@ -126,9 +127,10 @@ class UserController extends Controller
             'changed' => array_values(array_diff(array_keys($user->getChanges()), ['updated_at'])),
         ]);
 
+        $this->flashToast('ユーザー情報を修正しました。');
+
         return redirect()
-            ->route('admin.users.index')
-            ->with('status', 'ユーザーを更新しました。');
+            ->route('admin.users.index');
     }
 
     public function destroy(Request $request, User $user): RedirectResponse
@@ -140,9 +142,10 @@ class UserController extends Controller
 
         $user->delete();
 
+        $this->flashToast('ユーザーを削除しました。');
+
         return redirect()
-            ->route('admin.users.index')
-            ->with('status', 'ユーザーを削除しました。');
+            ->route('admin.users.index');
     }
 
     /**

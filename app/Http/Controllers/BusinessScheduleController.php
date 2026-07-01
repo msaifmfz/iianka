@@ -69,10 +69,10 @@ class BusinessScheduleController extends Controller
         ]);
 
         $returnTo = $this->returnTo($request);
+        $this->flashToast('業務予定を作成しました。');
 
         if ($returnTo !== null) {
-            return redirect($returnTo)
-                ->with('status', '業務予定を作成しました。');
+            return redirect($returnTo);
         }
 
         return redirect()
@@ -80,8 +80,7 @@ class BusinessScheduleController extends Controller
                 'range' => 'today',
                 'date' => $schedule->scheduled_on->toDateString(),
                 'type' => 'business',
-            ])
-            ->with('status', '業務予定を作成しました。');
+            ]);
     }
 
     public function show(Request $request, BusinessSchedule $businessSchedule): Response
@@ -121,15 +120,14 @@ class BusinessScheduleController extends Controller
         ]);
 
         $returnTo = $this->returnTo($request);
+        $this->flashToast('業務予定を修正しました。');
 
         if ($returnTo !== null) {
-            return redirect($returnTo)
-                ->with('status', '業務予定を更新しました。');
+            return redirect($returnTo);
         }
 
         return redirect()
-            ->route('business-schedules.show', $businessSchedule)
-            ->with('status', '業務予定を更新しました。');
+            ->route('business-schedules.show', $businessSchedule);
     }
 
     public function updateNumber(
@@ -144,7 +142,9 @@ class BusinessScheduleController extends Controller
             'schedule_number' => $businessSchedule->schedule_number,
         ]);
 
-        return back()->with('status', '番号を更新しました。');
+        $this->flashToast('業務予定の番号を更新しました。');
+
+        return back();
     }
 
     public function destroy(Request $request, BusinessSchedule $businessSchedule): RedirectResponse
@@ -155,9 +155,10 @@ class BusinessScheduleController extends Controller
 
         $businessSchedule->delete();
 
+        $this->flashToast('業務予定を削除しました。');
+
         return redirect()
-            ->route('construction-schedules.index', ['type' => 'business'])
-            ->with('status', '業務予定を削除しました。');
+            ->route('construction-schedules.index', ['type' => 'business']);
     }
 
     private function returnTo(Request $request): ?string

@@ -15,7 +15,9 @@ class ConstructionSubcontractorController extends Controller
 
         $this->auditSuccess('construction_subcontractors.updated', 'A construction subcontractor was updated.', $constructionSubcontractor);
 
-        return back()->with('status', '下請けを更新しました。');
+        $this->flashToast('下請けを修正しました。');
+
+        return back();
     }
 
     public function destroy(Request $request, ConstructionSubcontractor $constructionSubcontractor): RedirectResponse
@@ -26,6 +28,8 @@ class ConstructionSubcontractorController extends Controller
 
         $constructionSubcontractor->delete();
 
-        return back()->with('status', '下請けを削除しました。');
+        $this->flashToast('下請けを削除しました。');
+
+        return back();
     }
 }

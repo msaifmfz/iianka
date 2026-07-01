@@ -14,3 +14,11 @@ export type AuthLayoutProps = {
     title?: string;
     description?: string;
 };
+
+export type FlashToastType = 'success' | 'error' | 'warning' | 'info';
+
+export type FlashToast = {
+    id: string;
+    type: FlashToastType;
+    message: string;
+};

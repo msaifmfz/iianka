@@ -210,18 +210,17 @@ class ConstructionScheduleController extends Controller
         ]);
 
         $returnTo = $this->returnTo($request);
+        $this->flashToast('工事予定を作成しました。');
 
         if ($returnTo !== null) {
-            return redirect($returnTo)
-                ->with('status', '予定を作成しました。');
+            return redirect($returnTo);
         }
 
         return redirect()
             ->route('construction-schedules.index', [
                 'range' => 'today',
                 'date' => $schedule->scheduled_on->toDateString(),
-            ])
-            ->with('status', '予定を作成しました。');
+            ]);
     }
 
     public function show(Request $request, ConstructionSchedule $constructionSchedule): Response
@@ -265,15 +264,14 @@ class ConstructionScheduleController extends Controller
         ]);
 
         $returnTo = $this->returnTo($request);
+        $this->flashToast('工事予定を修正しました。');
 
         if ($returnTo !== null) {
-            return redirect($returnTo)
-                ->with('status', '予定を更新しました。');
+            return redirect($returnTo);
         }
 
         return redirect()
-            ->route('construction-schedules.show', $constructionSchedule)
-            ->with('status', '予定を更新しました。');
+            ->route('construction-schedules.show', $constructionSchedule);
     }
 
     public function updateNumber(
@@ -288,7 +286,9 @@ class ConstructionScheduleController extends Controller
             'schedule_number' => $constructionSchedule->schedule_number,
         ]);
 
-        return back()->with('status', '番号を更新しました。');
+        $this->flashToast('工事予定の番号を更新しました。');
+
+        return back();
     }
 
     public function destroy(Request $request, ConstructionSchedule $constructionSchedule): RedirectResponse
@@ -299,9 +299,10 @@ class ConstructionScheduleController extends Controller
 
         $constructionSchedule->delete();
 
+        $this->flashToast('工事予定を削除しました。');
+
         return redirect()
-            ->route('construction-schedules.index')
-            ->with('status', '予定を削除しました。');
+            ->route('construction-schedules.index');
     }
 
     private function returnTo(Request $request): ?string
