@@ -5,6 +5,7 @@ const password = 'password';
 const loginId = 'e2e-login';
 const editorLoginId = 'e2e-editor';
 const overlapDate = '2026-05-13';
+const heatLevelDate = '2026-07-01';
 
 function escapeRegExp(value: string) {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -113,6 +114,35 @@ test.describe('schedule overview timeline', () => {
         expect(
             Math.abs(backToBackFirstBox.y - backToBackSecondBox.y),
         ).toBeLessThan(2);
+    });
+});
+
+test.describe('schedule overview calendar heat', () => {
+    test('uses fixed construction count ranges for heat labels', async ({
+        page,
+    }) => {
+        await login(page);
+        await page.goto(`/schedule-overview?date=${heatLevelDate}`);
+
+        for (const [date, count, label] of [
+            ['2026-07-01', 0, '0〜4件'],
+            ['2026-07-02', 4, '0〜4件'],
+            ['2026-07-03', 5, '5〜7件'],
+            ['2026-07-04', 7, '5〜7件'],
+            ['2026-07-05', 8, '8〜10件'],
+            ['2026-07-06', 10, '8〜10件'],
+            ['2026-07-07', 11, '11〜12件'],
+            ['2026-07-08', 12, '11〜12件'],
+            ['2026-07-09', 13, '13件以上'],
+        ] as const) {
+            await expect(
+                page.getByRole('link', {
+                    name: new RegExp(
+                        `${escapeRegExp(date)}: 混雑度${escapeRegExp(label)}、工事${count}件`,
+                    ),
+                }),
+            ).toBeVisible();
+        }
     });
 });
 

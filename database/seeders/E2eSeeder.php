@@ -128,5 +128,38 @@ class E2eSeeder extends Seeder
             ]);
             $searchResult->assignedUsers()->attach($worker);
         }
+
+        foreach ([
+            '2026-07-02' => 4,
+            '2026-07-03' => 5,
+            '2026-07-04' => 7,
+            '2026-07-05' => 8,
+            '2026-07-06' => 10,
+            '2026-07-07' => 11,
+            '2026-07-08' => 12,
+            '2026-07-09' => 13,
+        ] as $date => $count) {
+            $this->createHeatLevelSchedules($date, $count);
+        }
+    }
+
+    private function createHeatLevelSchedules(string $date, int $count): void
+    {
+        for ($index = 1; $index <= $count; $index++) {
+            ConstructionSchedule::create([
+                'scheduled_on' => $date,
+                'schedule_number' => 3000 + (int) str_replace('-', '', $date) + $index,
+                'starts_at' => '09:00',
+                'ends_at' => '10:00',
+                'status' => ConstructionSchedule::STATUS_SCHEDULED,
+                'meeting_place' => 'E2E Meeting Place',
+                'personnel' => '1名',
+                'location' => sprintf('E2E Heat Level %s %02d', $date, $index),
+                'general_contractor' => 'E2E Heat Contractor',
+                'person_in_charge' => 'E2E Person',
+                'content' => 'Heat level fixture',
+                'navigation_address' => 'Tokyo',
+            ]);
+        }
     }
 }
