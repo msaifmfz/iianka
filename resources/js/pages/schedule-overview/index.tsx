@@ -147,10 +147,10 @@ type CalendarCell = CalendarDay & {
     isCurrentMonth: boolean;
 };
 
-type HeatLevel = 0 | 1 | 2 | 3 | 4;
+type HeatLevel = 1 | 2 | 4 | 5;
 
 const weekdayLabels = ['日', '月', '火', '水', '木', '金', '土'];
-const heatLevels: HeatLevel[] = [0, 1, 2, 3, 4];
+const heatLevels: HeatLevel[] = [1, 2, 4, 5];
 
 function parseDate(date: string) {
     return new Date(`${date}T00:00:00`);
@@ -229,51 +229,43 @@ function overviewQuery(date: string) {
 }
 
 function heatLevel(day: CalendarCell): HeatLevel {
-    if (day.construction_count >= 13) {
-        return 4;
-    }
-
-    if (day.construction_count >= 11) {
-        return 3;
-    }
-
     if (day.construction_count >= 8) {
-        return 2;
+        return 5;
     }
 
     if (day.construction_count >= 5) {
-        return 1;
+        return 4;
     }
 
-    return 0;
+    if (day.construction_count >= 1) {
+        return 2;
+    }
+
+    return 1;
 }
 
 function heatLabel(level: HeatLevel) {
     switch (level) {
-        case 0:
-            return '0〜4件';
         case 1:
-            return '5〜7件';
+            return '0件';
         case 2:
-            return '8〜10件';
-        case 3:
-            return '11〜12件';
+            return '1〜4件';
         case 4:
-            return '13件以上';
+            return '5〜7件';
+        case 5:
+            return '8件以上';
     }
 }
 
 function heatCellClass(level: HeatLevel) {
     switch (level) {
-        case 0:
-            return 'border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-900/70 dark:text-neutral-100 dark:hover:border-white/20 dark:hover:bg-neutral-900';
         case 1:
-            return 'border-sky-200 bg-sky-50 text-sky-950 hover:border-sky-300 hover:bg-sky-100 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-50 dark:hover:border-sky-400/50 dark:hover:bg-sky-500/15';
+            return 'border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-900/70 dark:text-neutral-100 dark:hover:border-white/20 dark:hover:bg-neutral-900';
         case 2:
-            return 'border-cyan-300 bg-cyan-100 text-cyan-950 hover:border-cyan-400 hover:bg-cyan-200/70 dark:border-cyan-400/35 dark:bg-cyan-500/15 dark:text-cyan-50 dark:hover:border-cyan-300/55 dark:hover:bg-cyan-500/20';
-        case 3:
-            return 'border-teal-400 bg-teal-200 text-teal-950 hover:border-teal-500 hover:bg-teal-300/80 dark:border-teal-300/45 dark:bg-teal-500/20 dark:text-teal-50 dark:hover:border-teal-200/60 dark:hover:bg-teal-500/25';
+            return 'border-sky-200 bg-sky-50 text-sky-950 hover:border-sky-300 hover:bg-sky-100 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-50 dark:hover:border-sky-400/50 dark:hover:bg-sky-500/15';
         case 4:
+            return 'border-teal-400 bg-teal-200 text-teal-950 hover:border-teal-500 hover:bg-teal-300/80 dark:border-teal-300/45 dark:bg-teal-500/20 dark:text-teal-50 dark:hover:border-teal-200/60 dark:hover:bg-teal-500/25';
+        case 5:
             return 'border-amber-500 bg-amber-300 text-amber-950 hover:border-amber-600 hover:bg-amber-400/80 dark:border-amber-300/65 dark:bg-amber-500/25 dark:text-amber-50 dark:hover:border-amber-200/80 dark:hover:bg-amber-500/30';
     }
 }
