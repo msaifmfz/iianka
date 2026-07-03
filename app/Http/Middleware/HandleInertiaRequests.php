@@ -7,6 +7,8 @@ use App\Models\CleaningDutyRule;
 use App\Models\ConstructionSchedule;
 use App\Models\InternalNotice;
 use App\Models\User;
+use App\ReceptionCasePriority;
+use App\ReceptionCaseStatus;
 use App\Services\BusinessDate;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -58,6 +60,12 @@ class HandleInertiaRequests extends Middleware
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'attention' => $this->attention($request),
+            // Enum labels sourced from PHP so the frontend never redefines them.
+            'reception' => [
+                'statusLabels' => ReceptionCaseStatus::labels(),
+                'priorityLabels' => ReceptionCasePriority::labels(),
+                'priorityOptions' => ReceptionCasePriority::options(),
+            ],
         ];
     }
 

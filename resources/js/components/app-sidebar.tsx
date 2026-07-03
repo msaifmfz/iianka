@@ -4,9 +4,13 @@ import {
     CalendarCheck2,
     ClipboardList,
     ClipboardCheck,
+    Archive,
     FileSearch,
+    FileStack,
     FileText,
+    Inbox,
     ListChecks,
+    ClipboardPenLine,
     Search,
     UsersRound,
 } from 'lucide-react';
@@ -17,6 +21,13 @@ import { index as cleaningDutyRuleIndex } from '@/actions/App/Http/Controllers/C
 import { index as scheduleIndex } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
 import { index as voucherIndex } from '@/actions/App/Http/Controllers/ConstructionScheduleVoucherController';
 import { index as siteIndex } from '@/actions/App/Http/Controllers/ConstructionSiteController';
+import { index as receptionArchiveIndex } from '@/actions/App/Http/Controllers/ReceptionArchiveController';
+import {
+    create as receptionCreate,
+    index as receptionCasesIndex,
+} from '@/actions/App/Http/Controllers/ReceptionCaseController';
+import { index as receptionDocumentTypeIndex } from '@/actions/App/Http/Controllers/ReceptionDocumentTypeController';
+import { index as receptionHomeIndex } from '@/actions/App/Http/Controllers/ReceptionHomeController';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -124,6 +135,37 @@ export function AppSidebar() {
               ]
             : []),
     ];
+    const receptionItems = [
+        {
+            title: '受付ホーム',
+            href: receptionHomeIndex(),
+            icon: Inbox,
+        },
+        {
+            title: '受付画面',
+            href: receptionCreate(),
+            icon: ClipboardPenLine,
+        },
+        {
+            title: 'やること一覧',
+            href: receptionCasesIndex(),
+            icon: ListChecks,
+        },
+        {
+            title: 'アーカイブ画面',
+            href: receptionArchiveIndex(),
+            icon: Archive,
+        },
+        ...(auth.permissions.manage_content
+            ? [
+                  {
+                      title: '案件書類マスター',
+                      href: receptionDocumentTypeIndex(),
+                      icon: FileStack,
+                  },
+              ]
+            : []),
+    ];
 
     return (
         <Sidebar collapsible="icon" variant="inset">
@@ -141,6 +183,7 @@ export function AppSidebar() {
 
             <SidebarContent>
                 <NavMain items={navigationItems} />
+                <NavMain items={receptionItems} label="受付" />
             </SidebarContent>
 
             <SidebarFooter>

@@ -6,10 +6,12 @@ it('renders the custom maintenance mode page', function (): void {
     $view = $this->view('errors.503');
 
     $view
-        ->assertSee('ただいま工事中です')
-        ->assertSee('作業が完了し次第、まもなく再開します。')
-        ->assertSee('ネジを一本だけ探しています。見つかり次第、現場監督もサイトも戻ります。')
-        ->assertSee('コーヒー: 稼働中')
-        ->assertSee('工事中のアニメーション')
-        ->assertSee('construction-scene');
+        ->assertSee('lang="ja"', false)
+        ->assertSee('503 SERVICE UNAVAILABLE')
+        ->assertSee('ただいま工事中！')
+        ->assertSee('メンテナンス作業を行っております')
+        ->assertSee('ゴリラたちが全力で作業中です')
+        ->assertSee('作業進行中')
+        ->assertSee('復旧後は自動的に再読み込みされます')
+        ->assertSee('id="scene"', false);
 });

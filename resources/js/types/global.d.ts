@@ -1,5 +1,6 @@
 import type { Auth } from '@/types/auth';
 import type { AttentionSummary } from '@/types/navigation';
+import type { ReceptionMeta } from '@/types/reception';
 import type { FlashToast } from '@/types/ui';
 
 declare module '@inertiajs/core' {
@@ -13,6 +14,7 @@ declare module '@inertiajs/core' {
             auth: Auth;
             attention: AttentionSummary;
             sidebarOpen: boolean;
+            reception: ReceptionMeta;
             [key: string]: unknown;
         };
     }

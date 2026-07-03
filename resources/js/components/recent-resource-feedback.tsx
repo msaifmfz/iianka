@@ -9,6 +9,11 @@ const actionLabels: Record<FlashResourceAction, string> = {
     created: '追加済み',
     updated: '更新済み',
     saved: '保存済み',
+    submitted: '受付済み',
+    assigned: '担当設定済み',
+    started: '対応開始済み',
+    handed_over: '引継ぎ済み',
+    completed: '完了済み',
 };
 
 export function recentResourceActionLabel(action: FlashResourceAction): string {

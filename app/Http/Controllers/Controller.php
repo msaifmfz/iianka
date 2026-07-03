@@ -7,12 +7,15 @@ namespace App\Http\Controllers;
 use App\Services\AuditLogger;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 abstract class Controller
 {
+    use AuthorizesRequests;
+
     /**
      * @param  array<string, mixed>  $metadata
      */
@@ -43,7 +46,7 @@ abstract class Controller
 
     /**
      * @param  'success'|'error'|'warning'|'info'  $type
-     * @param  array{type: string, id: int|string, action: 'created'|'updated'|'saved', label: string}|null  $resource
+     * @param  array{type: string, id: int|string, action: string, label: string}|null  $resource
      */
     protected function flashToast(string $message, string $type = 'success', ?array $resource = null): void
     {

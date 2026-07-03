@@ -12,6 +12,18 @@ use App\Http\Controllers\ConstructionScheduleVoucherController;
 use App\Http\Controllers\ConstructionSiteController;
 use App\Http\Controllers\ConstructionSubcontractorController;
 use App\Http\Controllers\InternalNoticeController;
+use App\Http\Controllers\ReceptionArchiveController;
+use App\Http\Controllers\ReceptionCaseAssignmentController;
+use App\Http\Controllers\ReceptionCaseAttachmentController;
+use App\Http\Controllers\ReceptionCaseCompletionController;
+use App\Http\Controllers\ReceptionCaseController;
+use App\Http\Controllers\ReceptionCaseDraftController;
+use App\Http\Controllers\ReceptionCaseHandoverController;
+use App\Http\Controllers\ReceptionCasePriorityController;
+use App\Http\Controllers\ReceptionCaseWorkMemoController;
+use App\Http\Controllers\ReceptionDocumentTypeController;
+use App\Http\Controllers\ReceptionDocumentTypeOrderController;
+use App\Http\Controllers\ReceptionHomeController;
 use App\Http\Controllers\ScheduleOverviewController;
 use App\Http\Controllers\ScheduleSearchController;
 use App\Http\Controllers\SiteGuideFileController;
@@ -56,6 +68,51 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::resource('cleaning-duty-rules', CleaningDutyRuleController::class);
     Route::resource('construction-sites', ConstructionSiteController::class)
         ->parameters(['construction-sites' => 'site_guide_file']);
+    Route::prefix('reception')->name('reception.')->group(function (): void {
+        Route::get('/', [ReceptionHomeController::class, 'index'])
+            ->name('home');
+        Route::get('cases/create', [ReceptionCaseController::class, 'create'])
+            ->name('cases.create');
+        Route::post('cases/draft', [ReceptionCaseDraftController::class, 'store'])
+            ->name('cases.store-draft');
+        Route::patch('cases/{reception_case}/draft', [ReceptionCaseDraftController::class, 'update'])
+            ->name('cases.update-draft');
+        Route::post('cases/{reception_case}/submit', [ReceptionCaseController::class, 'submit'])
+            ->name('cases.submit');
+        Route::get('cases', [ReceptionCaseController::class, 'index'])
+            ->name('cases.index');
+        Route::get('cases/{reception_case}', [ReceptionCaseController::class, 'show'])
+            ->name('cases.show');
+        Route::post('cases/{reception_case}/attachments', [ReceptionCaseAttachmentController::class, 'store'])
+            ->name('cases.attachments.store');
+        Route::patch('cases/{reception_case}', [ReceptionCaseController::class, 'update'])
+            ->name('cases.update');
+        Route::patch('cases/{reception_case}/priority', ReceptionCasePriorityController::class)
+            ->name('cases.priority.update');
+        Route::patch('cases/{reception_case}/work-memo', ReceptionCaseWorkMemoController::class)
+            ->name('cases.work-memo.update');
+        Route::delete('cases/{reception_case}/draft', [ReceptionCaseController::class, 'destroyDraft'])
+            ->name('cases.destroy-draft');
+        Route::patch('cases/{reception_case}/assign', [ReceptionCaseAssignmentController::class, 'assign'])
+            ->name('cases.assign');
+        Route::patch('cases/{reception_case}/start', [ReceptionCaseAssignmentController::class, 'start'])
+            ->name('cases.start');
+        Route::post('cases/{reception_case}/handover', ReceptionCaseHandoverController::class)
+            ->name('cases.handover');
+        Route::post('cases/{reception_case}/complete', ReceptionCaseCompletionController::class)
+            ->name('cases.complete');
+        Route::get('archive', [ReceptionArchiveController::class, 'index'])
+            ->name('archive.index');
+        Route::get('attachments/{reception_case_attachment}', [ReceptionCaseAttachmentController::class, 'show'])
+            ->name('attachments.show');
+        Route::delete('attachments/{reception_case_attachment}', [ReceptionCaseAttachmentController::class, 'destroy'])
+            ->name('attachments.destroy');
+        Route::patch('document-types/order', ReceptionDocumentTypeOrderController::class)
+            ->name('document-types.order.update');
+        Route::resource('document-types', ReceptionDocumentTypeController::class)
+            ->only(['index', 'store', 'update'])
+            ->parameters(['document-types' => 'reception_document_type']);
+    });
     Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::get('audit-logs', [AuditLogController::class, 'index'])
             ->name('audit-logs.index');

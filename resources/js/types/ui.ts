@@ -26,9 +26,19 @@ export type FlashResourceType =
     | 'admin_user'
     | 'voucher_confirmation'
     | 'attendance_cell'
-    | 'construction_subcontractor';
+    | 'construction_subcontractor'
+    | 'reception_case'
+    | 'reception_document_type';
 
-export type FlashResourceAction = 'created' | 'updated' | 'saved';
+export type FlashResourceAction =
+    | 'created'
+    | 'updated'
+    | 'saved'
+    | 'submitted'
+    | 'assigned'
+    | 'started'
+    | 'handed_over'
+    | 'completed';
 
 export type FlashResource = {
     type: FlashResourceType;

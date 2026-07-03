@@ -6,7 +6,10 @@ namespace Database\Seeders;
 
 use App\Models\BusinessSchedule;
 use App\Models\ConstructionSchedule;
+use App\Models\ReceptionCase;
+use App\Models\ReceptionDocumentType;
 use App\Models\User;
+use App\ReceptionCaseStatus;
 use App\UserRole;
 use Illuminate\Database\Seeder;
 
@@ -17,6 +20,8 @@ class E2eSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->call(ReceptionDocumentTypeSeeder::class);
+
         $user = new User;
         $user->forceFill([
             'name' => 'E2E Login User',
@@ -64,6 +69,25 @@ class E2eSeeder extends Seeder
             'is_admin' => false,
             'is_hidden_from_workers' => false,
         ])->save();
+
+        ReceptionCase::create([
+            'case_number' => 'WJA-C-20260703-9001',
+            'status' => ReceptionCaseStatus::Completed,
+            'company_name' => 'E2E Archive Width Company',
+            'site_name' => 'E2E Archive Width Site',
+            'reception_document_type_id' => ReceptionDocumentType::query()
+                ->where('name', '見積依頼')
+                ->firstOrFail()
+                ->id,
+            'reception_content' => 'Archive width fixture',
+            'due_on' => '2026-07-03',
+            'scheduled_on' => '2026-07-04',
+            'receptor_user_id' => $editor->id,
+            'assigned_user_id' => $worker->id,
+            'completed_at' => '2026-07-03 09:00:00',
+            'completed_by_user_id' => $worker->id,
+            'last_activity_at' => '2026-07-03 09:00:00',
+        ]);
 
         $overlapEarly = ConstructionSchedule::create([
             'scheduled_on' => '2026-05-13',

@@ -10,6 +10,7 @@ use App\Models\CleaningDutyRule;
 use App\Models\ConstructionSchedule;
 use App\Models\ConstructionSubcontractor;
 use App\Models\InternalNotice;
+use App\Models\ReceptionCaseAttachment;
 use App\Models\SiteGuideFile;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -65,6 +66,9 @@ class AuditLogController extends Controller
         'internal_notices.created' => '業務連絡作成',
         'internal_notices.updated' => '業務連絡更新',
         'internal_notices.deleted' => '業務連絡削除',
+        'reception_case_attachments.created' => '受付添付資料追加',
+        'reception_case_attachments.downloaded' => '受付添付資料閲覧',
+        'reception_case_attachments.deleted' => '受付添付資料削除',
         'settings.passkeys.created' => 'パスキー登録',
         'settings.passkeys.deleted' => 'パスキー削除',
         'settings.password.updated' => 'パスワード変更',
@@ -96,6 +100,7 @@ class AuditLogController extends Controller
         ConstructionSchedule::class => '工事予定',
         ConstructionSubcontractor::class => '下請け',
         InternalNotice::class => '業務連絡',
+        ReceptionCaseAttachment::class => '受付添付資料',
         SiteGuideFile::class => '現場案内図',
         User::class => 'ユーザー',
     ];

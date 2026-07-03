@@ -76,6 +76,25 @@ class User extends Authenticatable implements PasskeyUser
         $query->where('is_hidden_from_workers', false);
     }
 
+    #[Scope]
+    protected function assignableAsReceptionHandler(Builder $query): void
+    {
+        self::assignableReceptionHandlerConstraint($query);
+    }
+
+    /**
+     * The "assignable as a reception handler" predicate, shared by the
+     * {@see assignableAsReceptionHandler} scope and the assignee validation rule.
+     * The rule runs on a base query builder (no Eloquent scopes), so this accepts
+     * either builder type.
+     *
+     * @param  \Illuminate\Contracts\Database\Query\Builder|Builder  $query
+     */
+    public static function assignableReceptionHandlerConstraint(mixed $query): mixed
+    {
+        return $query->where('is_hidden_from_workers', false);
+    }
+
     /**
      * Normalize login IDs for case-insensitive authentication.
      */
@@ -124,5 +143,21 @@ class User extends Authenticatable implements PasskeyUser
     public function attendanceRecords(): HasMany
     {
         return $this->hasMany(AttendanceRecord::class);
+    }
+
+    /**
+     * @return HasMany<ReceptionCase, $this>
+     */
+    public function receptionCases(): HasMany
+    {
+        return $this->hasMany(ReceptionCase::class, 'receptor_user_id');
+    }
+
+    /**
+     * @return HasMany<ReceptionCase, $this>
+     */
+    public function assignedReceptionCases(): HasMany
+    {
+        return $this->hasMany(ReceptionCase::class, 'assigned_user_id');
     }
 }

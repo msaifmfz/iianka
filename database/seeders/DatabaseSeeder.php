@@ -18,6 +18,8 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->call(ReceptionDocumentTypeSeeder::class);
+
         $testUser = User::query()->firstOrNew(['email' => 'test@example.com']);
         $testUser->forceFill([
             'name' => 'Test User',
