@@ -1,657 +1,614 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="ja">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
-
-    <title>ただいま工事中 | {{ config('app.name') }}</title>
-
+    <meta name="theme-color" content="#8ec9f5">
+    <title>ただいま工事中｜{{ config('app.name', 'Laravel') }}</title>
     <style>
-        :root {
-            color-scheme: light;
-            --asphalt: #15171d;
-            --asphalt-soft: #242936;
-            --chalk: #f9fbff;
-            --concrete: #dce5e8;
-            --sky: #6fd3dc;
-            --sky-deep: #178c9a;
-            --safety: #ffd23f;
-            --signal: #ec4b3e;
-            --fresh: #22a06b;
-            --ink: #101217;
-        }
+        * { box-sizing: border-box; }
 
-        * {
-            box-sizing: border-box;
-        }
-
-        html {
-            min-height: 100%;
-            background: var(--sky);
-        }
+        html, body { margin: 0; padding: 0; }
 
         body {
             min-height: 100vh;
-            margin: 0;
-            overflow-x: hidden;
-            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            letter-spacing: 0;
-            color: var(--chalk);
-            background:
-                linear-gradient(180deg, #66d9e8 0 34%, #9ee7e4 34.1% 48%, #67bb7d 48.1% 59%, #2a7a57 59.1% 66%, #262a31 66.1% 100%);
-        }
-
-        .maintenance-page {
-            position: relative;
-            min-height: 100vh;
-            isolation: isolate;
-            overflow: hidden;
-        }
-
-        .maintenance-page::before,
-        .maintenance-page::after {
-            position: absolute;
-            inset-inline: 0;
-            z-index: -1;
-            content: "";
-        }
-
-        .maintenance-page::before {
-            top: 0;
-            height: 42%;
-            background:
-                linear-gradient(90deg, transparent 0 10%, rgb(255 255 255 / 32%) 10% 10.5%, transparent 10.5% 100%),
-                linear-gradient(180deg, rgb(255 255 255 / 20%), transparent 72%);
-            background-size: 8rem 100%, auto;
-            animation: blueprint-slide 28s linear infinite;
-        }
-
-        .maintenance-page::after {
-            bottom: 0;
-            height: 35%;
-            background:
-                repeating-linear-gradient(90deg, transparent 0 2.5rem, rgb(255 210 63 / 82%) 2.5rem 6.5rem, transparent 6.5rem 9rem),
-                linear-gradient(180deg, transparent, rgb(0 0 0 / 36%));
-            clip-path: polygon(0 42%, 100% 8%, 100% 100%, 0 100%);
-            opacity: 0.72;
-        }
-
-        .content {
-            position: relative;
-            display: grid;
-            min-height: 100vh;
-            grid-template-columns: minmax(0, 0.82fr) minmax(20rem, 1.18fr);
-            align-items: center;
-            gap: 2rem;
-            width: min(78rem, calc(100% - 2rem));
-            margin: 0 auto;
-            padding: 2rem 0;
-        }
-
-        .copy {
-            z-index: 2;
-            max-width: 38rem;
-            padding: 1.25rem;
-            text-shadow: 0 0.25rem 0.9rem rgb(0 0 0 / 26%);
-        }
-
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.55rem;
-            border: 1px solid rgb(16 18 23 / 20%);
-            border-radius: 8px;
-            padding: 0.55rem 0.75rem;
-            color: var(--ink);
-            background: var(--safety);
-            box-shadow: 0 0.75rem 0 rgb(16 18 23 / 18%);
-            font-size: 0.88rem;
-            font-weight: 900;
-            line-height: 1;
-        }
-
-        .badge-light {
-            width: 0.7rem;
-            aspect-ratio: 1;
-            border-radius: 50%;
-            background: var(--signal);
-            box-shadow: 0 0 0 0.22rem rgb(236 75 62 / 20%), 0 0 1rem var(--signal);
-            animation: beacon 1s steps(2, end) infinite;
-        }
-
-        h1 {
-            max-width: 9ch;
-            margin: 1rem 0 0;
-            font-size: 4.25rem;
-            line-height: 0.95;
-            letter-spacing: 0;
-        }
-
-        .lead {
-            max-width: 32rem;
-            margin: 1rem 0 0;
-            color: rgb(249 251 255 / 92%);
-            font-size: 1.12rem;
-            line-height: 1.85;
-        }
-
-        .humour {
-            display: inline-flex;
-            max-width: 34rem;
-            align-items: center;
-            gap: 0.65rem;
-            margin-top: 1.15rem;
-            border: 1px solid rgb(255 255 255 / 24%);
-            border-radius: 8px;
-            padding: 0.75rem 0.85rem;
-            color: var(--chalk);
-            background: rgb(16 18 23 / 44%);
-            backdrop-filter: blur(12px);
-            font-size: 0.95rem;
-            font-weight: 750;
-        }
-
-        .humour span {
-            display: inline-grid;
-            flex: 0 0 auto;
-            width: 2rem;
-            aspect-ratio: 1;
-            place-items: center;
-            border-radius: 8px;
-            color: var(--ink);
-            background: var(--safety);
-            font-weight: 950;
-            transform: rotate(-7deg);
-            animation: tiny-wobble 2.3s ease-in-out infinite;
-        }
-
-        .status-list {
+            min-height: 100dvh;
             display: flex;
-            flex-wrap: wrap;
-            gap: 0.7rem;
-            margin-top: 1.1rem;
-            padding: 0;
-            list-style: none;
+            flex-direction: column;
+            overflow-x: hidden;
+            background: linear-gradient(180deg, #8ec9f5 0%, #c9e7fb 55%, #eef7ff 100%);
+            color: #1f2937;
+            font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, system-ui, sans-serif;
+            -webkit-font-smoothing: antialiased;
         }
 
-        .status-list li {
-            border: 1px solid rgb(255 255 255 / 22%);
-            border-radius: 8px;
-            padding: 0.55rem 0.75rem;
-            background: rgb(16 18 23 / 34%);
-            color: rgb(249 251 255 / 92%);
-            font-size: 0.9rem;
-            font-weight: 800;
-        }
-
-        .scene-wrap {
+        /* ---- hazard tape borders ---- */
+        .tape {
+            height: 26px;
+            flex: none;
+            background: repeating-linear-gradient(-45deg, #ffce00 0 24px, #1a1a1f 24px 48px);
+            animation: tape-scroll 1.6s linear infinite;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, .25);
             position: relative;
-            min-height: 37rem;
+            z-index: 3;
         }
 
-        .scene-shadow {
-            position: absolute;
-            right: 4%;
-            bottom: 4%;
-            width: 72%;
-            height: 1.5rem;
-            border-radius: 50%;
-            background: rgb(0 0 0 / 36%);
-            filter: blur(0.8rem);
-            animation: shadow-breathe 4.5s ease-in-out infinite;
+        .tape--bottom { box-shadow: 0 -2px 6px rgba(0, 0, 0, .25); }
+
+        @keyframes tape-scroll {
+            to { background-position: 67.88px 0; }
         }
 
-        .construction-scene {
-            position: absolute;
-            inset: auto -3rem -1rem auto;
-            width: min(54rem, 116%);
-            height: auto;
-            filter: drop-shadow(0 2rem 1.5rem rgb(0 0 0 / 26%));
-        }
-
-        .cloud {
-            animation: cloud-drift 24s linear infinite;
-        }
-
-        .cloud.second {
-            animation-duration: 31s;
-            animation-delay: -13s;
-        }
-
+        /* ---- sun ---- */
         .sun {
-            transform-origin: center;
-            animation: sun-pulse 5s ease-in-out infinite;
-        }
-
-        .crane-cab,
-        .crane-arm {
-            transform-origin: 688px 172px;
-            animation: crane-swing 6.5s ease-in-out infinite;
-        }
-
-        .cable {
-            transform-origin: 798px 166px;
-            animation: cable-sway 6.5s ease-in-out infinite;
-        }
-
-        .payload {
-            transform-origin: center;
-            animation: payload-lift 6.5s ease-in-out infinite;
-        }
-
-        .truck {
-            animation: truck-drive 8.8s cubic-bezier(.66, 0, .28, 1) infinite;
-        }
-
-        .wheel {
-            transform-box: fill-box;
-            transform-origin: center;
-            animation: wheel-spin 0.75s linear infinite;
-        }
-
-        .helmet {
-            transform-origin: center;
-            animation: helmet-nod 1.7s ease-in-out infinite;
-        }
-
-        .worker-arm {
-            transform-origin: 487px 508px;
-            animation: hammer 0.95s ease-in-out infinite;
-        }
-
-        .spark {
-            transform-box: fill-box;
-            transform-origin: center;
-            animation: spark-pop 1.2s ease-out infinite;
-        }
-
-        .spark:nth-child(2) {
-            animation-delay: 0.2s;
-        }
-
-        .spark:nth-child(3) {
-            animation-delay: 0.45s;
-        }
-
-        .stripe {
-            animation: stripe-flash 1.1s steps(2, end) infinite;
-        }
-
-        .road-mark {
-            stroke-dasharray: 44 36;
-            animation: road-run 1.5s linear infinite;
-        }
-
-        .bubble {
-            transform-origin: center;
-            animation: bubble-bob 3.4s ease-in-out infinite;
-        }
-
-        @keyframes blueprint-slide {
-            to {
-                background-position: 24rem 0, 0 0;
-            }
-        }
-
-        @keyframes beacon {
-            50% {
-                opacity: 0.28;
-            }
-        }
-
-        @keyframes tiny-wobble {
-            0%, 100% {
-                transform: rotate(-7deg) translateY(0);
-            }
-
-            50% {
-                transform: rotate(7deg) translateY(-0.18rem);
-            }
-        }
-
-        @keyframes shadow-breathe {
-            50% {
-                transform: scaleX(0.86);
-                opacity: 0.72;
-            }
-        }
-
-        @keyframes cloud-drift {
-            from {
-                transform: translateX(-18rem);
-            }
-
-            to {
-                transform: translateX(78rem);
-            }
+            position: fixed;
+            top: -70px;
+            right: -70px;
+            width: 240px;
+            height: 240px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 42% 42%, #fffbe0 0%, #ffe27a 38%, rgba(255, 226, 122, 0) 56%);
+            animation: sun-pulse 7s ease-in-out infinite alternate;
+            pointer-events: none;
+            z-index: 0;
         }
 
         @keyframes sun-pulse {
-            50% {
-                transform: scale(1.05);
-                opacity: 0.9;
-            }
+            from { transform: scale(1); opacity: .9; }
+            to   { transform: scale(1.08); opacity: 1; }
         }
 
-        @keyframes crane-swing {
-            0%, 100% {
-                transform: rotate(-2deg);
-            }
-
-            50% {
-                transform: rotate(4deg);
-            }
+        /* ---- copy ---- */
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 34px 20px 0;
+            position: relative;
+            z-index: 1;
         }
 
-        @keyframes cable-sway {
-            0%, 100% {
-                transform: rotate(3deg);
-            }
-
-            50% {
-                transform: rotate(-5deg);
-            }
+        .badge {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 12px;
+            letter-spacing: .14em;
+            color: #e2e8f0;
+            background: linear-gradient(180deg, #47566b, #334155);
+            border: 1px solid #1f2937;
+            border-radius: 8px;
+            padding: 7px 30px;
+            position: relative;
+            box-shadow: 0 2px 0 rgba(0, 0, 0, .25);
         }
 
-        @keyframes payload-lift {
-            0%, 100% {
-                transform: translateY(0);
-            }
-
-            50% {
-                transform: translateY(-4.6rem);
-            }
+        .badge::before,
+        .badge::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 7px;
+            height: 7px;
+            margin-top: -3.5px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, #cbd5e1, #64748b);
+            box-shadow: inset 0 -1px 1px rgba(0, 0, 0, .4);
         }
 
-        @keyframes truck-drive {
-            0% {
-                transform: translateX(-19rem);
-            }
+        .badge::before { left: 9px; }
+        .badge::after  { right: 9px; }
 
-            46%, 58% {
-                transform: translateX(7rem);
-            }
-
-            100% {
-                transform: translateX(78rem);
-            }
+        h1 {
+            margin: .55em 0 .25em;
+            font-size: clamp(2.3rem, 7vw, 4.1rem);
+            font-weight: 800;
+            letter-spacing: .04em;
+            color: #17324d;
+            text-shadow: 0 2px 0 rgba(255, 255, 255, .8);
         }
 
-        @keyframes wheel-spin {
-            to {
-                transform: rotate(360deg);
-            }
+        h1 .w {
+            display: inline-block;
+            animation: char-wave 3s ease-in-out infinite;
+            animation-delay: calc(var(--i) * .13s);
         }
 
-        @keyframes helmet-nod {
-            50% {
-                transform: translateY(0.28rem) rotate(-2deg);
-            }
+        @keyframes char-wave {
+            0%, 100% { transform: translateY(0); }
+            12%      { transform: translateY(-7px); }
+            24%      { transform: translateY(0); }
         }
 
-        @keyframes hammer {
-            0%, 100% {
-                transform: rotate(15deg);
-            }
-
-            50% {
-                transform: rotate(-18deg);
-            }
+        .sub {
+            max-width: 36em;
+            margin: 0;
+            line-height: 2;
+            font-size: clamp(.92rem, 2.6vw, 1.05rem);
+            color: #33475c;
         }
 
-        @keyframes spark-pop {
-            0% {
-                opacity: 0;
-                transform: scale(0.2) translateY(0);
-            }
-
-            35% {
-                opacity: 1;
-            }
-
-            100% {
-                opacity: 0;
-                transform: scale(1.35) translateY(-1rem);
-            }
+        /* ---- progress tape ---- */
+        .progress {
+            width: min(460px, 84vw);
+            height: 24px;
+            margin-top: 30px;
+            border: 3px solid #2b2b31;
+            border-radius: 999px;
+            background: repeating-linear-gradient(-45deg, #ffce00 0 16px, #2b2b31 16px 32px);
+            animation: stripe-scroll 1.1s linear infinite;
+            box-shadow: 0 3px 0 rgba(0, 0, 0, .12);
         }
 
-        @keyframes stripe-flash {
-            50% {
-                fill: #f9fbff;
-            }
+        @keyframes stripe-scroll {
+            to { background-position: 45.25px 0; }
         }
 
-        @keyframes road-run {
-            to {
-                stroke-dashoffset: -80;
-            }
+        .progress-label {
+            margin-top: 12px;
+            font-size: .92rem;
+            font-weight: 600;
+            color: #46596e;
         }
 
-        @keyframes bubble-bob {
-            50% {
-                transform: translateY(-0.45rem);
-            }
+        .progress-label .d {
+            display: inline-block;
+            animation: dot-blink 1.5s infinite;
         }
 
-        @media (max-width: 960px) {
-            .content {
-                min-height: auto;
-                grid-template-columns: 1fr;
-                gap: 0;
-                padding-top: 1.5rem;
-            }
+        .progress-label .d:nth-child(2) { animation-delay: .25s; }
+        .progress-label .d:nth-child(3) { animation-delay: .5s; }
 
-            .copy {
-                padding: 0.75rem 0.25rem;
-            }
-
-            h1 {
-                max-width: 10ch;
-                font-size: 3.35rem;
-            }
-
-            .scene-wrap {
-                min-height: 31rem;
-            }
-
-            .construction-scene {
-                right: 50%;
-                width: min(47rem, 128%);
-                transform: translateX(50%);
-            }
+        @keyframes dot-blink {
+            0%, 60%, 100% { opacity: .15; }
+            30%           { opacity: 1; }
         }
 
-        @media (max-width: 540px) {
-            .content {
-                width: min(100% - 1rem, 78rem);
-                padding-top: 0.75rem;
-            }
+        .note {
+            margin-top: 6px;
+            font-size: .78rem;
+            color: #7b8ba0;
+        }
 
-            h1 {
-                font-size: 2.65rem;
-            }
+        /* ---- scene ---- */
+        .scene {
+            width: 100%;
+            height: clamp(200px, calc(100vh - 560px), 504px);
+            display: block;
+            margin-top: auto;
+            position: relative;
+            z-index: 1;
+            overflow: visible;
+        }
 
-            .lead {
-                font-size: 1rem;
-            }
+        /* clouds drift across the whole sky */
+        .cloud { animation: cloud-drift linear infinite; }
+        .cloud--1 { animation-duration: 80s; animation-delay: -30s; }
+        .cloud--2 { animation-duration: 115s; animation-delay: -80s; }
 
-            .humour {
-                align-items: flex-start;
-            }
+        @keyframes cloud-drift {
+            from { transform: translateX(-600px); }
+            to   { transform: translateX(1800px); }
+        }
 
-            .scene-wrap {
-                min-height: 25rem;
-            }
+        /* jackhammer shake */
+        .jack-tool { animation: jitter-tool .12s linear infinite; }
+        .jack-body { animation: jitter-body .16s linear infinite; }
 
-            .construction-scene {
-                width: 43rem;
-            }
+        @keyframes jitter-tool {
+            0%, 100% { transform: translateY(0); }
+            50%      { transform: translateY(2.6px); }
+        }
+
+        @keyframes jitter-body {
+            0%, 100% { transform: translateY(0); }
+            50%      { transform: translateY(1.2px); }
+        }
+
+        /* dust puffs at the jackhammer bit */
+        .puff {
+            transform-box: fill-box;
+            transform-origin: center;
+            opacity: 0;
+            animation: puff-rise 1.8s ease-out infinite;
+        }
+
+        .puff--2 { animation-delay: .6s; }
+        .puff--3 { animation-delay: 1.2s; }
+
+        @keyframes puff-rise {
+            0%   { transform: translate(0, 0) scale(.35); opacity: 0; }
+            12%  { opacity: .75; }
+            100% { transform: translate(var(--dx, 0px), -44px) scale(1.9); opacity: 0; }
+        }
+
+        /* sparks synced to the 2.2s hammer cycle (impact ~42%) */
+        .spark {
+            transform-box: fill-box;
+            transform-origin: center;
+            opacity: 0;
+            animation: spark-burst 2.2s linear infinite;
+        }
+
+        @keyframes spark-burst {
+            0%, 40%   { transform: scale(.3); opacity: 0; }
+            44%       { transform: scale(.9); opacity: 1; }
+            58%       { transform: scale(1.3); opacity: .8; }
+            64%, 100% { transform: scale(1.4); opacity: 0; }
+        }
+
+        /* beacon lamps */
+        .beacon { animation: beacon-pulse 1.1s ease-in-out infinite; }
+
+        @keyframes beacon-pulse {
+            0%, 100% { opacity: .35; }
+            50%      { opacity: 1; }
+        }
+
+        .halo {
+            transform-box: fill-box;
+            transform-origin: center;
+            animation: halo-ping 1.1s ease-out infinite;
+        }
+
+        @keyframes halo-ping {
+            0%   { transform: scale(.6); opacity: .5; }
+            100% { transform: scale(2.1); opacity: 0; }
+        }
+
+        /* wheelbarrow gorilla crossing the site */
+        .walker { animation: walker-cross 26s linear infinite; animation-delay: -8s; }
+
+        @keyframes walker-cross {
+            from { transform: translate(-900px, 396px) scale(1.08); }
+            to   { transform: translate(2100px, 396px) scale(1.08); }
+        }
+
+        .walker-bob { animation: walker-bob .4s ease-in-out infinite alternate; }
+
+        @keyframes walker-bob {
+            from { transform: translateY(0); }
+            to   { transform: translateY(-4px); }
         }
 
         @media (prefers-reduced-motion: reduce) {
-            *,
-            *::before,
-            *::after {
-                animation-duration: 0.001ms !important;
-                animation-iteration-count: 1 !important;
-                scroll-behavior: auto !important;
+            *, *::before, *::after {
+                animation: none !important;
+                transition: none !important;
             }
         }
     </style>
 </head>
 <body>
-    <main class="maintenance-page" aria-labelledby="maintenance-title">
-        <div class="content">
-            <section class="copy">
-                <div class="badge">
-                    <span class="badge-light" aria-hidden="true"></span>
-                    503 Maintenance
-                </div>
+    <div class="tape" aria-hidden="true"></div>
+    <div class="sun" aria-hidden="true"></div>
 
-                <h1 id="maintenance-title">ただいま工事中です</h1>
-
-                <p class="lead">
-                    現在システムを整備しています。<br>
-                    作業が完了し次第、まもなく再開します。
-                </p>
-
-                <p class="humour">
-                    <span aria-hidden="true">!</span>
-                    ネジを一本だけ探しています。見つかり次第、現場監督もサイトも戻ります。
-                </p>
-
-                <ul class="status-list" aria-label="メンテナンス状況">
-                    <li>足場: 固定済み</li>
-                    <li>コーヒー: 稼働中</li>
-                    <li>復旧: 全力作業中</li>
-                </ul>
-            </section>
-
-            <section class="scene-wrap" aria-label="工事中のアニメーション">
-                <div class="scene-shadow" aria-hidden="true"></div>
-
-                <svg class="construction-scene" viewBox="0 0 1120 720" role="img" aria-labelledby="construction-scene-title">
-                    <title id="construction-scene-title">工事中のアニメーション</title>
-                    <defs>
-                        <linearGradient id="sunGlow" x1="0" x2="1">
-                            <stop offset="0" stop-color="#fff4a8"/>
-                            <stop offset="1" stop-color="#ffd23f"/>
-                        </linearGradient>
-                        <linearGradient id="beamPaint" x1="0" x2="1">
-                            <stop offset="0" stop-color="#ffd23f"/>
-                            <stop offset="1" stop-color="#f08a24"/>
-                        </linearGradient>
-                        <linearGradient id="steelPaint" x1="0" x2="1">
-                            <stop offset="0" stop-color="#f9fbff"/>
-                            <stop offset="1" stop-color="#8fa7ad"/>
-                        </linearGradient>
-                        <pattern id="hazardPaint" width="42" height="42" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-                            <rect width="21" height="42" fill="#101217"/>
-                            <rect x="21" width="21" height="42" fill="#ffd23f"/>
-                        </pattern>
-                    </defs>
-
-                    <g class="sun">
-                        <circle cx="140" cy="116" r="58" fill="url(#sunGlow)"/>
-                        <circle cx="140" cy="116" r="86" fill="none" stroke="#fff4a8" stroke-width="6" opacity=".35"/>
-                    </g>
-
-                    <g class="cloud" opacity=".9">
-                        <ellipse cx="70" cy="166" rx="65" ry="24" fill="#f9fbff"/>
-                        <ellipse cx="124" cy="151" rx="45" ry="34" fill="#f9fbff"/>
-                        <ellipse cx="177" cy="168" rx="67" ry="25" fill="#f9fbff"/>
-                    </g>
-                    <g class="cloud second" opacity=".78">
-                        <ellipse cx="22" cy="88" rx="48" ry="18" fill="#f9fbff"/>
-                        <ellipse cx="62" cy="76" rx="38" ry="29" fill="#f9fbff"/>
-                        <ellipse cx="105" cy="90" rx="56" ry="20" fill="#f9fbff"/>
-                    </g>
-
-                    <path d="M0 422 C138 354 254 407 391 363 C551 312 663 385 805 344 C949 302 1002 328 1120 285 V720 H0 Z" fill="#36a874"/>
-                    <path d="M0 486 C188 427 340 489 526 433 C738 369 887 430 1120 365 V720 H0 Z" fill="#267a57"/>
-                    <path d="M0 520 H1120 V720 H0 Z" fill="#20242c"/>
-                    <path class="road-mark" d="M48 641 H1080" fill="none" stroke="#f9fbff" stroke-linecap="round" stroke-width="12" opacity=".86"/>
-
-                    <g transform="translate(664 166)">
-                        <rect x="-24" y="-10" width="50" height="438" rx="8" fill="url(#beamPaint)"/>
-                        <path d="M1 0 L-76 417 M1 0 L82 417 M-24 78 H26 M-24 158 H26 M-24 238 H26 M-24 318 H26" fill="none" stroke="#8b5418" stroke-linecap="round" stroke-width="9"/>
-                        <circle cx="1" cy="0" r="31" fill="#101217"/>
-                        <circle cx="1" cy="0" r="14" fill="#ffd23f"/>
-                    </g>
-
-                    <g class="crane-arm">
-                        <path d="M642 160 L910 106 L1054 151 L672 202 Z" fill="url(#beamPaint)"/>
-                        <path d="M674 199 L910 107 L1051 150 M700 192 L738 145 M761 181 L802 132 M826 168 L868 120 M894 156 L936 114 M963 154 L994 132" fill="none" stroke="#8b5418" stroke-linecap="round" stroke-width="8"/>
-                    </g>
-                    <g class="crane-cab">
-                        <rect x="604" y="126" width="82" height="58" rx="8" fill="#101217"/>
-                        <rect x="622" y="138" width="30" height="21" rx="4" fill="#6fd3dc"/>
-                        <rect x="657" y="138" width="13" height="21" rx="3" fill="#6fd3dc"/>
-                    </g>
-
-                    <g class="cable">
-                        <path d="M798 163 V324" fill="none" stroke="#101217" stroke-linecap="round" stroke-width="7"/>
-                        <path d="M798 316 c-27 15 -8 54 23 33" fill="none" stroke="#101217" stroke-linecap="round" stroke-width="9"/>
-                        <g class="payload">
-                            <rect x="726" y="345" width="144" height="76" rx="8" fill="url(#hazardPaint)"/>
-                            <rect x="717" y="335" width="162" height="20" rx="8" fill="#101217"/>
-                            <path d="M758 345 L798 316 L839 345" fill="none" stroke="#101217" stroke-linecap="round" stroke-width="7"/>
-                        </g>
-                    </g>
-
-                    <g transform="translate(124 480)">
-                        <path d="M34 92 L138 13 H330 L423 92 Z" fill="#101217"/>
-                        <path d="M58 82 L148 31 H314 L394 82" fill="none" stroke="url(#steelPaint)" stroke-linecap="round" stroke-width="15"/>
-                        <circle cx="85" cy="88" r="20" fill="#8fa7ad"/>
-                        <circle cx="354" cy="88" r="20" fill="#8fa7ad"/>
-                        <rect x="164" y="1" width="56" height="33" rx="6" fill="#ffd23f"/>
-                        <rect x="246" y="1" width="56" height="33" rx="6" fill="#ec4b3e"/>
-                    </g>
-
-                    <g transform="translate(445 437)">
-                        <g class="bubble">
-                            <path d="M53 0 H205 a18 18 0 0 1 18 18 v62 a18 18 0 0 1 -18 18 H91 l-48 37 14 -37 H53 a18 18 0 0 1 -18 -18 V18 A18 18 0 0 1 53 0Z" fill="#f9fbff"/>
-                            <text x="68" y="40" fill="#101217" font-size="24" font-weight="900">ネジ</text>
-                            <text x="68" y="70" fill="#101217" font-size="19" font-weight="800">一本足りない</text>
-                        </g>
-                    </g>
-
-                    <g transform="translate(440 509)">
-                        <circle class="helmet" cx="44" cy="17" r="17" fill="#ffd23f"/>
-                        <path d="M37 36 H62 L78 112 H23 Z" fill="#22a06b"/>
-                        <path class="worker-arm" d="M64 54 L104 30 L119 45" fill="none" stroke="#f9fbff" stroke-linecap="round" stroke-width="12"/>
-                        <path d="M33 112 L17 164 M62 112 L84 164" fill="none" stroke="#f9fbff" stroke-linecap="round" stroke-width="13"/>
-                        <path d="M22 18 H67 L58 0 H31 Z" fill="#ffd23f"/>
-                        <g fill="#ffd23f">
-                            <path class="spark" d="M121 57 l14 -18 l5 19 z"/>
-                            <path class="spark" d="M102 72 l-16 13 l3 -19 z"/>
-                            <path class="spark" d="M131 82 l18 8 l-16 9 z"/>
-                        </g>
-                    </g>
-
-                    <g class="truck">
-                        <g transform="translate(70 542)">
-                            <path d="M30 58 H302 L278 8 H147 L104 40 H30 Z" fill="#ec4b3e"/>
-                            <path d="M148 8 H278 L302 58 H148 Z" fill="#ffd23f"/>
-                            <rect x="168" y="18" width="56" height="28" rx="4" fill="#6fd3dc"/>
-                            <rect x="14" y="55" width="312" height="40" rx="8" fill="#101217"/>
-                            <circle class="wheel" cx="78" cy="98" r="31" fill="#101217"/>
-                            <circle class="wheel" cx="78" cy="98" r="14" fill="#8fa7ad"/>
-                            <circle class="wheel" cx="254" cy="98" r="31" fill="#101217"/>
-                            <circle class="wheel" cx="254" cy="98" r="14" fill="#8fa7ad"/>
-                        </g>
-                    </g>
-
-                    <g transform="translate(816 535)">
-                        <rect x="0" y="70" width="250" height="36" rx="8" fill="#101217"/>
-                        <rect class="stripe" x="19" y="17" width="212" height="45" rx="8" fill="url(#hazardPaint)"/>
-                        <path d="M42 62 V118 M207 62 V118" stroke="#ffd23f" stroke-linecap="round" stroke-width="18"/>
-                        <path d="M34 118 H91 M184 118 H241" stroke="#ffd23f" stroke-linecap="round" stroke-width="18"/>
-                    </g>
-                </svg>
-            </section>
-        </div>
+    <main>
+        <p class="badge">503 SERVICE UNAVAILABLE</p>
+        <h1 aria-label="ただいま工事中！"><span class="w" style="--i:0">た</span><span class="w" style="--i:1">だ</span><span class="w" style="--i:2">い</span><span class="w" style="--i:3">ま</span><span class="w" style="--i:4">工</span><span class="w" style="--i:5">事</span><span class="w" style="--i:6">中</span><span class="w" style="--i:7">！</span></h1>
+        <p class="sub">
+            ただいまシステムのメンテナンス作業を行っております。<br>
+            ご不便をおかけして申し訳ございません。ゴリラたちが全力で作業中です。<br>
+            しばらく経ってから、もう一度アクセスしてください。
+        </p>
+        <div class="progress" role="presentation"></div>
+        <p class="progress-label">作業進行中<span class="d">・</span><span class="d">・</span><span class="d">・</span></p>
+        <p class="note">復旧後は自動的に再読み込みされます</p>
     </main>
+
+    <svg id="scene" class="scene" viewBox="0 0 1200 420" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+        <defs>
+            <pattern id="hz" width="14" height="14" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+                <rect width="14" height="14" fill="#ffce00"/>
+                <rect width="7" height="14" fill="#1a1a1f"/>
+            </pattern>
+            <g id="cone">
+                <ellipse cx="0" cy="0" rx="14" ry="4.5" fill="#d95f00"/>
+                <polygon points="-10,0 10,0 3.5,-32 -3.5,-32" fill="#ff6a00"/>
+                <polygon points="-5.9,-20 5.9,-20 7.4,-13 -7.4,-13" fill="#ffffff"/>
+            </g>
+            <g id="cloud-shape" fill="#ffffff" opacity=".9">
+                <ellipse cx="0" cy="0" rx="46" ry="16"/>
+                <ellipse cx="-32" cy="6" rx="28" ry="12"/>
+                <ellipse cx="34" cy="4" rx="30" ry="13"/>
+            </g>
+        </defs>
+
+        <!-- clouds -->
+        <g class="cloud cloud--1"><use href="#cloud-shape" transform="translate(0,64)"/></g>
+        <g class="cloud cloud--2"><use href="#cloud-shape" transform="translate(0,120) scale(.7)"/></g>
+
+        <!-- crane (background) -->
+        <g>
+            <rect x="98" y="348" width="44" height="8" fill="#b98850"/>
+            <rect x="112" y="128" width="16" height="224" fill="#e9b26a"/>
+            <path stroke="#ffffff" stroke-opacity=".45" stroke-width="2" fill="none" d="M112 152 L128 168 M128 152 L112 168 M112 184 L128 200 M128 184 L112 200 M112 216 L128 232 M128 216 L112 232 M112 248 L128 264 M128 248 L112 264 M112 280 L128 296 M128 280 L112 296 M112 312 L128 328 M128 312 L112 328"/>
+            <!-- jib sways slowly around the tower top -->
+            <g>
+                <animateTransform attributeName="transform" type="rotate"
+                    values="-2.5 120 132; 2.5 120 132; -2.5 120 132"
+                    keyTimes="0; .5; 1" calcMode="spline"
+                    keySplines=".45 0 .55 1; .45 0 .55 1"
+                    dur="9s" repeatCount="indefinite"/>
+                <line x1="120" y1="122" x2="120" y2="92" stroke="#e9b26a" stroke-width="5"/>
+                <line x1="120" y1="94" x2="298" y2="124" stroke="#d9a05c" stroke-width="2"/>
+                <line x1="120" y1="94" x2="60" y2="124" stroke="#d9a05c" stroke-width="2"/>
+                <rect x="54" y="122" width="252" height="9" rx="2" fill="#e9b26a"/>
+                <rect x="54" y="131" width="24" height="20" fill="#c99055"/>
+                <!-- pendulum: cable + hook + the payload banana -->
+                <g>
+                    <animateTransform attributeName="transform" type="rotate"
+                        values="-6 298 126; 6 298 126; -6 298 126"
+                        keyTimes="0; .5; 1" calcMode="spline"
+                        keySplines=".45 0 .55 1; .45 0 .55 1"
+                        dur="3.4s" repeatCount="indefinite"/>
+                    <line x1="298" y1="126" x2="298" y2="196" stroke="#6b7280" stroke-width="2"/>
+                    <path d="M298 196 q0 10 -7 10" stroke="#4b5563" stroke-width="3" fill="none"/>
+                    <path d="M284 212 A 22 22 0 0 0 312 230" stroke="#ffd23f" stroke-width="12" stroke-linecap="round" fill="none"/>
+                    <circle cx="284" cy="212" r="3" fill="#8a5a2b"/>
+                    <circle cx="312" cy="230" r="3" fill="#8a5a2b"/>
+                </g>
+            </g>
+            <!-- operator cab, gorilla inside -->
+            <rect x="132" y="128" width="24" height="20" rx="3" fill="#f4c27d"/>
+            <rect x="136" y="132" width="16" height="12" rx="2" fill="#bfe0ef"/>
+            <circle cx="144" cy="140" r="4.5" fill="#33333b"/>
+            <path d="M139.5 138 A 4.5 3.4 0 0 1 148.5 138 Z" fill="#ffce00"/>
+        </g>
+
+        <!-- ground (extends past the viewBox so letterboxed edges stay filled) -->
+        <path d="M-700 352 L0 352 Q150 344 300 350 T600 348 T900 352 T1200 348 L1900 348 L1900 420 L-700 420 Z" fill="#d7a15c"/>
+        <rect x="-700" y="398" width="2600" height="22" fill="#c08c4b" opacity=".8"/>
+        <ellipse cx="200" cy="380" rx="60" ry="8" fill="#c08c4b" opacity=".5"/>
+        <ellipse cx="750" cy="390" rx="80" ry="9" fill="#c08c4b" opacity=".5"/>
+        <ellipse cx="1000" cy="378" rx="50" ry="7" fill="#c08c4b" opacity=".5"/>
+        <circle cx="330" cy="392" r="4" fill="#b98850"/>
+        <circle cx="690" cy="368" r="3" fill="#b98850"/>
+        <circle cx="905" cy="396" r="4" fill="#b98850"/>
+        <circle cx="1120" cy="384" r="3" fill="#b98850"/>
+
+        <!-- cones -->
+        <use href="#cone" transform="translate(300,378)"/>
+        <use href="#cone" transform="translate(660,382)"/>
+        <use href="#cone" transform="translate(1040,374)"/>
+
+        <!-- barricade 1 with beacon -->
+        <g>
+            <line x1="546" y1="388" x2="556" y2="316" stroke="#7c8794" stroke-width="5"/>
+            <line x1="614" y1="388" x2="604" y2="316" stroke="#7c8794" stroke-width="5"/>
+            <rect x="530" y="316" width="100" height="18" fill="url(#hz)" stroke="#1a1a1f" stroke-width="2"/>
+            <rect x="573" y="308" width="14" height="8" rx="2" fill="#4b5563"/>
+            <circle class="halo" cx="580" cy="303" r="7" fill="#ffa02e"/>
+            <path class="beacon" d="M571 308 A 9 9 0 0 1 589 308 Z" fill="#ff9d2e"/>
+        </g>
+
+        <!-- barricade 2 with beacon -->
+        <g>
+            <line x1="956" y1="388" x2="966" y2="316" stroke="#7c8794" stroke-width="5"/>
+            <line x1="1024" y1="388" x2="1014" y2="316" stroke="#7c8794" stroke-width="5"/>
+            <rect x="940" y="316" width="100" height="18" fill="url(#hz)" stroke="#1a1a1f" stroke-width="2"/>
+            <rect x="983" y="308" width="14" height="8" rx="2" fill="#4b5563"/>
+            <circle class="halo" cx="990" cy="303" r="7" fill="#ffa02e" style="animation-delay:.55s"/>
+            <path class="beacon" d="M981 308 A 9 9 0 0 1 999 308 Z" fill="#ff9d2e" style="animation-delay:.55s"/>
+        </g>
+
+        <!-- signboard -->
+        <g>
+            <rect x="1108" y="300" width="10" height="88" fill="#8a6a4a"/>
+            <rect x="1052" y="238" width="122" height="72" rx="10" fill="#fffdf5" stroke="#ff7a1a" stroke-width="5"/>
+            <text x="1113" y="279" text-anchor="middle" font-size="30" font-weight="800" fill="#e15200">工事中</text>
+            <text x="1113" y="300" text-anchor="middle" font-size="13" fill="#666666">ご安全に！</text>
+        </g>
+
+        <!-- ===== gorilla 2: jackhammer (faces right) ===== -->
+        <g>
+            <!-- cracked ground + hole under the bit -->
+            <ellipse cx="466" cy="388" rx="26" ry="7" fill="#8a6a42"/>
+            <path d="M468 384 L446 380 M468 384 L488 378 M468 384 L462 394 M468 384 L482 392" stroke="#ab8050" stroke-width="2" fill="none"/>
+            <polygon points="436,380 446,374 452,382" fill="#9ca3af"/>
+            <polygon points="484,376 494,380 488,386" fill="#8b939e"/>
+
+            <g class="jack-body">
+                <!-- legs -->
+                <path d="M382 330 L372 384" stroke="#33333b" stroke-width="18" stroke-linecap="round"/>
+                <path d="M414 330 L424 384" stroke="#33333b" stroke-width="18" stroke-linecap="round"/>
+                <ellipse cx="368" cy="387" rx="13" ry="6.5" fill="#26262d"/>
+                <ellipse cx="428" cy="387" rx="13" ry="6.5" fill="#26262d"/>
+                <!-- body + vest -->
+                <ellipse cx="398" cy="296" rx="48" ry="54" fill="#33333b"/>
+                <rect x="362" y="258" width="74" height="76" rx="18" fill="#ff7d1f" stroke="#e05e00" stroke-width="2"/>
+                <rect x="376" y="258" width="9" height="76" fill="#ffe14d"/>
+                <rect x="410" y="258" width="9" height="76" fill="#ffe14d"/>
+                <!-- head -->
+                <circle cx="395" cy="210" r="8" fill="#26262d"/>
+                <circle cx="420" cy="216" r="27" fill="#33333b"/>
+                <ellipse cx="428" cy="224" rx="18" ry="14" fill="#b99a77"/>
+                <ellipse cx="433" cy="230" rx="12" ry="8.5" fill="#cbb08c"/>
+                <ellipse cx="429" cy="229" rx="2" ry="1.5" fill="#5a4632"/>
+                <ellipse cx="437" cy="228" rx="2" ry="1.5" fill="#5a4632"/>
+                <ellipse cx="432" cy="240" rx="5.5" ry="4" fill="#4a3428"/>
+                <rect x="406" y="204" width="42" height="12" rx="6" fill="#16161c"/>
+                <rect x="436" y="206" width="8" height="3" rx="1.5" fill="#ffffff" opacity=".6"/>
+                <path d="M396 204 Q420 176 444 204 Z" fill="#ffce00"/>
+                <rect x="390" y="201" width="62" height="8" rx="4" fill="#eab308"/>
+                <rect x="414" y="184" width="12" height="9" rx="3.5" fill="#ffce00"/>
+            </g>
+
+            <g class="jack-tool">
+                <!-- jackhammer -->
+                <rect x="460" y="294" width="12" height="58" fill="#4b5563"/>
+                <polygon points="462,352 470,352 467,386 465,386" fill="#9aa3ad"/>
+                <rect x="452" y="302" width="28" height="26" rx="5" fill="#ff7d1f" stroke="#e05e00" stroke-width="2"/>
+                <rect x="440" y="286" width="52" height="9" rx="4.5" fill="#374151"/>
+                <!-- arms gripping the handle -->
+                <path d="M400 264 Q420 274 446 288" stroke="#26262d" stroke-width="16" stroke-linecap="round" fill="none"/>
+                <path d="M430 258 Q462 268 486 288" stroke="#33333b" stroke-width="17" stroke-linecap="round" fill="none"/>
+                <circle cx="446" cy="290" r="10" fill="#26262d"/>
+                <circle cx="486" cy="290" r="10" fill="#33333b"/>
+            </g>
+
+            <!-- dust puffs -->
+            <circle class="puff" cx="468" cy="380" r="7" fill="#d9c4a3" style="--dx:-12px"/>
+            <circle class="puff puff--2" cx="468" cy="380" r="7" fill="#d9c4a3" style="--dx:3px"/>
+            <circle class="puff puff--3" cx="468" cy="380" r="7" fill="#d9c4a3" style="--dx:13px"/>
+        </g>
+
+        <!-- ===== gorilla 1: sledgehammer onto the 503 plate (faces left) ===== -->
+        <g>
+            <!-- steel plate -->
+            <g transform="rotate(-3 751 360)">
+                <rect x="705" y="338" width="92" height="44" rx="6" fill="#64748b" stroke="#475569" stroke-width="2"/>
+                <circle cx="713" cy="346" r="3" fill="#cbd5e1"/>
+                <circle cx="789" cy="346" r="3" fill="#cbd5e1"/>
+                <circle cx="713" cy="374" r="3" fill="#cbd5e1"/>
+                <circle cx="789" cy="374" r="3" fill="#cbd5e1"/>
+                <text x="751" y="370" text-anchor="middle" font-size="27" font-weight="800" letter-spacing="2" fill="#f1f5f9">503</text>
+            </g>
+
+            <!-- far arm + far leg -->
+            <path d="M898 262 Q912 300 906 334" stroke="#26262d" stroke-width="19" stroke-linecap="round" fill="none"/>
+            <circle cx="906" cy="336" r="10" fill="#26262d"/>
+            <path d="M890 330 L896 382" stroke="#26262d" stroke-width="20" stroke-linecap="round"/>
+            <ellipse cx="900" cy="386" rx="15" ry="8" fill="#26262d"/>
+            <!-- near leg -->
+            <path d="M850 330 L842 382" stroke="#33333b" stroke-width="20" stroke-linecap="round"/>
+            <ellipse cx="838" cy="386" rx="15" ry="8" fill="#33333b"/>
+            <!-- body + vest -->
+            <ellipse cx="870" cy="295" rx="50" ry="56" fill="#33333b"/>
+            <rect x="832" y="255" width="76" height="78" rx="18" fill="#ff7d1f" stroke="#e05e00" stroke-width="2"/>
+            <rect x="846" y="255" width="9" height="78" fill="#ffe14d"/>
+            <rect x="880" y="255" width="9" height="78" fill="#ffe14d"/>
+            <!-- swinging arm + sledgehammer (pivot = shoulder 838,258) -->
+            <g>
+                <animateTransform attributeName="transform" type="rotate"
+                    values="0 838 258; 14 838 258; -78 838 258; -78 838 258; 0 838 258"
+                    keyTimes="0; .3; .42; .6; 1" calcMode="spline"
+                    keySplines=".4 0 .6 1; .6 0 .9 .6; 0 0 1 1; .3 0 .4 1"
+                    dur="2.2s" repeatCount="indefinite"/>
+                <path d="M838 258 C820 244 804 232 792 224" stroke="#33333b" stroke-width="19" stroke-linecap="round" fill="none"/>
+                <circle cx="792" cy="224" r="11" fill="#33333b"/>
+                <line x1="792" y1="224" x2="766" y2="180" stroke="#9a6a33" stroke-width="7" stroke-linecap="round"/>
+                <g transform="translate(766,180) rotate(-31)">
+                    <rect x="-24" y="-13" width="48" height="26" rx="5" fill="#5a6270"/>
+                    <rect x="-24" y="-13" width="10" height="26" rx="5" fill="#788292"/>
+                </g>
+            </g>
+            <!-- head -->
+            <circle cx="880" cy="204" r="9" fill="#26262d"/>
+            <circle cx="852" cy="210" r="28" fill="#33333b"/>
+            <ellipse cx="844" cy="218" rx="19" ry="15" fill="#b99a77"/>
+            <ellipse cx="839" cy="225" rx="13" ry="9" fill="#cbb08c"/>
+            <ellipse cx="835" cy="224" rx="2" ry="1.5" fill="#5a4632"/>
+            <ellipse cx="843" cy="223" rx="2" ry="1.5" fill="#5a4632"/>
+            <rect x="830" y="232" width="14" height="3" rx="1.5" fill="#5a4632"/>
+            <rect x="822" y="198" width="42" height="12" rx="6" fill="#16161c"/>
+            <rect x="826" y="200" width="8" height="3" rx="1.5" fill="#ffffff" opacity=".6"/>
+            <path d="M826 198 Q852 170 878 198 Z" fill="#ffce00"/>
+            <rect x="818" y="195" width="68" height="8" rx="4" fill="#eab308"/>
+            <rect x="846" y="178" width="12" height="9" rx="3.5" fill="#ffce00"/>
+
+            <!-- impact sparks -->
+            <g class="spark" stroke="#ffd23f" stroke-width="3" stroke-linecap="round">
+                <g transform="translate(752,330)">
+                    <line x1="3" y1="-3" x2="12" y2="-12"/>
+                    <line x1="0" y1="-5" x2="0" y2="-16"/>
+                    <line x1="-3" y1="-3" x2="-13" y2="-11"/>
+                    <line x1="5" y1="0" x2="16" y2="-2"/>
+                    <line x1="-5" y1="0" x2="-16" y2="-1"/>
+                    <circle cx="10" cy="-14" r="2" fill="#ffffff" stroke="none"/>
+                    <circle cx="-12" cy="-13" r="2" fill="#ffffff" stroke="none"/>
+                </g>
+            </g>
+        </g>
+
+        <!-- ===== gorilla 3: wheelbarrow full of bananas, crossing the site ===== -->
+        <g class="walker">
+            <g class="walker-bob">
+                <!-- back leg -->
+                <g>
+                    <animateTransform attributeName="transform" type="rotate"
+                        values="-14 -44 -48; 14 -44 -48; -14 -44 -48"
+                        keyTimes="0; .5; 1" calcMode="spline"
+                        keySplines=".45 0 .55 1; .45 0 .55 1"
+                        dur=".8s" repeatCount="indefinite"/>
+                    <path d="M-44 -48 L-52 -6" stroke="#26262d" stroke-width="17" stroke-linecap="round"/>
+                    <ellipse cx="-54" cy="-4" rx="12" ry="5.5" fill="#26262d"/>
+                </g>
+                <!-- body + vest -->
+                <ellipse cx="-30" cy="-80" rx="44" ry="48" fill="#33333b"/>
+                <rect x="-58" y="-114" width="62" height="60" rx="15" fill="#ff7d1f" stroke="#e05e00" stroke-width="2"/>
+                <rect x="-46" y="-114" width="8" height="60" fill="#ffe14d"/>
+                <rect x="-14" y="-114" width="8" height="60" fill="#ffe14d"/>
+                <!-- front leg -->
+                <g>
+                    <animateTransform attributeName="transform" type="rotate"
+                        values="14 -16 -48; -14 -16 -48; 14 -16 -48"
+                        keyTimes="0; .5; 1" calcMode="spline"
+                        keySplines=".45 0 .55 1; .45 0 .55 1"
+                        dur=".8s" repeatCount="indefinite"/>
+                    <path d="M-16 -48 L-8 -6" stroke="#33333b" stroke-width="17" stroke-linecap="round"/>
+                    <ellipse cx="-6" cy="-4" rx="12" ry="5.5" fill="#33333b"/>
+                </g>
+                <!-- arms to the handles -->
+                <path d="M-26 -92 Q-14 -70 0 -54" stroke="#26262d" stroke-width="15" stroke-linecap="round" fill="none"/>
+                <path d="M-12 -98 Q0 -76 8 -60" stroke="#33333b" stroke-width="16" stroke-linecap="round" fill="none"/>
+                <circle cx="1" cy="-55" r="9" fill="#26262d"/>
+                <circle cx="9" cy="-61" r="9" fill="#33333b"/>
+                <!-- head -->
+                <circle cx="-14" cy="-130" r="8" fill="#26262d"/>
+                <circle cx="6" cy="-126" r="24" fill="#33333b"/>
+                <ellipse cx="14" cy="-120" rx="16" ry="13" fill="#b99a77"/>
+                <ellipse cx="18" cy="-115" rx="11" ry="8" fill="#cbb08c"/>
+                <ellipse cx="14" cy="-116" rx="2" ry="1.5" fill="#5a4632"/>
+                <ellipse cx="22" cy="-115" rx="2" ry="1.5" fill="#5a4632"/>
+                <path d="M10 -108 Q18 -102 26 -108" stroke="#4a3428" stroke-width="2" fill="none"/>
+                <rect x="-2" y="-138" width="36" height="11" rx="5.5" fill="#16161c"/>
+                <rect x="22" y="-136" width="7" height="3" rx="1.5" fill="#ffffff" opacity=".6"/>
+                <path d="M-8 -136 Q6 -160 28 -136 Z" fill="#ffce00"/>
+                <rect x="-14" y="-139" width="48" height="7" rx="3.5" fill="#eab308"/>
+                <rect x="1" y="-153" width="11" height="9" rx="3" fill="#ffce00"/>
+            </g>
+
+            <!-- wheelbarrow -->
+            <line x1="36" y1="-42" x2="4" y2="-58" stroke="#8a5a2b" stroke-width="6" stroke-linecap="round"/>
+            <path d="M46 -50 A 12 12 0 0 1 64 -56" stroke="#ffd23f" stroke-width="8" stroke-linecap="round" fill="none"/>
+            <path d="M66 -54 A 12 12 0 0 1 84 -58" stroke="#ffd23f" stroke-width="8" stroke-linecap="round" fill="none"/>
+            <path d="M78 -48 A 12 12 0 0 1 96 -52" stroke="#ffd23f" stroke-width="8" stroke-linecap="round" fill="none"/>
+            <polygon points="34,-46 102,-46 90,-16 46,-16" fill="#2f855a" stroke="#256b4e" stroke-width="2"/>
+            <line x1="50" y1="-16" x2="46" y2="-2" stroke="#256b4e" stroke-width="5" stroke-linecap="round"/>
+            <g>
+                <animateTransform attributeName="transform" type="rotate"
+                    from="0 96 -13" to="360 96 -13"
+                    dur=".9s" repeatCount="indefinite"/>
+                <circle cx="96" cy="-13" r="13" fill="#16161c"/>
+                <line x1="96" y1="-24" x2="96" y2="-2" stroke="#9ca3af" stroke-width="2.5"/>
+                <line x1="85" y1="-13" x2="107" y2="-13" stroke="#9ca3af" stroke-width="2.5"/>
+                <circle cx="96" cy="-13" r="4" fill="#9ca3af"/>
+            </g>
+        </g>
+    </svg>
+
+    <div class="tape tape--bottom" aria-hidden="true"></div>
+
+    <script>
+        (function () {
+            var scene = document.getElementById('scene');
+
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches && scene && scene.pauseAnimations) {
+                scene.pauseAnimations();
+            }
+
+            function check() {
+                fetch(window.location.href, { method: 'HEAD', cache: 'no-store' })
+                    .then(function (response) { if (response.ok) { window.location.reload(); } })
+                    .catch(function () {})
+                    .finally(function () { setTimeout(check, 30000); });
+            }
+
+            setTimeout(check, 30000);
+        })();
+    </script>
 </body>
 </html>
