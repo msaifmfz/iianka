@@ -3,15 +3,18 @@ name: ci-cd
 on:
   pull_request:
     branches:
-      - develop
-      - main
-  push:
-    branches:
-      - develop
       - main
 
+  push:
+    branches:
+      - main
+
+  release:
+    types:
+      - published
+
 concurrency:
-  group: ci-cd-${{ github.ref }}
+  group: ci-cd-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
@@ -61,17 +64,22 @@ jobs:
         run: npm run lint:check && npm run format:check && npm run types:check
 
   deploy:
-    name: Deploy ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+    name: Deploy ${{ github.event.release.prerelease && 'staging' || 'production' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs:
       - ci
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
-    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+    if: github.event_name == 'release'
+    environment: ${{ github.event.release.prerelease && 'staging' || 'production' }}
+
+    concurrency:
+      group: deploy-${{ github.event.release.prerelease && 'staging' || 'production' }}
+      cancel-in-progress: false
 
     env:
-      DEPLOY_BRANCH: ${{ github.ref_name }}
-      DEPLOY_ENVIRONMENT: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+      DEPLOY_ENVIRONMENT: ${{ github.event.release.prerelease && 'staging' || 'production' }}
+      DEPLOY_RELEASE_TAG: ${{ github.event.release.tag_name }}
+      DEPLOY_REF: refs/tags/${{ github.event.release.tag_name }}
       DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
       DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
       DEPLOY_TARGET_PATH: ${{ vars.DEPLOY_PATH }}
@@ -107,7 +115,7 @@ jobs:
             -o IdentitiesOnly=yes \
             -o StrictHostKeyChecking=yes \
             "iianka@$DEPLOY_HOST" \
-            "DEPLOY_BRANCH='$DEPLOY_BRANCH' DEPLOY_PATH='$DEPLOY_PATH' DEPLOY_SHA='$DEPLOY_SHA' bash -se" <<'REMOTE'
+            "DEPLOY_ENVIRONMENT='$DEPLOY_ENVIRONMENT' DEPLOY_REF='$DEPLOY_REF' DEPLOY_RELEASE_TAG='$DEPLOY_RELEASE_TAG' DEPLOY_PATH='$DEPLOY_PATH' DEPLOY_SHA='$DEPLOY_SHA' bash -se" <<'REMOTE'
           set -Eeuo pipefail
 
           cd "$DEPLOY_PATH"
@@ -115,7 +123,12 @@ jobs:
           php artisan down --render="errors::503" --retry=60 || true
           trap 'php artisan up || true' EXIT
 
-          git pull
+          git fetch --prune --tags origin
+
+          RELEASE_COMMIT="$(git rev-parse --verify "$DEPLOY_REF^{commit}")"
+          echo "Deploying $DEPLOY_RELEASE_TAG ($RELEASE_COMMIT) to $DEPLOY_ENVIRONMENT"
+
+          git checkout "$DEPLOY_REF"
 
           composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 
