@@ -3,6 +3,7 @@ import {
     ExternalLink,
     FileAudio,
     FileText,
+    FileVideo,
     Image as ImageIcon,
     Trash2,
 } from 'lucide-react';
@@ -60,6 +61,10 @@ function AttachmentIcon({
         return <FileAudio className="size-4 text-emerald-600" />;
     }
 
+    if (attachment.preview_mode === 'video' || attachment.kind === 'video') {
+        return <FileVideo className="size-4 text-indigo-600" />;
+    }
+
     return <FileText className="size-4 text-muted-foreground" />;
 }
 
@@ -76,7 +81,8 @@ export function AttachmentListItem({
 }) {
     const hasOpenPreview =
         attachment.preview_mode === 'image' ||
-        attachment.preview_mode === 'pdf';
+        attachment.preview_mode === 'pdf' ||
+        attachment.preview_mode === 'video';
 
     return (
         <div className="grid gap-3 rounded-lg border p-3">
@@ -208,6 +214,15 @@ export function AttachmentListItem({
             {attachment.preview_mode === 'audio' && (
                 <audio
                     className="w-full"
+                    src={attachment.url}
+                    controls
+                    preload="metadata"
+                />
+            )}
+
+            {attachment.preview_mode === 'video' && (
+                <video
+                    className="max-h-72 w-full rounded-md border bg-muted"
                     src={attachment.url}
                     controls
                     preload="metadata"

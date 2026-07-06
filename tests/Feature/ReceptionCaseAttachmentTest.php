@@ -277,12 +277,7 @@ test('unsafe files and extension mismatches are rejected', function (): void {
     ])->assertSessionHasErrors('file');
 
     $this->post(route('reception.cases.attachments.store', $case), [
-        'file' => UploadedFile::fake()->create('clip.mp4', 64, 'video/mp4'),
-        'source' => ReceptionCaseAttachmentSource::Upload->value,
-    ])->assertSessionHasErrors('file');
-
-    $this->post(route('reception.cases.attachments.store', $case), [
-        'file' => UploadedFile::fake()->create('browser-recording.webm', 64, 'video/webm'),
+        'file' => UploadedFile::fake()->create('clip.mov', 64, 'application/pdf'),
         'source' => ReceptionCaseAttachmentSource::Upload->value,
     ])->assertSessionHasErrors('file');
 
@@ -292,6 +287,61 @@ test('unsafe files and extension mismatches are rejected', function (): void {
     ])->assertSessionHasErrors('file');
 
     expect($case->attachments()->count())->toBe(0);
+});
+
+test('invalid mobile camera uploads return validation errors instead of crashing', function (): void {
+    Storage::fake('local');
+
+    $owner = User::factory()->create();
+    $case = ReceptionCase::factory()->create([
+        'receptor_user_id' => $owner->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->post(route('reception.cases.attachments.store', $case), [
+            'file' => new UploadedFile('', 'camera-photo.jpg', 'image/jpeg', UPLOAD_ERR_INI_SIZE, true),
+            'source' => ReceptionCaseAttachmentSource::Upload->value,
+        ])
+        ->assertSessionHasErrors('file');
+
+    expect($case->attachments()->count())->toBe(0);
+});
+
+test('smartphone camera photo and video uploads are accepted', function (): void {
+    Storage::fake('local');
+
+    $owner = User::factory()->create();
+    $case = ReceptionCase::factory()->create([
+        'receptor_user_id' => $owner->id,
+    ]);
+
+    foreach ([
+        ['iphone-photo.jpg', 'image/jpeg', 'image', 'image'],
+        ['iphone-photo.heic', 'image/heic', 'image', 'download'],
+        ['android-photo.heif', 'image/heif', 'image', 'download'],
+        ['iphone-video.mov', 'video/quicktime', 'video', 'download'],
+        ['android-video.mp4', 'video/mp4', 'video', 'video'],
+        ['iphone-video.m4v', 'video/mp4', 'video', 'video'],
+        ['android-video.3gp', 'video/3gpp', 'video', 'download'],
+        ['android-video.3gpp', 'video/3gpp', 'video', 'download'],
+        ['android-video.3g2', 'video/3gpp2', 'video', 'download'],
+        ['browser-video.webm', 'video/webm', 'video', 'video'],
+    ] as [$filename, $mimeType, $kind, $previewMode]) {
+        $response = $this->actingAs($owner)
+            ->post(route('reception.cases.attachments.store', $case), [
+                'file' => UploadedFile::fake()->create($filename, 64, $mimeType),
+                'source' => ReceptionCaseAttachmentSource::Upload->value,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('attachment.kind', $kind)
+            ->assertJsonPath('attachment.preview_mode', $previewMode);
+
+        $attachment = ReceptionCaseAttachment::query()->findOrFail($response->json('attachment.id'));
+
+        Storage::disk('local')->assertExists($attachment->path);
+    }
+
+    expect($case->attachments()->count())->toBe(10);
 });
 
 test('browser recording container mime types are accepted across platforms', function (): void {

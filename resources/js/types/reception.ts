@@ -18,7 +18,11 @@ export type ReceptionMeta = {
     priorityOptions: ReceptionPriorityOption[];
 };
 
-export type ReceptionCaseAttachmentKind = 'document' | 'image' | 'audio';
+export type ReceptionCaseAttachmentKind =
+    | 'document'
+    | 'image'
+    | 'audio'
+    | 'video';
 
 export type ReceptionCaseAttachmentSource = 'upload' | 'capture' | 'recording';
 
@@ -26,6 +30,7 @@ export type ReceptionCaseAttachmentPreviewMode =
     | 'image'
     | 'pdf'
     | 'audio'
+    | 'video'
     | 'download';
 
 export type ReceptionUser = {

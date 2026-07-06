@@ -36,6 +36,7 @@ class ReceptionCaseAttachmentController extends Controller
         $mimeType = $file->getMimeType();
         $size = $file->getSize();
         $fallbackName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        $source = ReceptionCaseAttachmentSource::from($request->string('source')->toString());
 
         // Store the file before opening the transaction; if the transaction rolls
         // back we delete it in the catch so no orphan file is left behind.
@@ -44,13 +45,13 @@ class ReceptionCaseAttachmentController extends Controller
         abort_if($path === false, 500, 'Failed to store the reception attachment.');
 
         try {
-            $attachment = DB::transaction(function () use ($request, $receptionCase, $extension, $mimeType, $size, $fallbackName, $path): ReceptionCaseAttachment {
+            $attachment = DB::transaction(function () use ($request, $receptionCase, $extension, $mimeType, $size, $fallbackName, $path, $source): ReceptionCaseAttachment {
                 $name = $request->string('name')->trim()->toString() ?: $fallbackName;
 
                 $attachment = $receptionCase->attachments()->create([
                     'uploaded_by_user_id' => $request->user()->id,
-                    'kind' => ReceptionCaseAttachment::kindForExtension($extension),
-                    'source' => ReceptionCaseAttachmentSource::from($request->string('source')->toString()),
+                    'kind' => ReceptionCaseAttachment::kindForExtension($extension, $mimeType, $source),
+                    'source' => $source,
                     'name' => $name,
                     'disk' => ReceptionCaseAttachment::DISK,
                     'path' => $path,

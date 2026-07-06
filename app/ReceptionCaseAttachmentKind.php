@@ -9,6 +9,7 @@ enum ReceptionCaseAttachmentKind: string
     case Document = 'document';
     case Image = 'image';
     case Audio = 'audio';
+    case Video = 'video';
 
     public function label(): string
     {
@@ -16,6 +17,7 @@ enum ReceptionCaseAttachmentKind: string
             self::Document => '書類',
             self::Image => '写真',
             self::Audio => '音声',
+            self::Video => '動画',
         };
     }
 }

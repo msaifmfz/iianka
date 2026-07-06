@@ -74,7 +74,17 @@ class ReceptionCaseAttachment extends Model
     /**
      * @var list<string>
      */
+    public const VIDEO_EXTENSIONS = ['mp4', 'mov', 'm4v', '3gp', '3gpp', '3g2', 'webm'];
+
+    /**
+     * @var list<string>
+     */
     private const array PREVIEW_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
+    /**
+     * @var list<string>
+     */
+    private const array PREVIEW_VIDEO_EXTENSIONS = ['mp4', 'm4v', 'webm'];
 
     /**
      * @return array<string, string>
@@ -131,7 +141,14 @@ class ReceptionCaseAttachment extends Model
             return ReceptionCaseAttachmentPreviewMode::Pdf;
         }
 
-        if (in_array($extension, self::AUDIO_EXTENSIONS, true)) {
+        if (
+            $this->kind === ReceptionCaseAttachmentKind::Video
+            && in_array($extension, self::PREVIEW_VIDEO_EXTENSIONS, true)
+        ) {
+            return ReceptionCaseAttachmentPreviewMode::Video;
+        }
+
+        if ($this->kind === ReceptionCaseAttachmentKind::Audio || in_array($extension, self::AUDIO_EXTENSIONS, true)) {
             return ReceptionCaseAttachmentPreviewMode::Audio;
         }
 
@@ -203,19 +220,35 @@ class ReceptionCaseAttachment extends Model
      */
     public static function allowedExtensions(): array
     {
-        return [
+        return array_values(array_unique([
             ...self::DOCUMENT_EXTENSIONS,
             ...self::IMAGE_EXTENSIONS,
             ...self::AUDIO_EXTENSIONS,
-        ];
+            ...self::VIDEO_EXTENSIONS,
+        ]));
     }
 
-    public static function kindForExtension(string $extension): ReceptionCaseAttachmentKind
-    {
+    public static function kindForExtension(
+        string $extension,
+        ?string $mimeType = null,
+        ?ReceptionCaseAttachmentSource $source = null,
+    ): ReceptionCaseAttachmentKind {
         $extension = mb_strtolower($extension);
+        $mimeType = mb_strtolower((string) $mimeType);
 
         if (in_array($extension, self::IMAGE_EXTENSIONS, true)) {
             return ReceptionCaseAttachmentKind::Image;
+        }
+
+        if ($source === ReceptionCaseAttachmentSource::Recording) {
+            return ReceptionCaseAttachmentKind::Audio;
+        }
+
+        if (
+            in_array($extension, self::VIDEO_EXTENSIONS, true)
+            && (str_starts_with($mimeType, 'video/') || ! in_array($extension, self::AUDIO_EXTENSIONS, true))
+        ) {
+            return ReceptionCaseAttachmentKind::Video;
         }
 
         if (in_array($extension, self::AUDIO_EXTENSIONS, true)) {
@@ -247,7 +280,12 @@ class ReceptionCaseAttachment extends Model
             'webp' => ['image/webp'],
             'heic' => ['image/heic', 'image/heic-sequence'],
             'heif' => ['image/heif', 'image/heif-sequence'],
-            'webm' => $isRecording ? ['audio/webm', 'video/webm'] : ['audio/webm'],
+            'mp4' => ['video/mp4', 'application/mp4'],
+            'mov' => ['video/quicktime'],
+            'm4v' => ['video/mp4', 'video/x-m4v', 'application/mp4'],
+            '3gp', '3gpp' => ['video/3gpp'],
+            '3g2' => ['video/3gpp2'],
+            'webm' => ['audio/webm', 'video/webm'],
             'm4a' => $isRecording ? ['audio/mp4', 'audio/x-m4a', 'video/mp4', 'application/mp4'] : ['audio/mp4', 'audio/x-m4a'],
             'mp3' => ['audio/mpeg', 'audio/mp3'],
             'wav' => ['audio/wav', 'audio/x-wav', 'audio/vnd.wave'],

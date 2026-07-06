@@ -60,6 +60,14 @@ function formatTimer(seconds: number): string {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 }
 
+function formatUploadLimit(kilobytes: number): string {
+    if (kilobytes >= 1024) {
+        return `${Math.floor(kilobytes / 1024)}MB`;
+    }
+
+    return `${kilobytes}KB`;
+}
+
 function errorMessage(errors: Record<string, unknown>): string | null {
     const first = Object.values(errors)[0];
 
@@ -93,6 +101,7 @@ export default function ReceptionAttachmentPanel({
     const {
         max_attachments: maxAttachments,
         max_recordings: maxRecordings,
+        max_file_kilobytes: maxFileKilobytes,
         accept,
     } = constraints;
 
@@ -215,10 +224,21 @@ export default function ReceptionAttachmentPanel({
     const deleteError = errorMessage(deleteHttp.errors);
 
     async function uploadSelectedFiles(selectedFiles: File[]): Promise<void> {
-        const remainingSlots = maxAttachments - attachmentsRef.current.length;
-        const files = selectedFiles.slice(0, remainingSlots);
+        const maxFileBytes = maxFileKilobytes * 1024;
+        const allowedSizeFiles = selectedFiles.filter(
+            (file) => file.size <= maxFileBytes,
+        );
 
-        if (files.length < selectedFiles.length) {
+        if (allowedSizeFiles.length < selectedFiles.length) {
+            setPanelError(
+                `添付資料は${formatUploadLimit(maxFileKilobytes)}までです。`,
+            );
+        }
+
+        const remainingSlots = maxAttachments - attachmentsRef.current.length;
+        const files = allowedSizeFiles.slice(0, remainingSlots);
+
+        if (files.length < allowedSizeFiles.length) {
             setPanelError(`添付資料は${maxAttachments}件までです。`);
         }
 
@@ -353,7 +373,8 @@ export default function ReceptionAttachmentPanel({
                                             ファイルを追加
                                         </p>
                                         <p className="text-xs text-muted-foreground">
-                                            PDF / 画像 / 音声 / Office / ZIP
+                                            PDF / 画像 / 動画 / 音声 / Office /
+                                            ZIP
                                         </p>
                                     </div>
                                 </div>

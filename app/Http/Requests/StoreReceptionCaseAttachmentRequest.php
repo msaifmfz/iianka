@@ -15,6 +15,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 use Override;
+use Throwable;
 
 class StoreReceptionCaseAttachmentRequest extends FormRequest
 {
@@ -82,6 +83,23 @@ class StoreReceptionCaseAttachmentRequest extends FormRequest
     }
 
     /**
+     * @return array<string, string>
+     */
+    #[Override]
+    public function messages(): array
+    {
+        $maxMegabytes = intdiv(ReceptionCaseAttachment::MAX_FILE_KILOBYTES, 1024);
+
+        return [
+            'file.file' => '添付資料をアップロードできませんでした。ファイルサイズや形式を確認してください。',
+            'file.max' => "添付資料は{$maxMegabytes}MBまでです。",
+            'file.mimetypes' => '添付資料にはPDF、Office、画像、動画、音声、テキスト、CSV、ZIPを指定してください。',
+            'file.extensions' => '添付資料にはPDF、Office、画像、動画、音声、テキスト、CSV、ZIPを指定してください。',
+            'file.uploaded' => '添付資料をアップロードできませんでした。ファイルサイズを確認してください。',
+        ];
+    }
+
+    /**
      * @return array<int, callable>
      */
     public function after(): array
@@ -107,18 +125,37 @@ class StoreReceptionCaseAttachmentRequest extends FormRequest
                     return;
                 }
 
-                $source = ReceptionCaseAttachmentSource::tryFrom((string) $this->input('source'));
+                if ($validator->errors()->has('file')) {
+                    return;
+                }
+
+                if (! $file->isValid()) {
+                    $validator->errors()->add('file', '添付資料をアップロードできませんでした。ファイルサイズを確認してください。');
+
+                    return;
+                }
+
+                $source = ReceptionCaseAttachmentSource::tryFrom((string) $this->input('source'))
+                    ?? ReceptionCaseAttachmentSource::Upload;
                 $extension = $this->extensionFor($file);
-                $kind = ReceptionCaseAttachment::kindForExtension($extension);
-                $mimeType = (string) $file->getMimeType();
                 $isRecording = $source === ReceptionCaseAttachmentSource::Recording;
+                $mimeType = $this->mimeTypeFor($file, $validator);
+
+                if ($mimeType === null) {
+                    return;
+                }
+
+                $kind = ReceptionCaseAttachment::kindForExtension($extension, $mimeType, $source);
 
                 if (! $this->mimeTypeMatchesExtension($extension, $mimeType, $isRecording)) {
                     $validator->errors()->add('file', '添付資料の拡張子とファイル形式が一致しません。');
                 }
 
-                if ($source === ReceptionCaseAttachmentSource::Capture && $kind !== ReceptionCaseAttachmentKind::Image) {
-                    $validator->errors()->add('file', '撮影で追加できるのは写真ファイルのみです。');
+                if ($source === ReceptionCaseAttachmentSource::Capture && ! in_array($kind, [
+                    ReceptionCaseAttachmentKind::Image,
+                    ReceptionCaseAttachmentKind::Video,
+                ], true)) {
+                    $validator->errors()->add('file', '撮影で追加できるのは写真または動画ファイルのみです。');
                 }
 
                 if ($source !== ReceptionCaseAttachmentSource::Recording) {
@@ -159,6 +196,17 @@ class StoreReceptionCaseAttachmentRequest extends FormRequest
     private function extensionFor(UploadedFile $file): string
     {
         return mb_strtolower($file->getClientOriginalExtension());
+    }
+
+    private function mimeTypeFor(UploadedFile $file, Validator $validator): ?string
+    {
+        try {
+            return (string) $file->getMimeType();
+        } catch (Throwable) {
+            $validator->errors()->add('file', '添付資料を読み取れませんでした。もう一度選択してください。');
+
+            return null;
+        }
     }
 
     private function mimeTypeMatchesExtension(string $extension, string $mimeType, bool $isRecording): bool
