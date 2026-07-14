@@ -38,8 +38,16 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+          composer install -q --no-ansi --no-interaction --no-progress --prefer-dist
           npm ci
+
+      - name: Prepare Environment
+        run: cp .env.example .env && php artisan key:generate
+
+      # Wayfinder files (@/actions, @/routes) are gitignored; type-aware ESLint needs them.
+      # --with-form matches the vite plugin's formVariants: true
+      - name: Generate Wayfinder Types
+        run: php artisan wayfinder:generate --with-form
 
       - name: Check Pint
         run: composer lint:check
