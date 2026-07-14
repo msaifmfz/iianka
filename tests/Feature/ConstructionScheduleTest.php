@@ -1042,9 +1042,9 @@ test('admins can update subcontractors from schedule forms', function (): void {
         ->assertInertiaFlash('toast.resource.action', 'updated')
         ->assertInertiaFlash('toast.resource.label', '更新後 下請け');
 
-    expect($subcontractor->refresh())
-        ->name->toBe('更新後 下請け')
-        ->phone->toBe('090-3333-4444');
+    $subcontractor->refresh();
+    expect($subcontractor->name)->toBe('更新後 下請け');
+    expect($subcontractor->phone)->toBe('090-3333-4444');
 });
 
 test('non admins cannot update subcontractors', function (): void {
@@ -1061,9 +1061,9 @@ test('non admins cannot update subcontractors', function (): void {
         ])
         ->assertForbidden();
 
-    expect($subcontractor->refresh())
-        ->name->toBe('変更不可 下請け')
-        ->phone->toBe('090-1111-2222');
+    $subcontractor->refresh();
+    expect($subcontractor->name)->toBe('変更不可 下請け');
+    expect($subcontractor->phone)->toBe('090-1111-2222');
 });
 
 test('admins can delete construction schedules', function (): void {

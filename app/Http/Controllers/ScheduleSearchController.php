@@ -38,6 +38,7 @@ class ScheduleSearchController extends Controller
 
     /**
      * @param  array{location: string|null, general_contractor: string|null, content: string|null, direction: string}  $filters
+     * @return LengthAwarePaginator<int, mixed>
      */
     private function results(array $filters): LengthAwarePaginator
     {
@@ -86,6 +87,10 @@ class ScheduleSearchController extends Controller
         return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value);
     }
 
+    /**
+     * @param  LengthAwarePaginator<int, mixed>  $paginator
+     * @return LengthAwarePaginator<int, mixed>
+     */
     private function hydratePaginator(LengthAwarePaginator $paginator): LengthAwarePaginator
     {
         $rows = collect($paginator->items());

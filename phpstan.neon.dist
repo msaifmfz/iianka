@@ -11,4 +11,20 @@ parameters:
         - config
         - database
         - routes
+        - tests
     tmpDir: storage/framework/cache/phpstan
+    # larastan instantiates models without the constructor, so casts() (vs $casts)
+    # is invisible unless larastan AST-parses it; without this, date casts infer string
+    parseModelCastsMethod: true
+    ignoreErrors:
+        # Pest higher-order test calls proxy to the bound TestCase at runtime;
+        # phpstan can't see through TestCall::__call
+        -
+            message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:#'
+            paths:
+                - tests/*
+        # collect($response->json(...)) — json() returns mixed, generics unresolvable
+        -
+            message: '#template type T(Key|Value) in call to function collect#'
+            paths:
+                - tests/*

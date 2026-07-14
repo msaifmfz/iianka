@@ -6,10 +6,14 @@ namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\NormalizesRequestInput;
 use App\Http\Requests\Concerns\ProvidesReceptionFieldLabels;
+use App\Models\ReceptionCase;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
 
+/**
+ * @property-read ReceptionCase $reception_case
+ */
 class UpdateReceptionCaseWorkMemoRequest extends FormRequest
 {
     use NormalizesRequestInput;

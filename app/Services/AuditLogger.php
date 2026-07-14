@@ -113,9 +113,7 @@ class AuditLogger
             return null;
         }
 
-        $request = request();
-
-        return $request instanceof Request ? $request : null;
+        return request();
     }
 
     private function requestId(?Request $request): ?string

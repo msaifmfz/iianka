@@ -10,6 +10,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Carbon;
 use Override;
 
+/**
+ * @property string|null $starts_at
+ * @property string|null $ends_at
+ * @property string|null $time_note
+ */
 #[Fillable([
     'scheduled_on',
     'starts_at',

@@ -6,6 +6,7 @@ use App\Http\Requests\StoreAttendanceRecordRequest;
 use App\Models\AttendanceRecord;
 use App\Models\User;
 use App\Services\BusinessDate;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -30,7 +31,7 @@ class AttendanceRecordController extends Controller
 
         $records = AttendanceRecord::query()
             ->with('user:id,name,email,is_hidden_from_workers')
-            ->whereHas('user', fn ($query) => $query->visibleToWorkers())
+            ->whereHas('user', fn (Builder $query) => $query->visibleToWorkers())
             ->whereDate('work_date', '>=', $startsOn->toDateString())
             ->whereDate('work_date', '<=', $endsOn->toDateString())
             ->orderBy('work_date')

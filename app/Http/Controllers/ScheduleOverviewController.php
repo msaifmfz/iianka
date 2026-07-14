@@ -99,6 +99,7 @@ class ScheduleOverviewController extends Controller
      */
     private function calendarDays(Carbon $calendarStart, Carbon $calendarEnd): Collection
     {
+        /** @var Collection<string, array{date: string, construction_count: int, business_count: int, internal_notice_count: int, carry_out_count: int, voucher_confirmation_count: int, unconfirmed_voucher_count: int, schedule_count: int}> $days */
         $days = collect();
         $current = $calendarStart->copy();
 
@@ -126,11 +127,11 @@ class ScheduleOverviewController extends Controller
                     return;
                 }
 
-                $constructionCount = (int) $schedule->construction_count;
+                $constructionCount = (int) $schedule->getAttribute('construction_count');
                 $day['construction_count'] = $constructionCount;
-                $day['carry_out_count'] = (int) $schedule->carry_out_count;
-                $day['voucher_confirmation_count'] = (int) $schedule->voucher_confirmation_count;
-                $day['unconfirmed_voucher_count'] = (int) $schedule->unconfirmed_voucher_count;
+                $day['carry_out_count'] = (int) $schedule->getAttribute('carry_out_count');
+                $day['voucher_confirmation_count'] = (int) $schedule->getAttribute('voucher_confirmation_count');
+                $day['unconfirmed_voucher_count'] = (int) $schedule->getAttribute('unconfirmed_voucher_count');
                 $day['schedule_count'] = $this->dayScheduleCount($day);
 
                 $days->put($date, $day);
@@ -145,7 +146,7 @@ class ScheduleOverviewController extends Controller
                     return;
                 }
 
-                $businessCount = (int) $schedule->business_count;
+                $businessCount = (int) $schedule->getAttribute('business_count');
                 $day['business_count'] = $businessCount;
                 $day['schedule_count'] = $this->dayScheduleCount($day);
 
@@ -161,7 +162,7 @@ class ScheduleOverviewController extends Controller
                     return;
                 }
 
-                $day['internal_notice_count'] = (int) $notice->internal_notice_count;
+                $day['internal_notice_count'] = (int) $notice->getAttribute('internal_notice_count');
                 $day['schedule_count'] = $this->dayScheduleCount($day);
 
                 $days->put($date, $day);

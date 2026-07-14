@@ -9,6 +9,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Override;
 
+/**
+ * @property int $weekday
+ */
 #[Fillable([
     'weekday',
     'label',

@@ -20,6 +20,9 @@ use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Override;
 
+/**
+ * @property UserRole $role
+ */
 #[Fillable(['name', 'login_id', 'email', 'password'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
@@ -70,12 +73,18 @@ class User extends Authenticatable implements PasskeyUser
         return $this->isAdmin();
     }
 
+    /**
+     * @param  Builder<User>  $query
+     */
     #[Scope]
     protected function visibleToWorkers(Builder $query): void
     {
         $query->where('is_hidden_from_workers', false);
     }
 
+    /**
+     * @param  Builder<User>  $query
+     */
     #[Scope]
     protected function assignableAsReceptionHandler(Builder $query): void
     {

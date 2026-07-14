@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ValidatesReceptionCaseFields;
+use App\Models\ReceptionCase;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
 
+/**
+ * @property-read ReceptionCase $reception_case
+ */
 class UpdateReceptionDraftRequest extends FormRequest
 {
     use ValidatesReceptionCaseFields;

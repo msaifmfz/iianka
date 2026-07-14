@@ -15,6 +15,9 @@ use App\Services\ReceptionCaseNumberGenerator;
 use App\Services\ReceptionCaseWorkflow;
 use Inertia\Testing\AssertableInertia as Assert;
 
+/**
+ * @return array<string, mixed>
+ */
 function receptionPayload(?ReceptionDocumentType $documentType = null): array
 {
     $documentType ??= ReceptionDocumentType::factory()->create();

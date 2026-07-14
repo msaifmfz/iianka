@@ -161,6 +161,9 @@ class ReceptionCaseController extends Controller
             ->all();
     }
 
+    /**
+     * @return EloquentCollection<int, ReceptionDocumentType>
+     */
     private function activeDocumentTypes(): EloquentCollection
     {
         return ReceptionDocumentType::query()
@@ -170,6 +173,9 @@ class ReceptionCaseController extends Controller
             ->get();
     }
 
+    /**
+     * @return EloquentCollection<int, ReceptionDocumentType>
+     */
     private function documentTypesFor(ReceptionCase $receptionCase): EloquentCollection
     {
         return ReceptionDocumentType::query()

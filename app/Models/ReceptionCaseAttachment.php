@@ -17,6 +17,14 @@ use Illuminate\Support\Str;
 use Override;
 use RuntimeException;
 
+/**
+ * @property int $id
+ * @property ReceptionCaseAttachmentKind $kind
+ * @property string $name
+ * @property string $disk
+ * @property string $path
+ * @property string|null $extension
+ */
 #[Fillable([
     'reception_case_id',
     'uploaded_by_user_id',

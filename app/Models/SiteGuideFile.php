@@ -9,6 +9,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
+/**
+ * @property int $id
+ * @property string $disk
+ * @property string $path
+ */
 #[Fillable([
     'name',
     'disk',

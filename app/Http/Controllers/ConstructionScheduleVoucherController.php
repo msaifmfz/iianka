@@ -158,6 +158,7 @@ class ConstructionScheduleVoucherController extends Controller
     }
 
     /**
+     * @param  Builder<ConstructionSchedule>  $monthlyQuery
      * @return Collection<int, array{date: string, total: int, checked: int, unchecked: int}>
      */
     private function dayOptions(Builder $monthlyQuery): Collection
@@ -167,11 +168,12 @@ class ConstructionScheduleVoucherController extends Controller
             ->groupBy('scheduled_on')
             ->orderBy('scheduled_on')
             ->get()
+            ->toBase()
             ->map(fn (ConstructionSchedule $schedule): array => [
                 'date' => $schedule->scheduled_on->toDateString(),
-                'total' => (int) $schedule->total,
-                'checked' => (int) $schedule->checked,
-                'unchecked' => (int) $schedule->unchecked,
+                'total' => (int) $schedule->getAttribute('total'),
+                'checked' => (int) $schedule->getAttribute('checked'),
+                'unchecked' => (int) $schedule->getAttribute('unchecked'),
             ])
             ->values();
     }

@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Models\ReceptionCase;
 use App\ReceptionCaseStatus;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
+/**
+ * @property-read ReceptionCase $reception_case
+ */
 class CompleteReceptionCaseRequest extends FormRequest
 {
     public function authorize(): bool

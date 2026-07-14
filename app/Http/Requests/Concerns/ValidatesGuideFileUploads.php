@@ -33,6 +33,7 @@ trait ValidatesGuideFileUploads
     {
         return [
             function (Validator $validator): void {
+                /** @var mixed $files request input shape is user-controlled; nested arrays can appear despite the file() stub type */
                 $files = $this->file('guide_files', []);
                 $names = $this->input('guide_file_names', []);
 

@@ -56,7 +56,7 @@ class ReceptionCaseFactory extends Factory
     {
         return $this->state(fn (array $attributes): array => [
             'status' => ReceptionCaseStatus::InProgress,
-            'assigned_user_id' => $assignedUser?->id ?? User::factory(),
+            'assigned_user_id' => $assignedUser->id ?? User::factory(),
             'last_activity_at' => now(),
         ]);
     }
@@ -65,7 +65,7 @@ class ReceptionCaseFactory extends Factory
     {
         return $this->state(fn (array $attributes): array => [
             'status' => ReceptionCaseStatus::Handover,
-            'assigned_user_id' => $assignedUser?->id ?? User::factory(),
+            'assigned_user_id' => $assignedUser->id ?? User::factory(),
             'last_activity_at' => now(),
         ]);
     }
@@ -75,7 +75,7 @@ class ReceptionCaseFactory extends Factory
         return $this->state(fn (array $attributes): array => [
             'status' => ReceptionCaseStatus::Completed,
             'completed_at' => now(),
-            'completed_by_user_id' => $completedBy?->id ?? User::factory(),
+            'completed_by_user_id' => $completedBy->id ?? User::factory(),
             'last_activity_at' => now(),
         ]);
     }

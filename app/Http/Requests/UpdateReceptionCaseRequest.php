@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ValidatesReceptionCaseFields;
+use App\Models\ReceptionCase;
 use App\ReceptionCaseStatus;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
 
+/**
+ * @property-read ReceptionCase $reception_case
+ */
 class UpdateReceptionCaseRequest extends FormRequest
 {
     use ValidatesReceptionCaseFields;
@@ -30,7 +34,7 @@ class UpdateReceptionCaseRequest extends FormRequest
             return true;
         }
 
-        return $this->user()?->can('updatePriority', $this->reception_case) === true;
+        return $this->user()->can('updatePriority', $this->reception_case);
     }
 
     /**

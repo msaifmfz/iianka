@@ -27,7 +27,7 @@ class CleaningDutyRuleController extends Controller
 
         return Inertia::render('cleaning-duty-rules/index', [
             'rules' => $this->rulePayload($rules),
-            'canManage' => $request->user()?->canManageContent() === true,
+            'canManage' => $request->user()->canManageContent(),
         ]);
     }
 

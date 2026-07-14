@@ -220,10 +220,9 @@ test('names containing path separators still serve with a safe filename', functi
         ->assertOk()
         ->headers->get('content-disposition');
 
-    expect($disposition)
-        ->toStartWith('inline;')
-        ->not->toContain('/')
-        ->not->toContain('\\');
+    expect($disposition)->toStartWith('inline;');
+    expect($disposition)->not->toContain('/');
+    expect($disposition)->not->toContain('\\');
 });
 
 test('active case attachment changes record activity', function (): void {

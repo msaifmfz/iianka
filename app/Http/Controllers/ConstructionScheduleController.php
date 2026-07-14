@@ -44,9 +44,13 @@ class ConstructionScheduleController extends Controller
         $date = Carbon::parse($request->query('date', BusinessDate::today()->toDateString()));
         [$startsOn, $endsOn] = $this->rangeBounds($range, $date);
 
+        /** @var Collection<int, ConstructionSchedule> $constructionSchedules */
         $constructionSchedules = collect();
+        /** @var Collection<int, BusinessSchedule> $businessSchedules */
         $businessSchedules = collect();
+        /** @var Collection<int, InternalNotice> $internalNotices */
         $internalNotices = collect();
+        /** @var Collection<int, array<string, mixed>> $cleaningDutyOccurrences */
         $cleaningDutyOccurrences = collect();
 
         if ($types->contains('construction')) {
@@ -602,6 +606,7 @@ class ConstructionScheduleController extends Controller
     }
 
     /**
+     * @param  Collection<int, int>  $userIds
      * @return Collection<int, array<string, mixed>>
      */
     private function attendanceLeaveRecords(Collection $userIds): Collection
@@ -623,6 +628,7 @@ class ConstructionScheduleController extends Controller
     }
 
     /**
+     * @param  Collection<int, int>  $userIds
      * @return Collection<int, array<string, mixed>>
      */
     private function scheduleAvailability(?ConstructionSchedule $ignoredSchedule, Collection $userIds): Collection
@@ -738,9 +744,11 @@ class ConstructionScheduleController extends Controller
 
     /**
      * @param  Collection<int, string>  $types
+     * @return Collection<int, array<string, mixed>>
      */
     private function calendarDays(Carbon $calendarStart, Carbon $calendarEnd, Collection $types, ?User $assignedUser = null): Collection
     {
+        /** @var Collection<string, array<string, mixed>> $days */
         $days = collect();
 
         if ($types->contains('construction')) {
@@ -762,8 +770,8 @@ class ConstructionScheduleController extends Controller
                         'cleaning_duty_count' => 0,
                     ]);
 
-                    $day['count'] += (int) $schedule->schedule_count;
-                    $day['construction_count'] += (int) $schedule->schedule_count;
+                    $day['count'] += (int) $schedule->getAttribute('schedule_count');
+                    $day['construction_count'] += (int) $schedule->getAttribute('schedule_count');
                     $days->put($date, $day);
                 });
         }
@@ -787,8 +795,8 @@ class ConstructionScheduleController extends Controller
                         'cleaning_duty_count' => 0,
                     ]);
 
-                    $day['count'] += (int) $schedule->schedule_count;
-                    $day['business_count'] += (int) $schedule->schedule_count;
+                    $day['count'] += (int) $schedule->getAttribute('schedule_count');
+                    $day['business_count'] += (int) $schedule->getAttribute('schedule_count');
                     $days->put($date, $day);
                 });
         }
@@ -812,8 +820,8 @@ class ConstructionScheduleController extends Controller
                         'cleaning_duty_count' => 0,
                     ]);
 
-                    $day['count'] += (int) $notice->schedule_count;
-                    $day['internal_notice_count'] += (int) $notice->schedule_count;
+                    $day['count'] += (int) $notice->getAttribute('schedule_count');
+                    $day['internal_notice_count'] += (int) $notice->getAttribute('schedule_count');
                     $days->put($date, $day);
                 });
         }
@@ -843,6 +851,13 @@ class ConstructionScheduleController extends Controller
         return $days->sortKeys()->values();
     }
 
+    /**
+     * @param  Collection<int, ConstructionSchedule>  $constructionSchedules
+     * @param  Collection<int, BusinessSchedule>  $businessSchedules
+     * @param  Collection<int, InternalNotice>  $internalNotices
+     * @param  Collection<int, array<string, mixed>>  $cleaningDutyOccurrences
+     * @return Collection<int, array<string, mixed>>
+     */
     private function combinedSchedulePayload(Collection $constructionSchedules, Collection $businessSchedules, Collection $internalNotices, Collection $cleaningDutyOccurrences): Collection
     {
         return $this->schedulePayload($constructionSchedules)

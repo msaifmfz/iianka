@@ -13,6 +13,14 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Override;
 
+/**
+ * @property string $status
+ * @property string|null $starts_at
+ * @property string|null $ends_at
+ * @property string|null $time_note
+ * @property string|null $navigation_address
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, SiteGuideFile> $selectedGuideFiles
+ */
 #[Fillable([
     'scheduled_on',
     'schedule_number',

@@ -63,9 +63,9 @@ test('users can search construction and business schedules by location and gener
 
     expect($resultKeys->all())
         ->toContain("construction-{$constructionSchedule->id}")
-        ->toContain("business-{$businessSchedule->id}")
-        ->not->toContain("construction-{$differentLocation->id}")
-        ->not->toContain("business-{$differentContractor->id}");
+        ->toContain("business-{$businessSchedule->id}");
+    expect($resultKeys->all())->not->toContain("construction-{$differentLocation->id}");
+    expect($resultKeys->all())->not->toContain("business-{$differentContractor->id}");
 });
 
 test('users can filter construction and business schedules by content and combine all search filters', function (): void {
@@ -117,10 +117,10 @@ test('users can filter construction and business schedules by content and combin
 
     expect($resultKeys->all())
         ->toContain("construction-{$constructionSchedule->id}")
-        ->toContain("business-{$businessSchedule->id}")
-        ->not->toContain("construction-{$differentLocation->id}")
-        ->not->toContain("business-{$differentContractor->id}")
-        ->not->toContain("construction-{$differentContent->id}");
+        ->toContain("business-{$businessSchedule->id}");
+    expect($resultKeys->all())->not->toContain("construction-{$differentLocation->id}");
+    expect($resultKeys->all())->not->toContain("business-{$differentContractor->id}");
+    expect($resultKeys->all())->not->toContain("construction-{$differentContent->id}");
 });
 
 test('schedule search defaults to recent schedules and can sort oldest first', function (): void {
@@ -187,9 +187,8 @@ test('schedule search hides assignees that are hidden from workers', function ()
     $assignedNames = collect($response->inertiaProps('results.data'))
         ->firstWhere('id', $schedule->id)['assigned_users'];
 
-    expect(collect($assignedNames)->pluck('name')->all())
-        ->toContain('表示担当者')
-        ->not->toContain('非表示担当者');
+    expect(collect($assignedNames)->pluck('name')->all())->toContain('表示担当者');
+    expect(collect($assignedNames)->pluck('name')->all())->not->toContain('非表示担当者');
 });
 
 test('schedule search ignores invalid share query values', function (): void {

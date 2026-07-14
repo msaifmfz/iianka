@@ -10,6 +10,9 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Override;
 
+/**
+ * @property-read ReceptionDocumentType $reception_document_type
+ */
 class UpdateReceptionDocumentTypeRequest extends FormRequest
 {
     public function authorize(): bool

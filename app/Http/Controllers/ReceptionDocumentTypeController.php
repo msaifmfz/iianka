@@ -51,12 +51,10 @@ class ReceptionDocumentTypeController extends Controller
 
     public function update(UpdateReceptionDocumentTypeRequest $request, ReceptionDocumentType $receptionDocumentType): RedirectResponse
     {
-        $wasActive = $receptionDocumentType->is_active;
-
         $receptionDocumentType->update($request->validated());
 
         $this->auditSuccess(
-            $wasActive && ! $receptionDocumentType->is_active
+            $receptionDocumentType->wasChanged('is_active') && ! $receptionDocumentType->is_active
                 ? 'reception_document_types.deactivated'
                 : 'reception_document_types.updated',
             'A reception document type was updated.',

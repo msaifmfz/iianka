@@ -146,7 +146,7 @@ class UserController extends Controller
     public function destroy(Request $request, User $user): RedirectResponse
     {
         abort_unless($request->user()?->canManageUsers() === true, 403);
-        abort_if($request->user()?->is($user), 422, '自分自身は削除できません。');
+        abort_if($request->user()->is($user), 422, '自分自身は削除できません。');
 
         $this->auditSuccess('admin.users.deleted', 'An admin deleted a user account.', $user);
 

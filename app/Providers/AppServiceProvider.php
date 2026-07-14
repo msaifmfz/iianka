@@ -164,48 +164,48 @@ class AppServiceProvider extends ServiceProvider
             outcome: 'challenge',
             description: 'A two-factor authentication challenge was issued.',
             actor: $event->user,
-            subject: $event->user instanceof User ? $event->user : null,
+            subject: $event->user,
         ));
 
         Event::listen(ValidTwoFactorAuthenticationCodeProvided::class, fn (ValidTwoFactorAuthenticationCodeProvided $event) => app(AuditLogger::class)->success(
             event: 'auth.two_factor.succeeded',
             description: 'A valid two-factor authentication code was provided.',
-            subject: $event->user instanceof User ? $event->user : null,
+            subject: $event->user,
             actor: $event->user,
         ));
 
         Event::listen(TwoFactorAuthenticationFailed::class, fn (TwoFactorAuthenticationFailed $event) => app(AuditLogger::class)->failure(
             event: 'auth.two_factor.failed',
             description: 'An invalid two-factor authentication code was provided.',
-            subject: $event->user instanceof User ? $event->user : null,
+            subject: $event->user,
             actor: $event->user,
         ));
 
         Event::listen(TwoFactorAuthenticationEnabled::class, fn (TwoFactorAuthenticationEnabled $event) => app(AuditLogger::class)->success(
             event: 'auth.two_factor.enabled',
             description: 'Two-factor authentication was enabled.',
-            subject: $event->user instanceof User ? $event->user : null,
+            subject: $event->user,
             actor: $event->user,
         ));
 
         Event::listen(TwoFactorAuthenticationConfirmed::class, fn (TwoFactorAuthenticationConfirmed $event) => app(AuditLogger::class)->success(
             event: 'auth.two_factor.confirmed',
             description: 'Two-factor authentication was confirmed.',
-            subject: $event->user instanceof User ? $event->user : null,
+            subject: $event->user,
             actor: $event->user,
         ));
 
         Event::listen(TwoFactorAuthenticationDisabled::class, fn (TwoFactorAuthenticationDisabled $event) => app(AuditLogger::class)->success(
             event: 'auth.two_factor.disabled',
             description: 'Two-factor authentication was disabled.',
-            subject: $event->user instanceof User ? $event->user : null,
+            subject: $event->user,
             actor: $event->user,
         ));
 
         Event::listen(RecoveryCodesGenerated::class, fn (RecoveryCodesGenerated $event) => app(AuditLogger::class)->success(
             event: 'auth.two_factor.recovery_codes_generated',
             description: 'Two-factor recovery codes were regenerated.',
-            subject: $event->user instanceof User ? $event->user : null,
+            subject: $event->user,
             actor: $event->user,
         ));
 

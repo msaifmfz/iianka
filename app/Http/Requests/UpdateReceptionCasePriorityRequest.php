@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Models\ReceptionCase;
 use App\ReceptionCasePriority;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Override;
 
+/**
+ * @property-read ReceptionCase $reception_case
+ */
 class UpdateReceptionCasePriorityRequest extends FormRequest
 {
     #[Override]

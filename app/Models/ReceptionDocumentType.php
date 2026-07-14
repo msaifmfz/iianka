@@ -36,6 +36,9 @@ class ReceptionDocumentType extends Model
         ];
     }
 
+    /**
+     * @param  Builder<ReceptionDocumentType>  $query
+     */
     #[Scope]
     protected function active(Builder $query): void
     {

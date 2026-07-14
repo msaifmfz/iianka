@@ -103,6 +103,7 @@ trait ValidatesScheduleNumber
 
     /**
      * @param  Collection<int, int>  $assignedUserIds
+     * @return Builder<ConstructionSchedule>
      */
     private function numberedConstructionSchedules(string $scheduledOn, int $scheduleNumber, Collection $assignedUserIds): Builder
     {
@@ -118,6 +119,7 @@ trait ValidatesScheduleNumber
 
     /**
      * @param  Collection<int, int>  $assignedUserIds
+     * @return Builder<BusinessSchedule>
      */
     private function numberedBusinessSchedules(string $scheduledOn, int $scheduleNumber, Collection $assignedUserIds): Builder
     {

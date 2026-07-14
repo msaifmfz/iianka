@@ -13,7 +13,6 @@ use App\Services\ReceptionCaseNumberGenerator;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
-use LogicException;
 
 class ReceptionCaseDraftController extends Controller
 {
@@ -23,7 +22,9 @@ class ReceptionCaseDraftController extends Controller
         // firstOrCreate on today's sequence row can lose a race the first time a
         // date is used (two concurrent inserts, one hits the unique constraint);
         // that attempt rolls back cleanly and the retry finds the committed row.
-        for ($attempt = 0; $attempt < 2; $attempt++) {
+        $attempt = 0;
+
+        while (true) {
             try {
                 $case = DB::transaction(fn (): ReceptionCase => $this->createDraft($request, $caseNumberGenerator));
 
@@ -35,10 +36,10 @@ class ReceptionCaseDraftController extends Controller
                 if ($attempt === 1) {
                     throw $exception;
                 }
+
+                $attempt++;
             }
         }
-
-        throw new LogicException('Unreachable: draft creation retry loop exhausted.');
     }
 
     private function createDraft(StoreReceptionDraftRequest $request, ReceptionCaseNumberGenerator $caseNumberGenerator): ReceptionCase

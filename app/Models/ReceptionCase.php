@@ -6,16 +6,24 @@ namespace App\Models;
 
 use App\ReceptionCasePriority;
 use App\ReceptionCaseStatus;
+use Carbon\CarbonImmutable;
 use Database\Factories\ReceptionCaseFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Override;
 
+/**
+ * @property int $id
+ * @property int|null $assigned_user_id
+ * @property CarbonImmutable|null $last_activity_at
+ * @property-read Collection<int, ReceptionCaseSeenState> $seenStates
+ */
 #[Fillable([
     'case_number',
     'status',
@@ -67,6 +75,8 @@ class ReceptionCase extends Model
     /**
      * Eager-load the relations needed to present a case in list and detail views.
      * Pass {@see $withActivities} and {@see $withAttachments} when rendering detail views.
+     *
+     * @param  Builder<ReceptionCase>  $query
      */
     #[Scope]
     protected function withListRelations(
@@ -108,6 +118,9 @@ class ReceptionCase extends Model
         }
     }
 
+    /**
+     * @param  Builder<ReceptionCase>  $query
+     */
     #[Scope]
     protected function highPriorityFirst(Builder $query): void
     {

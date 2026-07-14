@@ -99,6 +99,7 @@ test('document type reorder rejects invalid ordered ids', function (string $case
         'duplicate ids' => [$first->id, $first->id],
         'missing id' => [$first->id],
         'unknown id' => [$first->id, $second->id + 1000],
+        default => throw new InvalidArgumentException("Unknown dataset case: {$case}"),
     };
 
     $this->actingAs($manager)
