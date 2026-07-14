@@ -78,6 +78,9 @@ jobs:
   security:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@v6
 
@@ -105,7 +108,16 @@ jobs:
         run: cp .env.example .env && php artisan key:generate
 
       - name: Psalm Taint Analysis
-        run: composer analyse:taint
+        run: composer analyse:taint -- --report=psalm-taint.sarif
+
+      # if: always() so findings still reach the Security tab when the step fails.
+      # Fork PRs lack security-events perms; add a repo guard if fork PRs appear.
+      - name: Upload Taint SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: psalm-taint.sarif
+          category: psalm-taint
 
       - name: Composer Audit
         run: composer audit --locked --abandoned=report
