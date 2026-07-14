@@ -19,6 +19,7 @@
     "require-dev": {
         "driftingly/rector-laravel": "^2.2",
         "fakerphp/faker": "^1.24",
+        "larastan/larastan": "^3.10",
         "laravel-lang/lang": "^15.29",
         "laravel-lang/publisher": "^16.8",
         "laravel/boost": "^2.0",
@@ -71,10 +72,36 @@
             "pint --parallel --test"
         ],
         "analyse": [
+            "Composer\\Config::disableProcessTimeout",
+            "@analyse:psalm",
+            "@analyse:phpstan"
+        ],
+        "analyse:psalm": [
             "psalm --no-progress"
+        ],
+        "analyse:phpstan": [
+            "phpstan analyse --no-progress --memory-limit=1G"
         ],
         "analyse:taint": [
             "psalm --taint-analysis --no-progress"
+        ],
+        "baseline:phpstan": [
+            "phpstan analyse --generate-baseline=phpstan-baseline.neon --memory-limit=1G"
+        ],
+        "baseline:psalm": [
+            "psalm --no-progress --set-baseline=psalm-baseline.xml"
+        ],
+        "security": [
+            "Composer\\Config::disableProcessTimeout",
+            "@analyse:taint",
+            "composer audit --abandoned=report"
+        ],
+        "check": [
+            "Composer\\Config::disableProcessTimeout",
+            "@lint:check",
+            "@rector:check",
+            "@analyse",
+            "@js:check"
         ],
         "rector": [
             "rector"

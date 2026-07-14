@@ -1,60 +1,339 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <files psalm-version="6.16.1@f1f5de594dc76faf8784e02d3dc4716c91c6f6ac">
-  <file src="app/Http/Controllers/ConstructionScheduleController.php">
+  <file src="app/Http/Controllers/BusinessScheduleController.php">
+    <InvalidArgument>
+      <code><![CDATA[$constructionSchedules]]></code>
+      <code><![CDATA[$internalNotices]]></code>
+    </InvalidArgument>
     <InvalidTemplateParam>
+      <code><![CDATA[AttendanceRecord::query()
+            ->with('user:id,name,email')
+            ->where('status', AttendanceRecord::STATUS_LEAVE)
+            ->orderBy('work_date')
+            ->get()
+            ->map(fn (AttendanceRecord $record): array => [
+                'id' => $record->id,
+                'user_id' => $record->user_id,
+                'user_name' => $record->user->name,
+                'work_date' => $record->work_date->toDateString(),
+                'note' => $record->note,
+            ])]]></code>
       <code><![CDATA[ConstructionSchedule::query()
-            ->selectRaw('scheduled_on, count(*) as schedule_count')
-            ->whereDate('scheduled_on', '>=', $monthStart->toDateString())
-            ->whereDate('scheduled_on', '<=', $monthEnd->toDateString())
+            ->with('assignedUsers:id,name,email')
+            ->whereNotNull('starts_at')
+            ->whereNotNull('ends_at')
+            ->whereHas('assignedUsers')
+            ->get()
+            ->map(fn (ConstructionSchedule $schedule): array => [
+                'id' => $schedule->id,
+                'type' => 'construction',
+                'title' => $schedule->location,
+                'scheduled_on' => $schedule->scheduled_on->toDateString(),
+                'starts_at' => $schedule->starts_at,
+                'ends_at' => $schedule->ends_at,
+                'time' => $schedule->formattedTime(),
+                'user_ids' => $schedule->assignedUsers->pluck('id')->values(),
+                'user_names' => $schedule->assignedUsers->pluck('name')->values(),
+            ])]]></code>
+      <code><![CDATA[InternalNotice::query()
+            ->with('assignedUsers:id,name,email')
+            ->whereNotNull('starts_at')
+            ->whereNotNull('ends_at')
+            ->whereHas('assignedUsers')
+            ->get()
+            ->map(fn (InternalNotice $notice): array => [
+                'id' => $notice->id,
+                'type' => 'internal_notice',
+                'title' => $notice->title,
+                'scheduled_on' => $notice->scheduled_on->toDateString(),
+                'starts_at' => $notice->starts_at,
+                'ends_at' => $notice->ends_at,
+                'time' => $notice->formattedTime(),
+                'user_ids' => $notice->assignedUsers->pluck('id')->values(),
+                'user_names' => $notice->assignedUsers->pluck('name')->values(),
+            ])]]></code>
+    </InvalidTemplateParam>
+  </file>
+  <file src="app/Http/Controllers/CleaningDutyRuleController.php">
+    <InvalidReturnStatement>
+      <code><![CDATA[$returnTo]]></code>
+    </InvalidReturnStatement>
+  </file>
+  <file src="app/Http/Controllers/ConstructionScheduleController.php">
+    <InvalidArgument>
+      <code><![CDATA[$day]]></code>
+      <code><![CDATA[$day]]></code>
+      <code><![CDATA[$day]]></code>
+      <code><![CDATA[$day]]></code>
+      <code><![CDATA[$selectedUserBusinessSchedules]]></code>
+      <code><![CDATA[$selectedUserConstructionSchedules]]></code>
+      <code><![CDATA[$selectedUserInternalNotices]]></code>
+      <code><![CDATA[$this->adjacentCleaningDutyDate($date, -1)]]></code>
+      <code><![CDATA[$this->adjacentCleaningDutyDate($date, 1)]]></code>
+      <code><![CDATA[[
+                        'scheduled_on' => $current->toDateString(),
+                        'rule' => $rule,
+                        'assigned_users' => $rule->assignedUsers,
+                    ]]]></code>
+      <code><![CDATA[fn ($query) => $query
+                ->visibleToWorkers()
+                ->when($selectedUserIds->isNotEmpty(), fn ($query) => $query->orWhereIn('id', $selectedUserIds))]]></code>
+    </InvalidArgument>
+    <InvalidReturnStatement>
+      <code><![CDATA[$types->isEmpty() ? collect(self::DEFAULT_SCHEDULE_TYPES) : $types]]></code>
+      <code><![CDATA[collect(self::SCHEDULE_TYPES)]]></code>
+    </InvalidReturnStatement>
+    <InvalidReturnType>
+      <code><![CDATA[Collection<int, string>]]></code>
+    </InvalidReturnType>
+    <InvalidTemplateParam>
+      <code><![CDATA[AttendanceRecord::query()
+            ->with('user:id,name,email')
+            ->where('status', AttendanceRecord::STATUS_LEAVE)
+            ->whereIn('user_id', $userIds)
+            ->orderBy('work_date')
+            ->get()
+            ->map(fn (AttendanceRecord $record): array => [
+                'id' => $record->id,
+                'user_id' => $record->user_id,
+                'user_name' => $record->user->name,
+                'work_date' => $record->work_date->toDateString(),
+                'note' => $record->note,
+            ])]]></code>
+    </InvalidTemplateParam>
+    <ReservedWord>
+      <code><![CDATA[BusinessSchedule]]></code>
+      <code><![CDATA[ConstructionSchedule]]></code>
+      <code><![CDATA[InternalNotice]]></code>
+      <code><![CDATA[array]]></code>
+      <code><![CDATA[array]]></code>
+    </ReservedWord>
+    <UndefinedMethod>
+      <code><![CDATA[visibleToWorkers]]></code>
+    </UndefinedMethod>
+    <UnusedVariable>
+      <code><![CDATA[$current]]></code>
+    </UnusedVariable>
+  </file>
+  <file src="app/Http/Controllers/ConstructionScheduleVoucherController.php">
+    <InvalidTemplateParam>
+      <code><![CDATA[(clone $monthlyQuery)
+            ->selectRaw('scheduled_on, count(*) as total, sum(case when voucher_checked_at is null then 1 else 0 end) as unchecked, sum(case when voucher_checked_at is not null then 1 else 0 end) as checked')
             ->groupBy('scheduled_on')
             ->orderBy('scheduled_on')
             ->get()
-            ->map(fn (ConstructionSchedule $schedule) => [
+            ->map(fn (ConstructionSchedule $schedule): array => [
                 'date' => $schedule->scheduled_on->toDateString(),
-                'count' => (int) $schedule->schedule_count,
+                'total' => (int) $schedule->total,
+                'checked' => (int) $schedule->checked,
+                'unchecked' => (int) $schedule->unchecked,
             ])]]></code>
-      <code><![CDATA[ConstructionSite::query()
-                ->with('guideFiles')
-                ->orderBy('name')
-                ->get()
-                ->map(fn (ConstructionSite $site) => [
-                    'id' => $site->id,
-                    'name' => $site->name,
-                    'address' => $site->address,
-                    'guide_files' => $this->guideFilePayload($site->guideFiles),
-                ])]]></code>
     </InvalidTemplateParam>
   </file>
-  <file src="app/Http/Controllers/ConstructionSiteController.php">
+  <file src="app/Http/Controllers/ReceptionCaseController.php">
+    <InvalidArgument>
+      <code><![CDATA[fn ($query) => $query
+                ->active()
+                ->when(
+                    $receptionCase->reception_document_type_id !== null,
+                    fn ($query) => $query->orWhere('id', $receptionCase->reception_document_type_id),
+                )]]></code>
+    </InvalidArgument>
+    <PossiblyUnusedParam>
+      <code><![CDATA[$request]]></code>
+    </PossiblyUnusedParam>
+    <UndefinedMethod>
+      <code><![CDATA[active]]></code>
+    </UndefinedMethod>
+  </file>
+  <file src="app/Http/Controllers/ReceptionDocumentTypeController.php">
+    <PossiblyUnusedParam>
+      <code><![CDATA[$request]]></code>
+    </PossiblyUnusedParam>
+  </file>
+  <file src="app/Http/Controllers/ScheduleOverviewController.php">
+    <InvalidArgument>
+      <code><![CDATA[$calendarDays]]></code>
+      <code><![CDATA[$date]]></code>
+      <code><![CDATA[$day]]></code>
+      <code><![CDATA[$day]]></code>
+      <code><![CDATA[$day]]></code>
+      <code><![CDATA[$day]]></code>
+      <code><![CDATA[$day]]></code>
+      <code><![CDATA[$day]]></code>
+      <code><![CDATA[[
+                'date' => $date,
+                'construction_count' => 0,
+                'business_count' => 0,
+                'internal_notice_count' => 0,
+                'carry_out_count' => 0,
+                'voucher_confirmation_count' => 0,
+                'unconfirmed_voucher_count' => 0,
+                'schedule_count' => 0,
+            ]]]></code>
+    </InvalidArgument>
+    <InvalidReturnStatement>
+      <code><![CDATA[$returnTo]]></code>
+    </InvalidReturnStatement>
     <InvalidTemplateParam>
-      <code><![CDATA[ConstructionSite::query()
-            ->with('guideFiles')
-            ->orderBy('name')
+      <code><![CDATA[AttendanceRecord::query()
+            ->with('user:id,name,email')
+            ->where('status', AttendanceRecord::STATUS_LEAVE)
+            ->whereDate('work_date', $date->toDateString())
+            ->whereIn('user_id', $visibleUserIds)
+            ->orderBy('work_date')
             ->get()
-            ->map(fn (ConstructionSite $site) => [
-                'id' => $site->id,
-                'name' => $site->name,
-                'address' => $site->address,
-                'notes' => $site->notes,
-                'guide_files' => $this->guideFilePayload($site->guideFiles),
+            ->map(fn (AttendanceRecord $record): array => [
+                'id' => $record->id,
+                'user_id' => $record->user_id,
+                'user_name' => $record->user->name,
+                'work_date' => $record->work_date->toDateString(),
+                'note' => $record->note,
             ])]]></code>
     </InvalidTemplateParam>
+  </file>
+  <file src="app/Http/Requests/AssignReceptionCaseRequest.php">
+    <UndefinedThisPropertyFetch>
+      <code><![CDATA[$this->reception_case]]></code>
+    </UndefinedThisPropertyFetch>
+  </file>
+  <file src="app/Http/Requests/CompleteReceptionCaseRequest.php">
+    <UndefinedThisPropertyFetch>
+      <code><![CDATA[$this->reception_case]]></code>
+      <code><![CDATA[$this->reception_case]]></code>
+    </UndefinedThisPropertyFetch>
+  </file>
+  <file src="app/Http/Requests/HandoverReceptionCaseRequest.php">
+    <UndefinedThisPropertyFetch>
+      <code><![CDATA[$this->reception_case]]></code>
+      <code><![CDATA[$this->reception_case]]></code>
+    </UndefinedThisPropertyFetch>
+  </file>
+  <file src="app/Http/Requests/StartReceptionCaseRequest.php">
+    <UndefinedThisPropertyFetch>
+      <code><![CDATA[$this->reception_case]]></code>
+      <code><![CDATA[$this->reception_case]]></code>
+    </UndefinedThisPropertyFetch>
+  </file>
+  <file src="app/Http/Requests/SubmitReceptionCaseRequest.php">
+    <UndefinedThisPropertyFetch>
+      <code><![CDATA[$this->reception_case]]></code>
+      <code><![CDATA[$this->reception_case]]></code>
+    </UndefinedThisPropertyFetch>
+  </file>
+  <file src="app/Http/Requests/UpdateReceptionCasePriorityRequest.php">
+    <UndefinedThisPropertyFetch>
+      <code><![CDATA[$this->reception_case]]></code>
+    </UndefinedThisPropertyFetch>
+  </file>
+  <file src="app/Http/Requests/UpdateReceptionCaseRequest.php">
+    <UndefinedThisPropertyFetch>
+      <code><![CDATA[$this->reception_case]]></code>
+      <code><![CDATA[$this->reception_case]]></code>
+      <code><![CDATA[$this->reception_case]]></code>
+      <code><![CDATA[$this->reception_case]]></code>
+    </UndefinedThisPropertyFetch>
+  </file>
+  <file src="app/Http/Requests/UpdateReceptionCaseWorkMemoRequest.php">
+    <UndefinedThisPropertyFetch>
+      <code><![CDATA[$this->reception_case]]></code>
+    </UndefinedThisPropertyFetch>
+  </file>
+  <file src="app/Http/Requests/UpdateReceptionDocumentTypeRequest.php">
+    <UndefinedThisPropertyFetch>
+      <code><![CDATA[$this->reception_document_type]]></code>
+      <code><![CDATA[$this->reception_document_type]]></code>
+    </UndefinedThisPropertyFetch>
+  </file>
+  <file src="app/Http/Requests/UpdateReceptionDraftRequest.php">
+    <UndefinedThisPropertyFetch>
+      <code><![CDATA[$this->reception_case]]></code>
+    </UndefinedThisPropertyFetch>
+  </file>
+  <file src="app/Models/BusinessSchedule.php">
+    <UndefinedThisPropertyFetch>
+      <code><![CDATA[$this->ends_at]]></code>
+      <code><![CDATA[$this->starts_at]]></code>
+      <code><![CDATA[$this->time_note]]></code>
+    </UndefinedThisPropertyFetch>
+  </file>
+  <file src="app/Models/CleaningDutyRule.php">
+    <UndefinedThisPropertyFetch>
+      <code><![CDATA[$this->weekday]]></code>
+    </UndefinedThisPropertyFetch>
   </file>
   <file src="app/Models/ConstructionSchedule.php">
     <UndefinedThisPropertyFetch>
-      <code><![CDATA[$this->directGuideFiles]]></code>
       <code><![CDATA[$this->ends_at]]></code>
       <code><![CDATA[$this->navigation_address]]></code>
       <code><![CDATA[$this->selectedGuideFiles]]></code>
       <code><![CDATA[$this->starts_at]]></code>
+      <code><![CDATA[$this->status]]></code>
       <code><![CDATA[$this->time_note]]></code>
+    </UndefinedThisPropertyFetch>
+  </file>
+  <file src="app/Models/InternalNotice.php">
+    <UndefinedThisPropertyFetch>
+      <code><![CDATA[$this->ends_at]]></code>
+      <code><![CDATA[$this->starts_at]]></code>
+      <code><![CDATA[$this->time_note]]></code>
+    </UndefinedThisPropertyFetch>
+  </file>
+  <file src="app/Models/ReceptionCase.php">
+    <PossiblyUnusedReturnValue>
+      <code><![CDATA[ReceptionCaseActivity]]></code>
+    </PossiblyUnusedReturnValue>
+    <UndefinedThisPropertyFetch>
+      <code><![CDATA[$this->assigned_user_id]]></code>
+      <code><![CDATA[$this->id]]></code>
+      <code><![CDATA[$this->last_activity_at]]></code>
+      <code><![CDATA[$this->seenStates]]></code>
+    </UndefinedThisPropertyFetch>
+  </file>
+  <file src="app/Models/ReceptionCaseAttachment.php">
+    <UndefinedThisPropertyFetch>
+      <code><![CDATA[$this->disk]]></code>
+      <code><![CDATA[$this->disk]]></code>
+      <code><![CDATA[$this->disk]]></code>
+      <code><![CDATA[$this->extension]]></code>
+      <code><![CDATA[$this->extension]]></code>
+      <code><![CDATA[$this->extension]]></code>
+      <code><![CDATA[$this->id]]></code>
+      <code><![CDATA[$this->kind]]></code>
+      <code><![CDATA[$this->name]]></code>
+      <code><![CDATA[$this->name]]></code>
+      <code><![CDATA[$this->name]]></code>
+      <code><![CDATA[$this->path]]></code>
+      <code><![CDATA[$this->path]]></code>
+      <code><![CDATA[$this->path]]></code>
     </UndefinedThisPropertyFetch>
   </file>
   <file src="app/Models/SiteGuideFile.php">
     <UndefinedThisPropertyFetch>
       <code><![CDATA[$this->disk]]></code>
+      <code><![CDATA[$this->id]]></code>
       <code><![CDATA[$this->path]]></code>
     </UndefinedThisPropertyFetch>
+  </file>
+  <file src="app/Models/User.php">
+    <UndefinedThisPropertyFetch>
+      <code><![CDATA[$this->role]]></code>
+      <code><![CDATA[$this->role]]></code>
+      <code><![CDATA[$this->role]]></code>
+    </UndefinedThisPropertyFetch>
+  </file>
+  <file src="app/Policies/ReceptionCasePolicy.php">
+    <PossiblyUnusedParam>
+      <code><![CDATA[$user]]></code>
+      <code><![CDATA[$user]]></code>
+      <code><![CDATA[$user]]></code>
+    </PossiblyUnusedParam>
+  </file>
+  <file src="app/Policies/ReceptionDocumentTypePolicy.php">
+    <PossiblyUnusedParam>
+      <code><![CDATA[$receptionDocumentType]]></code>
+      <code><![CDATA[$receptionDocumentType]]></code>
+    </PossiblyUnusedParam>
   </file>
   <file src="routes/console.php">
     <InvalidScope>

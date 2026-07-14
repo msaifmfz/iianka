@@ -69,13 +69,10 @@ function formatUploadLimit(kilobytes: number): string {
 }
 
 function errorMessage(errors: Record<string, unknown>): string | null {
-    const first = Object.values(errors)[0];
+    const first: unknown = Object.values(errors)[0];
+    const value: unknown = Array.isArray(first) ? first[0] : first;
 
-    if (Array.isArray(first)) {
-        return first[0] ? String(first[0]) : null;
-    }
-
-    return first ? String(first) : null;
+    return typeof value === 'string' && value !== '' ? value : null;
 }
 
 // useHttp only fills `errors` from 422 validation responses. 403/500 reject with

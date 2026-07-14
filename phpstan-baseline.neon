@@ -1,0 +1,1243 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 2
+			path: app/Http/Controllers/Admin/UserController.php
+
+		-
+			message: '#^Cannot call method label\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/Admin/UserController.php
+
+		-
+			message: '#^Cannot call method toISOString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Http/Controllers/Admin/UserController.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type App\\Models\\User\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Admin/UserController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:visibleToWorkers\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/AttendanceRecordController.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 5
+			path: app/Http/Controllers/AttendanceRecordController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\AttendanceRecordController\:\:recordPayload\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, user_id\: int, work_date\: mixed, status\: string, note\: string\|null, user\: array\{id\: int, name\: string, email\: string\|null, is_hidden_from_workers\: bool\}\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/AttendanceRecordController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\AttendanceRecord\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/AttendanceRecordController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Support\\Collection\<int,App\\Models\\AttendanceRecord\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/AttendanceRecordController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:values\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/AttendanceRecordController.php
+
+		-
+			message: '#^Anonymous function should return array\{id\: int, type\: ''business'', scheduled_on\: mixed, schedule_number\: int\<0, max\>\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, \.\.\.\} but returns array\{id\: int, type\: ''business'', scheduled_on\: mixed, schedule_number\: int\<0, max\>\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, \.\.\.\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/BusinessScheduleController.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 6
+			path: app/Http/Controllers/BusinessScheduleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\BusinessScheduleController\:\:attendanceLeaveRecords\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, user_id\: int\<0, max\>, user_name\: string, work_date\: mixed, note\: string\|null\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/BusinessScheduleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\BusinessScheduleController\:\:schedulePayload\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, type\: string, scheduled_on\: mixed, schedule_number\: int\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, \.\.\.\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/BusinessScheduleController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\AttendanceRecord\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/BusinessScheduleController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\BusinessSchedule\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/BusinessScheduleController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\ConstructionSchedule\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/BusinessScheduleController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\InternalNotice\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/BusinessScheduleController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\BusinessSchedule\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/BusinessScheduleController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\BusinessSchedule\>\:\:map\(\) expects callable\(App\\Models\\BusinessSchedule, int\)\: array\{id\: int, type\: ''business'', scheduled_on\: mixed, schedule_number\: int\<0, max\>\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, personnel\: string\|null, location\: string, general_contractor\: string\|null, person_in_charge\: string\|null, content\: string, memo\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\}, Closure\(App\\Models\\BusinessSchedule\)\: array\{id\: int, type\: ''business'', scheduled_on\: mixed, schedule_number\: int\<0, max\>\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, personnel\: string\|null, location\: string, general_contractor\: string\|null, person_in_charge\: string\|null, content\: string, memo\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/BusinessScheduleController.php
+
+		-
+			message: '#^Parameter \#1 \$items of method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:merge\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 3
+			path: app/Http/Controllers/BusinessScheduleController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\AttendanceRecord\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/BusinessScheduleController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\BusinessSchedule\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/BusinessScheduleController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\ConstructionSchedule\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/BusinessScheduleController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\InternalNotice\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/BusinessScheduleController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Support\\Collection\<int,App\\Models\\BusinessSchedule\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/BusinessScheduleController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:values\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 2
+			path: app/Http/Controllers/BusinessScheduleController.php
+
+		-
+			message: '#^Anonymous function should return array\{id\: int, weekday\: int\<0, max\>, weekday_label\: string, label\: string, location\: string\|null, notes\: string\|null, is_active\: bool, sort_order\: int\<0, max\>, \.\.\.\} but returns array\{id\: int, weekday\: int\<0, max\>, weekday_label\: string, label\: string, location\: string\|null, notes\: string\|null, is_active\: bool, sort_order\: int\<0, max\>, \.\.\.\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/CleaningDutyRuleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\CleaningDutyRuleController\:\:rulePayload\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, weekday\: int, weekday_label\: string, label\: string, location\: string\|null, notes\: string\|null, is_active\: bool, sort_order\: int, \.\.\.\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/CleaningDutyRuleController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\CleaningDutyRule\>\:\:map\(\) expects callable\(App\\Models\\CleaningDutyRule, int\)\: array\{id\: int, weekday\: int\<0, max\>, weekday_label\: string, label\: string, location\: string\|null, notes\: string\|null, is_active\: bool, sort_order\: int\<0, max\>, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\}, Closure\(App\\Models\\CleaningDutyRule\)\: array\{id\: int, weekday\: int\<0, max\>, weekday_label\: string, label\: string, location\: string\|null, notes\: string\|null, is_active\: bool, sort_order\: int\<0, max\>, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/CleaningDutyRuleController.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type App\\Models\\User\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/CleaningDutyRuleController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\BusinessSchedule\:\:\$schedule_count\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ConstructionSchedule\:\:\$schedule_count\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\InternalNotice\:\:\$schedule_count\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Anonymous function should return array\{id\: int, type\: ''business'', scheduled_on\: mixed, schedule_number\: int\<0, max\>\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, \.\.\.\} but returns array\{id\: int, type\: ''business'', scheduled_on\: mixed, schedule_number\: int\<0, max\>\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, \.\.\.\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Anonymous function should return array\{id\: int, type\: ''construction'', scheduled_on\: mixed, schedule_number\: int\<0, max\>\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, \.\.\.\} but returns array\{id\: int, type\: ''construction'', scheduled_on\: mixed, schedule_number\: int\<0, max\>\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, \.\.\.\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Anonymous function should return array\{id\: int, type\: ''internal_notice'', scheduled_on\: mixed, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, title\: string, \.\.\.\} but returns array\{id\: int, type\: ''internal_notice'', scheduled_on\: mixed, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, title\: string, \.\.\.\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Anonymous function should return array\{id\: mixed, type\: ''cleaning_duty'', scheduled_on\: mixed, time\: ''終日'', starts_at\: null, ends_at\: null, time_note\: ''終日'', title\: mixed, \.\.\.\} but returns array\{id\: mixed, type\: ''cleaning_duty'', scheduled_on\: mixed, time\: ''終日'', starts_at\: null, ends_at\: null, time_note\: ''終日'', title\: mixed, \.\.\.\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 11
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Cannot call method toDateTimeString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ConstructionScheduleController\:\:attendanceLeaveRecords\(\) has parameter \$userIds with generic class Illuminate\\Support\\Collection but does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ConstructionScheduleController\:\:attendanceLeaveRecords\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, user_id\: int\<0, max\>, user_name\: string, work_date\: mixed, note\: string\|null\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ConstructionScheduleController\:\:businessSchedulePayload\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, type\: string, scheduled_on\: mixed, schedule_number\: int\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, \.\.\.\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ConstructionScheduleController\:\:calendarDays\(\) return type with generic class Illuminate\\Support\\Collection does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ConstructionScheduleController\:\:cleaningDutyPayload\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: mixed, type\: string, scheduled_on\: mixed, time\: string, starts_at\: null, ends_at\: null, time_note\: string, title\: mixed, \.\.\.\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ConstructionScheduleController\:\:combinedSchedulePayload\(\) has parameter \$businessSchedules with generic class Illuminate\\Support\\Collection but does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ConstructionScheduleController\:\:combinedSchedulePayload\(\) has parameter \$cleaningDutyOccurrences with generic class Illuminate\\Support\\Collection but does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ConstructionScheduleController\:\:combinedSchedulePayload\(\) has parameter \$constructionSchedules with generic class Illuminate\\Support\\Collection but does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ConstructionScheduleController\:\:combinedSchedulePayload\(\) has parameter \$internalNotices with generic class Illuminate\\Support\\Collection but does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ConstructionScheduleController\:\:combinedSchedulePayload\(\) return type with generic class Illuminate\\Support\\Collection does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ConstructionScheduleController\:\:filterSchedulesByAssignedUsers\(\) should return Illuminate\\Support\\Collection\<int, TSchedule of object\> but returns Illuminate\\Support\\Collection\<int, object\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ConstructionScheduleController\:\:guideFilePayload\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, url\: string, mime_type\: string\|null\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ConstructionScheduleController\:\:internalNoticePayload\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, type\: string, scheduled_on\: mixed, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, title\: string, \.\.\.\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ConstructionScheduleController\:\:scheduleAvailability\(\) has parameter \$userIds with generic class Illuminate\\Support\\Collection but does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ConstructionScheduleController\:\:scheduleAvailability\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, type\: string, title\: string, scheduled_on\: mixed, starts_at\: string\|null, ends_at\: string\|null, time\: string, user_ids\: Illuminate\\Support\\Collection\<int, mixed\>, \.\.\.\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ConstructionScheduleController\:\:schedulePayload\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, type\: string, scheduled_on\: mixed, schedule_number\: int\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, \.\.\.\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ConstructionScheduleController\:\:userPayload\(\) should return Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\AttendanceRecord\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\BusinessSchedule\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 2
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\BusinessSchedule\>\:\:map\(\) expects callable\(App\\Models\\BusinessSchedule, int\)\: array\{id\: int, type\: ''business'', scheduled_on\: mixed, schedule_number\: int\<0, max\>\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, personnel\: string\|null, location\: string, general_contractor\: string\|null, person_in_charge\: string\|null, content\: string, memo\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\}, Closure\(App\\Models\\BusinessSchedule\)\: array\{id\: int, type\: ''business'', scheduled_on\: mixed, schedule_number\: int\<0, max\>\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, personnel\: string\|null, location\: string, general_contractor\: string\|null, person_in_charge\: string\|null, content\: string, memo\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\ConstructionSchedule\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 2
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\ConstructionSchedule\>\:\:map\(\) expects callable\(App\\Models\\ConstructionSchedule, int\)\: array\{id\: int, type\: ''construction'', scheduled_on\: mixed, schedule_number\: int\<0, max\>\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, status\: string, meeting_place\: string\|null, personnel\: string\|null, location\: string, site_region\: string\|null, general_contractor\: string\|null, person_in_charge\: string\|null, content\: string\|null, carry_out_note\: string\|null, navigation_address\: string\|null, google_maps_url\: string\|null, voucher_checked\: bool, voucher_checked_at\: mixed, voucher_checked_by\: array\{id\: int, name\: string, email\: string\|null\}\|null, voucher_note\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>, subcontractors\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, phone\: string\}\>, guide_files\: Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>, selected_site_guide_file_ids\: Illuminate\\Support\\Collection\<int, mixed\>\}, Closure\(App\\Models\\ConstructionSchedule\)\: array\{id\: int, type\: ''construction'', scheduled_on\: mixed, schedule_number\: int\<0, max\>\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, status\: string, meeting_place\: string\|null, personnel\: string\|null, location\: string, site_region\: string\|null, general_contractor\: string\|null, person_in_charge\: string\|null, content\: string\|null, carry_out_note\: string\|null, navigation_address\: string\|null, google_maps_url\: string\|null, voucher_checked\: bool, voucher_checked_at\: mixed, voucher_checked_by\: array\{id\: int, name\: string, email\: string\|null\}\|null, voucher_note\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>, subcontractors\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, phone\: string\}\>, guide_files\: Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>, selected_site_guide_file_ids\: Illuminate\\Support\\Collection\<int, mixed\>\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\InternalNotice\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 2
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\InternalNotice\>\:\:map\(\) expects callable\(App\\Models\\InternalNotice, int\)\: array\{id\: int, type\: ''internal_notice'', scheduled_on\: mixed, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, title\: string, location\: string\|null, content\: string, memo\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\}, Closure\(App\\Models\\InternalNotice\)\: array\{id\: int, type\: ''internal_notice'', scheduled_on\: mixed, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, title\: string, location\: string\|null, content\: string, memo\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:filter\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:map\(\) expects callable\(array\<string, mixed\>, int\)\: array\{id\: mixed, type\: ''cleaning_duty'', scheduled_on\: mixed, time\: ''終日'', starts_at\: null, ends_at\: null, time_note\: ''終日'', title\: mixed, location\: mixed, content\: mixed, memo\: mixed, rule_id\: mixed, weekday\: mixed, weekday_label\: mixed, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\}, Closure\(array\)\: array\{id\: mixed, type\: ''cleaning_duty'', scheduled_on\: mixed, time\: ''終日'', starts_at\: null, ends_at\: null, time_note\: ''終日'', title\: mixed, location\: mixed, content\: mixed, memo\: mixed, rule_id\: mixed, weekday\: mixed, weekday_label\: mixed, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:sortBy\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Parameter \#1 \$items of method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:merge\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 2
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Parameter \#2 \$default of method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:get\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 3
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\AttendanceRecord\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Support\\Collection\<int,App\\Models\\BusinessSchedule\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 2
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Support\\Collection\<int,App\\Models\\ConstructionSchedule\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 2
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Support\\Collection\<int,App\\Models\\InternalNotice\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 2
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:values\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 5
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 2
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Unable to resolve the template type TSchedule in call to method App\\Http\\Controllers\\ConstructionScheduleController\:\:filterSchedulesByAssignedUsers\(\)$#'
+			identifier: argument.templateType
+			count: 3
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 2
+			path: app/Http/Controllers/ConstructionScheduleController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ConstructionSchedule\:\:\$checked\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleVoucherController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ConstructionSchedule\:\:\$total\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleVoucherController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ConstructionSchedule\:\:\$unchecked\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleVoucherController.php
+
+		-
+			message: '#^Anonymous function should return array\{id\: int, scheduled_on\: mixed, time\: string, starts_at\: string\|null, location\: string, general_contractor\: string\|null, person_in_charge\: string\|null, content\: string\|null, \.\.\.\} but returns array\{id\: int, scheduled_on\: mixed, time\: string, starts_at\: string\|null, location\: string, general_contractor\: string\|null, person_in_charge\: string\|null, content\: string\|null, \.\.\.\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleVoucherController.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Http/Controllers/ConstructionScheduleVoucherController.php
+
+		-
+			message: '#^Cannot call method toJSON\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleVoucherController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ConstructionScheduleVoucherController\:\:dayOptions\(\) has parameter \$monthlyQuery with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleVoucherController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ConstructionScheduleVoucherController\:\:dayOptions\(\) should return Illuminate\\Support\\Collection\<int, array\{date\: string, total\: int, checked\: int, unchecked\: int\}\> but returns Illuminate\\Support\\Collection\<int, array\{date\: mixed, total\: int, checked\: int, unchecked\: int\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleVoucherController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ConstructionScheduleVoucherController\:\:schedulePayload\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, scheduled_on\: mixed, time\: string, starts_at\: string\|null, location\: string, general_contractor\: string\|null, person_in_charge\: string\|null, content\: string\|null, \.\.\.\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleVoucherController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleVoucherController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{date\: mixed, total\: int, checked\: int, unchecked\: int\}, Closure\(App\\Models\\ConstructionSchedule\)\: array\{date\: mixed, total\: int, checked\: int, unchecked\: int\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleVoucherController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\ConstructionSchedule\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleVoucherController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\ConstructionSchedule\>\:\:map\(\) expects callable\(App\\Models\\ConstructionSchedule, int\)\: array\{id\: int, scheduled_on\: mixed, time\: string, starts_at\: string\|null, location\: string, general_contractor\: string\|null, person_in_charge\: string\|null, content\: string\|null, voucher_checked\: bool, voucher_checked_at\: mixed, voucher_checked_by\: array\{id\: int, name\: string, email\: string\|null\}\|null, voucher_note\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\}, Closure\(App\\Models\\ConstructionSchedule\)\: array\{id\: int, scheduled_on\: mixed, time\: string, starts_at\: string\|null, location\: string, general_contractor\: string\|null, person_in_charge\: string\|null, content\: string\|null, voucher_checked\: bool, voucher_checked_at\: mixed, voucher_checked_by\: array\{id\: int, name\: string, email\: string\|null\}\|null, voucher_note\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleVoucherController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleVoucherController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Support\\Collection\<int,App\\Models\\ConstructionSchedule\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/ConstructionScheduleVoucherController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:values\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 2
+			path: app/Http/Controllers/ConstructionScheduleVoucherController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ConstructionSiteController\:\:guideFilePayload\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, url\: string, mime_type\: string\|null\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/ConstructionSiteController.php
+
+		-
+			message: '#^Anonymous function should return array\{id\: int, type\: ''internal_notice'', scheduled_on\: mixed, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, title\: string, \.\.\.\} but returns array\{id\: int, type\: ''internal_notice'', scheduled_on\: mixed, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, title\: string, \.\.\.\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/InternalNoticeController.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Http/Controllers/InternalNoticeController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\InternalNoticeController\:\:noticePayload\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, type\: string, scheduled_on\: mixed, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, title\: string, \.\.\.\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/InternalNoticeController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\InternalNotice\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/InternalNoticeController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\InternalNotice\>\:\:map\(\) expects callable\(App\\Models\\InternalNotice, int\)\: array\{id\: int, type\: ''internal_notice'', scheduled_on\: mixed, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, title\: string, location\: string\|null, content\: string, memo\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\}, Closure\(App\\Models\\InternalNotice\)\: array\{id\: int, type\: ''internal_notice'', scheduled_on\: mixed, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, title\: string, location\: string\|null, content\: string, memo\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/InternalNoticeController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Support\\Collection\<int,App\\Models\\InternalNotice\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/InternalNoticeController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:values\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/InternalNoticeController.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 2
+			path: app/Http/Controllers/ReceptionCaseAttachmentController.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\ReceptionCaseStatus\:\:Draft will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/ReceptionCaseAttachmentController.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 2
+			path: app/Http/Controllers/ReceptionCaseController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ReceptionCaseController\:\:activeDocumentTypes\(\) return type with generic class Illuminate\\Database\\Eloquent\\Collection does not specify its types\: TKey, TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Controllers/ReceptionCaseController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ReceptionCaseController\:\:documentTypesFor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Collection does not specify its types\: TKey, TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Controllers/ReceptionCaseController.php
+
+		-
+			message: '#^Parameter \#1 \$documentTypes of method App\\Services\\ReceptionCasePresenter\:\:documentTypes\(\) expects iterable\<int, App\\Models\\ReceptionDocumentType\>, Illuminate\\Database\\Eloquent\\Collection given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Http/Controllers/ReceptionCaseController.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\ReceptionCaseStatus\:\:Draft will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/ReceptionCaseController.php
+
+		-
+			message: '#^Call to function abort_unless\(\) with false and 404 will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Http/Controllers/ReceptionCaseDraftController.php
+
+		-
+			message: '#^Comparison operation "\<" between 0\|1 and 2 is always true\.$#'
+			identifier: smaller.alwaysTrue
+			count: 1
+			path: app/Http/Controllers/ReceptionCaseDraftController.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\ReceptionCaseStatus\:\:Draft will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/ReceptionCaseDraftController.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Http/Controllers/ReceptionCaseDraftController.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 2
+			path: app/Http/Controllers/ReceptionCasePriorityController.php
+
+		-
+			message: '#^Negated boolean expression is always false\.$#'
+			identifier: booleanNot.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/ReceptionDocumentTypeController.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/ReceptionDocumentTypeController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\BusinessSchedule\:\:\$business_count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/ScheduleOverviewController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ConstructionSchedule\:\:\$carry_out_count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/ScheduleOverviewController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ConstructionSchedule\:\:\$construction_count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/ScheduleOverviewController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ConstructionSchedule\:\:\$unconfirmed_voucher_count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/ScheduleOverviewController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ConstructionSchedule\:\:\$voucher_confirmation_count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/ScheduleOverviewController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\InternalNotice\:\:\$internal_notice_count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/ScheduleOverviewController.php
+
+		-
+			message: '#^Anonymous function should return array\{id\: int, type\: ''business'', schedule_number\: int\<0, max\>\|null, title\: string, location\: string, content\: string, time\: string, starts_at\: string\|null, \.\.\.\} but returns array\{id\: int, type\: ''business'', schedule_number\: int\<0, max\>\|null, title\: string, location\: string, content\: string, time\: string, starts_at\: string\|null, \.\.\.\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/ScheduleOverviewController.php
+
+		-
+			message: '#^Anonymous function should return array\{id\: int, type\: ''construction'', schedule_number\: int\<0, max\>\|null, title\: string, location\: string, content\: string\|null, carry_out_note\: string\|null, time\: string, \.\.\.\} but returns array\{id\: int, type\: ''construction'', schedule_number\: int\<0, max\>\|null, title\: string, location\: string, content\: string\|null, carry_out_note\: string\|null, time\: string, \.\.\.\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/ScheduleOverviewController.php
+
+		-
+			message: '#^Anonymous function should return array\{id\: int, type\: ''internal_notice'', schedule_number\: null, title\: string, location\: string\|null, content\: string, time\: string, starts_at\: string\|null, \.\.\.\} but returns array\{id\: int, type\: ''internal_notice'', schedule_number\: null, title\: string, location\: string\|null, content\: string, time\: string, starts_at\: string\|null, \.\.\.\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/ScheduleOverviewController.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 4
+			path: app/Http/Controllers/ScheduleOverviewController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ScheduleOverviewController\:\:attendanceLeaveRecords\(\) should return Illuminate\\Support\\Collection\<int, array\{id\: int, user_id\: int, user_name\: string, work_date\: string, note\: string\|null\}\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, user_id\: int\<0, max\>, user_name\: string, work_date\: mixed, note\: string\|null\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/ScheduleOverviewController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ScheduleOverviewController\:\:selectedDayEvents\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, type\: string, schedule_number\: int\|null, title\: string, location\: string\|null, content\: string\|null, carry_out_note\?\: string\|null, time\: string, \.\.\.\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/ScheduleOverviewController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ScheduleOverviewController\:\:selectedDayTimeline\(\) should return array\{users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>, events\: Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>, attendanceLeaveRecords\: Illuminate\\Support\\Collection\<int, array\{id\: int, user_id\: int, user_name\: string, work_date\: string, note\: string\|null\}\>\} but returns array\{users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>, events\: Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>, attendanceLeaveRecords\: Illuminate\\Support\\Collection\<int, array\{id\: int, user_id\: int, user_name\: string, work_date\: string, note\: string\|null\}\>\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/ScheduleOverviewController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ScheduleOverviewController\:\:userPayload\(\) should return Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/ScheduleOverviewController.php
+
+		-
+			message: '#^Parameter \#1 \$calendarDays of method App\\Http\\Controllers\\ScheduleOverviewController\:\:monthSummary\(\) expects Illuminate\\Support\\Collection\<int, array\{date\: string, construction_count\: int, business_count\: int, internal_notice_count\: int, carry_out_count\: int, unconfirmed_voucher_count\: int, schedule_count\: int\}\>, Illuminate\\Support\\Collection\<int, array\{date\: string, construction_count\: int, business_count\: int, internal_notice_count\: int, carry_out_count\: int, voucher_confirmation_count\: int, unconfirmed_voucher_count\: int, schedule_count\: int\}\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/ScheduleOverviewController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\AttendanceRecord\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/ScheduleOverviewController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\BusinessSchedule\>\:\:map\(\) expects callable\(App\\Models\\BusinessSchedule, int\)\: array\{id\: int, type\: ''business'', schedule_number\: int\<0, max\>\|null, title\: string, location\: string, content\: string, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\}, Closure\(App\\Models\\BusinessSchedule\)\: array\{id\: int, type\: ''business'', schedule_number\: int\<0, max\>\|null, title\: string, location\: string, content\: string, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/ScheduleOverviewController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\ConstructionSchedule\>\:\:map\(\) expects callable\(App\\Models\\ConstructionSchedule, int\)\: array\{id\: int, type\: ''construction'', schedule_number\: int\<0, max\>\|null, title\: string, location\: string, content\: string\|null, carry_out_note\: string\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\}, Closure\(App\\Models\\ConstructionSchedule\)\: array\{id\: int, type\: ''construction'', schedule_number\: int\<0, max\>\|null, title\: string, location\: string, content\: string\|null, carry_out_note\: string\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/ScheduleOverviewController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\InternalNotice\>\:\:map\(\) expects callable\(App\\Models\\InternalNotice, int\)\: array\{id\: int, type\: ''internal_notice'', schedule_number\: null, title\: string, location\: string\|null, content\: string, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\}, Closure\(App\\Models\\InternalNotice\)\: array\{id\: int, type\: ''internal_notice'', schedule_number\: null, title\: string, location\: string\|null, content\: string, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/ScheduleOverviewController.php
+
+		-
+			message: '#^Parameter \#1 \$items of method Illuminate\\Support\\Collection\<int,array\<string, Illuminate\\Support\\Collection\<int, array\<string, int\|string\|null\>\>\|int\|string\|null\>\>\:\:merge\(\) expects Illuminate\\Contracts\\Support\\Arrayable\<int, array\{id\: int, type\: string, schedule_number\: int\|null, title\: string, location\: string, content\: string, time\: string, starts_at\: string\|null, \.\.\.\}\>\|iterable\<int, array\{id\: int, type\: string, schedule_number\: int\|null, title\: string, location\: string, content\: string, time\: string, starts_at\: string\|null, \.\.\.\}\>, Illuminate\\Support\\Collection\<int, array\{id\: int, type\: string, schedule_number\: int\|null, title\: string, location\: string, content\: string, time\: string, starts_at\: string\|null, \.\.\.\}\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/ScheduleOverviewController.php
+
+		-
+			message: '#^Parameter \#1 \$items of method Illuminate\\Support\\Collection\<int,array\<string, Illuminate\\Support\\Collection\<int, array\<string, int\|string\|null\>\>\|int\|string\|null\>\>\:\:merge\(\) expects Illuminate\\Contracts\\Support\\Arrayable\<int, array\{id\: int, type\: string, schedule_number\: null, title\: string, location\: string\|null, content\: string, time\: string, starts_at\: string\|null, \.\.\.\}\>\|iterable\<int, array\{id\: int, type\: string, schedule_number\: null, title\: string, location\: string\|null, content\: string, time\: string, starts_at\: string\|null, \.\.\.\}\>, Illuminate\\Support\\Collection\<int, array\{id\: int, type\: string, schedule_number\: null, title\: string, location\: string\|null, content\: string, time\: string, starts_at\: string\|null, \.\.\.\}\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/ScheduleOverviewController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\AttendanceRecord\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/ScheduleOverviewController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:values\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/ScheduleOverviewController.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/ScheduleSearchController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ScheduleSearchController\:\:hydratePaginator\(\) has parameter \$paginator with generic class Illuminate\\Pagination\\LengthAwarePaginator but does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Controllers/ScheduleSearchController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ScheduleSearchController\:\:hydratePaginator\(\) return type with generic class Illuminate\\Pagination\\LengthAwarePaginator does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Controllers/ScheduleSearchController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ScheduleSearchController\:\:results\(\) return type with generic class Illuminate\\Pagination\\LengthAwarePaginator does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Controllers/ScheduleSearchController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ScheduleSearchController\:\:userPayload\(\) should return Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/ScheduleSearchController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Settings\\SecurityController\:\:passkeys\(\) should return Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, created_at\: string\|null\}\> but returns Illuminate\\Support\\Collection\<int, array\{id\: mixed, name\: string, created_at\: string\|null\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/Settings/SecurityController.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\Admin\\StoreUserRequest\:\:emailRules\(\) should return array\<int, array\<mixed\>\|Illuminate\\Contracts\\Validation\\Rule\|string\> but returns array\<int, Illuminate\\Validation\\Rules\\Unique\|string\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Requests/Admin/StoreUserRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\Admin\\StoreUserRequest\:\:loginIdRules\(\) should return array\<int, array\<mixed\>\|Illuminate\\Contracts\\Validation\\Rule\|string\> but returns array\<int, Illuminate\\Validation\\Rules\\Unique\|string\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Requests/Admin/StoreUserRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\StoreBusinessScheduleRequest\:\:numberedBusinessSchedules\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Requests/StoreBusinessScheduleRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\StoreBusinessScheduleRequest\:\:numberedConstructionSchedules\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Requests/StoreBusinessScheduleRequest.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 2
+			path: app/Http/Requests/StoreBusinessScheduleRequest.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 2
+			path: app/Http/Requests/StoreBusinessScheduleRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\StoreConstructionScheduleRequest\:\:numberedBusinessSchedules\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Requests/StoreConstructionScheduleRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\StoreConstructionScheduleRequest\:\:numberedConstructionSchedules\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Requests/StoreConstructionScheduleRequest.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 2
+			path: app/Http/Requests/StoreConstructionScheduleRequest.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 2
+			path: app/Http/Requests/StoreConstructionScheduleRequest.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Requests/UpdateBusinessScheduleNumberRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\UpdateBusinessScheduleNumberRequest\:\:numberedBusinessSchedules\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Requests/UpdateBusinessScheduleNumberRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\UpdateBusinessScheduleNumberRequest\:\:numberedConstructionSchedules\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Requests/UpdateBusinessScheduleNumberRequest.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Http/Requests/UpdateBusinessScheduleNumberRequest.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Http/Requests/UpdateBusinessScheduleNumberRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\UpdateBusinessScheduleRequest\:\:numberedBusinessSchedules\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Requests/UpdateBusinessScheduleRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\UpdateBusinessScheduleRequest\:\:numberedConstructionSchedules\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Requests/UpdateBusinessScheduleRequest.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 2
+			path: app/Http/Requests/UpdateBusinessScheduleRequest.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 2
+			path: app/Http/Requests/UpdateBusinessScheduleRequest.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Requests/UpdateConstructionScheduleNumberRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\UpdateConstructionScheduleNumberRequest\:\:numberedBusinessSchedules\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Requests/UpdateConstructionScheduleNumberRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\UpdateConstructionScheduleNumberRequest\:\:numberedConstructionSchedules\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Requests/UpdateConstructionScheduleNumberRequest.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Http/Requests/UpdateConstructionScheduleNumberRequest.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Http/Requests/UpdateConstructionScheduleNumberRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\UpdateConstructionScheduleRequest\:\:numberedBusinessSchedules\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Requests/UpdateConstructionScheduleRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\UpdateConstructionScheduleRequest\:\:numberedConstructionSchedules\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Requests/UpdateConstructionScheduleRequest.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 2
+			path: app/Http/Requests/UpdateConstructionScheduleRequest.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 2
+			path: app/Http/Requests/UpdateConstructionScheduleRequest.php
+
+		-
+			message: '#^Instanceof between Illuminate\\Http\\UploadedFile and Illuminate\\Http\\UploadedFile will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: app/Http/Requests/UpdateConstructionSiteRequest.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type App\\Models\\User\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Requests/UpdateReceptionCaseRequest.php
+
+		-
+			message: '#^Cannot call method greaterThanOrEqualTo\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/ReceptionCase.php
+
+		-
+			message: '#^Method App\\Models\\ReceptionCase\:\:highPriorityFirst\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/ReceptionCase.php
+
+		-
+			message: '#^Method App\\Models\\ReceptionCase\:\:withListRelations\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/ReceptionCase.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 1
+			path: app/Models/ReceptionCaseAttachment.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\ReceptionCaseAttachmentKind\:\:Audio will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/ReceptionCaseAttachment.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\ReceptionCaseAttachmentKind\:\:Video will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/ReceptionCaseAttachment.php
+
+		-
+			message: '#^Method App\\Models\\ReceptionDocumentType\:\:active\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/ReceptionDocumentType.php
+
+		-
+			message: '#^Call to function in_array\(\) with arguments string, array\{App\\UserRole\:\:Admin, App\\UserRole\:\:Editor, App\\UserRole\:\:Viewer\} and true will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Call to function in_array\(\) with arguments string, array\{App\\UserRole\:\:Admin, App\\UserRole\:\:Editor\} and true will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Method App\\Models\\User\:\:assignableAsReceptionHandler\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Method App\\Models\\User\:\:visibleToWorkers\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\UserRole\:\:Admin will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Call to function in_array\(\) with arguments string, array\{App\\ReceptionCaseStatus\:\:Received, App\\ReceptionCaseStatus\:\:Handover\} and true will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 2
+			path: app/Policies/ReceptionCasePolicy.php
+
+		-
+			message: '#^Cannot call method isActive\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 3
+			path: app/Policies/ReceptionCasePolicy.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 5
+			path: app/Policies/ReceptionCasePolicy.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\ReceptionCaseStatus\:\:Draft will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Policies/ReceptionCasePolicy.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\ReceptionCaseStatus\:\:Completed will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 2
+			path: app/Policies/ReceptionCasePolicy.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\ReceptionCaseStatus\:\:Draft will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 4
+			path: app/Policies/ReceptionCasePolicy.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\ReceptionCaseStatus\:\:InProgress will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 2
+			path: app/Policies/ReceptionCasePolicy.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Policies/ReceptionCasePolicy.php
+
+		-
+			message: '#^Instanceof between App\\Models\\User and App\\Models\\User will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 7
+			path: app/Providers/AppServiceProvider.php
+
+		-
+			message: '#^Parameter \$actor of method App\\Services\\AuditLogger\:\:success\(\) expects Illuminate\\Contracts\\Auth\\Authenticatable\|null, Illuminate\\Contracts\\Auth\\CanResetPassword given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Providers/AppServiceProvider.php
+
+		-
+			message: '#^Parameter \$actor of method App\\Services\\AuditLogger\:\:success\(\) expects Illuminate\\Contracts\\Auth\\Authenticatable\|null, Illuminate\\Contracts\\Auth\\MustVerifyEmail given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Providers/AppServiceProvider.php
+
+		-
+			message: '#^Instanceof between Illuminate\\Http\\Request and Illuminate\\Http\\Request will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: app/Services/AuditLogger.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 4
+			path: app/Services/ReceptionCasePresenter.php
+
+		-
+			message: '#^Cannot call method label\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 3
+			path: app/Services/ReceptionCasePresenter.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Services/ReceptionCasePresenter.php
+
+		-
+			message: '#^Cannot call method toISOString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 3
+			path: app/Services/ReceptionCasePresenter.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 3
+			path: app/Services/ReceptionCaseWorkflow.php
+
+		-
+			message: '#^Cannot call method canTransitionTo\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/ReceptionCaseWorkflow.php
+
+		-
+			message: '#^Cannot call method isActive\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/ReceptionCaseWorkflow.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\ReceptionCaseStatus will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/ReceptionCaseWorkflow.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 3
+			path: database/factories/ReceptionCaseFactory.php

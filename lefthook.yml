@@ -1,0 +1,49 @@
+# Git hooks — https://lefthook.dev
+# pre-commit: fast auto-fix on staged files only (re-stages fixes)
+# pre-push:   full static analysis (phpstan, psalm, rector dry-run, tsc)
+# Escape hatches: `git commit --no-verify` / `git push --no-verify` / `LEFTHOOK=0`
+min_version: 2.0.0
+
+pre-commit:
+  parallel: true # php + js chains run concurrently; each chain is piped
+  jobs:
+    - name: php
+      group:
+        piped: true # rector rewrites first, then pint formats the result
+        jobs:
+          - name: rector
+            glob: "*.php"
+            # CLI paths override rector.php withPaths(); without this exclude
+            # rector would parse Blade templates as plain PHP
+            exclude:
+              - "*.blade.php"
+            run: vendor/bin/rector process {staged_files} --no-diffs
+            stage_fixed: true
+          - name: pint
+            glob: "*.php"
+            run: vendor/bin/pint {staged_files}
+            stage_fixed: true
+    - name: js
+      group:
+        piped: true # eslint --fix first, prettier formats the result
+        jobs:
+          - name: eslint
+            glob: "resources/js/**.{ts,tsx}"
+            run: npx eslint --fix --no-warn-ignored {staged_files}
+            stage_fixed: true
+          - name: prettier
+            glob: "resources/**.{ts,tsx,css,json,md}"
+            run: npx prettier --write --ignore-unknown {staged_files}
+            stage_fixed: true
+
+pre-push:
+  parallel: true
+  jobs:
+    - name: phpstan
+      run: composer analyse:phpstan
+    - name: psalm
+      run: composer analyse:psalm
+    - name: rector-dry-run
+      run: composer rector:check
+    - name: typescript
+      run: npm run types:check

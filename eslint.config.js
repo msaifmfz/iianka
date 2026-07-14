@@ -28,7 +28,44 @@ const paddingAroundControl = [
 export default [
     js.configs.recommended,
     reactHooks.configs.flat['recommended-latest'],
-    ...typescript.configs.recommended,
+    ...typescript.configs.recommendedTypeChecked,
+    {
+        languageOptions: {
+            parserOptions: {
+                projectService: true,
+                tsconfigRootDir: import.meta.dirname,
+            },
+        },
+    },
+    {
+        // Files outside tsconfig include — lint without type information
+        files: [
+            '**/*.js',
+            '**/*.mjs',
+            '**/*.cjs',
+            'e2e/**/*.ts',
+            'playwright.config.ts',
+        ],
+        ...typescript.configs.disableTypeChecked,
+    },
+    {
+        files: ['resources/js/**/*.{ts,tsx}'],
+        rules: {
+            // async handlers on JSX attributes (onClick/onSubmit) are idiomatic
+            '@typescript-eslint/no-misused-promises': [
+                'error',
+                { checksVoidReturn: { attributes: false } },
+            ],
+            '@typescript-eslint/no-floating-promises': [
+                'error',
+                { ignoreVoid: true },
+            ],
+            '@typescript-eslint/restrict-template-expressions': [
+                'error',
+                { allowNumber: true },
+            ],
+        },
+    },
     {
         ...react.configs.flat.recommended,
         ...react.configs.flat['jsx-runtime'], // Required for React 17+

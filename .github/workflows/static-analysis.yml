@@ -1,0 +1,114 @@
+name: static analysis
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+      - master
+      - workos
+  pull_request:
+    branches:
+      - develop
+      - main
+      - master
+      - workos
+
+permissions:
+  contents: read
+
+concurrency:
+  group: static-analysis-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  php-analysis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+          coverage: none
+
+      - name: Get Composer Cache Directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install Dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      # Larastan boots the app container
+      - name: Prepare Environment
+        run: cp .env.example .env && php artisan key:generate
+
+      - name: Cache PHPStan Results
+        uses: actions/cache@v4
+        with:
+          path: storage/framework/cache/phpstan
+          key: phpstan-${{ github.run_id }}
+          restore-keys: phpstan-
+
+      - name: PHPStan
+        run: composer analyse:phpstan
+
+      - name: Psalm
+        run: composer analyse:psalm
+
+      - name: Cache Rector Results
+        uses: actions/cache@v4
+        with:
+          path: storage/framework/cache/rector
+          key: rector-${{ github.run_id }}
+          restore-keys: rector-
+
+      - name: Rector (dry run)
+        run: composer rector:check
+
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+          coverage: none
+
+      - name: Get Composer Cache Directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install Dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Prepare Environment
+        run: cp .env.example .env && php artisan key:generate
+
+      - name: Psalm Taint Analysis
+        run: composer analyse:taint
+
+      - name: Composer Audit
+        run: composer audit --locked --abandoned=report
+
+      - name: NPM Audit
+        run: npm audit --audit-level=high

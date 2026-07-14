@@ -15,6 +15,7 @@ This application is a Laravel application and its main Laravel ecosystems packag
 - laravel/framework (LARAVEL) - v13
 - laravel/prompts (PROMPTS) - v0
 - laravel/wayfinder (WAYFINDER) - v0
+- larastan/larastan (LARASTAN) - v3
 - laravel/boost (BOOST) - v2
 - laravel/mcp (MCP) - v0
 - laravel/pail (PAIL) - v1
@@ -205,3 +206,31 @@ Use Wayfinder to generate TypeScript functions for Laravel routes. Import from `
 - IMPORTANT: Activate `inertia-react-development` when working with Inertia React client-side patterns.
 
 </laravel-boost-guidelines>
+
+# Code Quality & Static Analysis
+
+Commits and pushes are gated by lefthook hooks + CI. Run checks locally before pushing.
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `composer check` | Everything: pint check, rector dry-run, psalm, phpstan, JS lint/format/types |
+| `composer analyse` | Psalm + PHPStan (Larastan, level 6) |
+| `composer analyse:phpstan` / `composer analyse:psalm` | Single analyzer |
+| `composer analyse:taint` | Psalm taint analysis (security SAST) |
+| `composer security` | Taint analysis + composer audit |
+| `composer rector:check` / `composer rector` | Rector dry-run / apply fixes |
+| `npm run lint:check` / `npm run types:check` | Type-aware ESLint / tsc |
+
+## Git hooks (lefthook)
+
+- **pre-commit**: auto-fixes staged files (rector → pint for PHP; eslint → prettier for JS) and re-stages them.
+- **pre-push**: runs phpstan, psalm, rector dry-run, tsc. Fix failures before pushing.
+- Hooks install via `npm install` (`prepare` script). Escape hatch: `git commit --no-verify` / `LEFTHOOK=0` (CI still enforces).
+
+## Baseline policy
+
+- `phpstan-baseline.neon` and `psalm-baseline.xml` hold pre-existing legacy errors only.
+- NEVER regenerate a baseline to silence errors in code you just wrote — fix the code instead.
+- `composer baseline:phpstan` / `composer baseline:psalm` only in deliberate legacy-cleanup commits.

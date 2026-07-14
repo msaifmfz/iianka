@@ -30,7 +30,7 @@ import type { VoucherConfirmationSchedule } from '@/types';
 import type { FlashResource } from '@/types/ui';
 
 type CheckedFilter = 'all' | 'unchecked' | 'checked';
-type DayFilter = string | 'all';
+type DayFilter = 'all' | (string & {});
 
 type Props = {
     filters: {
