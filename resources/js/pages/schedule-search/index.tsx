@@ -24,6 +24,7 @@ type SearchScheduleType = 'construction' | 'business';
 type Filters = {
     location: string | null;
     general_contractor: string | null;
+    content: string | null;
     direction: SearchDirection;
 };
 
@@ -66,6 +67,7 @@ type Props = {
 type SearchForm = {
     location: string;
     general_contractor: string;
+    content: string;
     direction: SearchDirection;
 };
 
@@ -101,6 +103,7 @@ function queryFromFilters(
     return {
         location: filters.location || undefined,
         general_contractor: filters.general_contractor || undefined,
+        content: filters.content || undefined,
         direction: filters.direction,
         selected_type: selected?.type ?? undefined,
         selected_id: selected?.id ?? undefined,
@@ -382,6 +385,7 @@ function filtersFromForm(form: SearchForm): Filters {
     return {
         location: form.location.trim() || null,
         general_contractor: form.general_contractor.trim() || null,
+        content: form.content.trim() || null,
         direction: form.direction,
     };
 }
@@ -466,6 +470,7 @@ export default function ScheduleSearchIndex({
     const [form, setForm] = useState<SearchForm>({
         location: filters.location ?? '',
         general_contractor: filters.general_contractor ?? '',
+        content: filters.content ?? '',
         direction: filters.direction,
     });
     const [detailEvent, setDetailEvent] = useState<ScheduleDetailEvent | null>(
@@ -543,6 +548,7 @@ export default function ScheduleSearchIndex({
         if (
             nextFilters.location === filters.location &&
             nextFilters.general_contractor === filters.general_contractor &&
+            nextFilters.content === filters.content &&
             nextFilters.direction === filters.direction
         ) {
             return;
@@ -688,7 +694,7 @@ export default function ScheduleSearchIndex({
                     className="sticky top-0 z-50 border-b border-neutral-200 bg-white/95 px-3 py-3 shadow-sm backdrop-blur md:px-6 dark:border-neutral-800 dark:bg-neutral-950/95"
                 >
                     <div className="mx-auto grid max-w-7xl gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-                        <div className="grid flex-1 gap-3 md:grid-cols-2">
+                        <div className="grid flex-1 gap-3 md:grid-cols-3">
                             <div className="space-y-1.5">
                                 <label
                                     htmlFor="schedule-search-location"
@@ -727,6 +733,26 @@ export default function ScheduleSearchIndex({
                                         }))
                                     }
                                     placeholder="ゼネコン会社で検索"
+                                    autoComplete="off"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label
+                                    htmlFor="schedule-search-content"
+                                    className="text-sm font-semibold"
+                                >
+                                    内容
+                                </label>
+                                <Input
+                                    id="schedule-search-content"
+                                    value={form.content}
+                                    onChange={(event) =>
+                                        setForm((current) => ({
+                                            ...current,
+                                            content: event.target.value,
+                                        }))
+                                    }
+                                    placeholder="内容で検索"
                                     autoComplete="off"
                                 />
                             </div>

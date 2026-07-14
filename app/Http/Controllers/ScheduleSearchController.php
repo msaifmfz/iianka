@@ -22,6 +22,7 @@ class ScheduleSearchController extends Controller
         $filters = [
             'location' => $request->locationFilter(),
             'general_contractor' => $request->generalContractorFilter(),
+            'content' => $request->contentFilter(),
             'direction' => $request->direction(),
         ];
 
@@ -36,7 +37,7 @@ class ScheduleSearchController extends Controller
     }
 
     /**
-     * @param  array{location: string|null, general_contractor: string|null, direction: string}  $filters
+     * @param  array{location: string|null, general_contractor: string|null, content: string|null, direction: string}  $filters
      */
     private function results(array $filters): LengthAwarePaginator
     {
@@ -55,7 +56,7 @@ class ScheduleSearchController extends Controller
     }
 
     /**
-     * @param  array{location: string|null, general_contractor: string|null, direction: string}  $filters
+     * @param  array{location: string|null, general_contractor: string|null, content: string|null, direction: string}  $filters
      */
     private function scheduleSearchQuery(ConstructionSchedule|BusinessSchedule $model, string $type, array $filters): QueryBuilder
     {
@@ -72,7 +73,9 @@ class ScheduleSearchController extends Controller
             ->when($filters['location'] !== null, fn (QueryBuilder $query): QueryBuilder => $query
                 ->whereRaw("location like ? escape '\\'", ['%'.$this->escapeLike((string) $filters['location']).'%']))
             ->when($filters['general_contractor'] !== null, fn (QueryBuilder $query): QueryBuilder => $query
-                ->whereRaw("general_contractor like ? escape '\\'", ['%'.$this->escapeLike((string) $filters['general_contractor']).'%']));
+                ->whereRaw("general_contractor like ? escape '\\'", ['%'.$this->escapeLike((string) $filters['general_contractor']).'%']))
+            ->when($filters['content'] !== null, fn (QueryBuilder $query): QueryBuilder => $query
+                ->whereRaw("content like ? escape '\\'", ['%'.$this->escapeLike((string) $filters['content']).'%']));
     }
 
     /**

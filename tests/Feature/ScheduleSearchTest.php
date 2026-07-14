@@ -68,6 +68,61 @@ test('users can search construction and business schedules by location and gener
         ->not->toContain("business-{$differentContractor->id}");
 });
 
+test('users can filter construction and business schedules by content and combine all search filters', function (): void {
+    $user = User::factory()->create();
+    $constructionSchedule = ConstructionSchedule::factory()->create([
+        'location' => '虎ノ門ヒルズ 現場',
+        'general_contractor' => '清水建設',
+        'content' => '夜間安全確認',
+    ]);
+    $businessSchedule = BusinessSchedule::factory()->create([
+        'location' => '虎ノ門ヒルズ 定例会',
+        'general_contractor' => '清水建設',
+        'content' => '安全工程会議',
+    ]);
+    $differentLocation = ConstructionSchedule::factory()->create([
+        'location' => '丸の内ビル 現場',
+        'general_contractor' => '清水建設',
+        'content' => '安全教育',
+    ]);
+    $differentContractor = BusinessSchedule::factory()->create([
+        'location' => '虎ノ門ヒルズ 調整会',
+        'general_contractor' => '大成建設',
+        'content' => '安全協議会',
+    ]);
+    $differentContent = ConstructionSchedule::factory()->create([
+        'location' => '虎ノ門ヒルズ 別現場',
+        'general_contractor' => '清水建設',
+        'content' => '配線工事',
+    ]);
+
+    $response = $this->actingAs($user)
+        ->get(route('schedule-search.index', [
+            'location' => '虎ノ門',
+            'general_contractor' => '清水',
+            'content' => ' 安全 ',
+        ]));
+
+    $response
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->where('filters.location', '虎ノ門')
+            ->where('filters.general_contractor', '清水')
+            ->where('filters.content', '安全')
+            ->has('results.data', 2)
+        );
+
+    $resultKeys = collect($response->inertiaProps('results.data'))
+        ->map(fn (array $result): string => "{$result['type']}-{$result['id']}");
+
+    expect($resultKeys->all())
+        ->toContain("construction-{$constructionSchedule->id}")
+        ->toContain("business-{$businessSchedule->id}")
+        ->not->toContain("construction-{$differentLocation->id}")
+        ->not->toContain("business-{$differentContractor->id}")
+        ->not->toContain("construction-{$differentContent->id}");
+});
+
 test('schedule search defaults to recent schedules and can sort oldest first', function (): void {
     $user = User::factory()->create();
 

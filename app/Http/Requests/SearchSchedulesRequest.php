@@ -29,6 +29,7 @@ class SearchSchedulesRequest extends FormRequest
         return [
             'location' => ['nullable', 'string', 'max:255'],
             'general_contractor' => ['nullable', 'string', 'max:255'],
+            'content' => ['nullable', 'string', 'max:255'],
             'direction' => ['nullable', 'string', Rule::in(['asc', 'desc'])],
             'selected_type' => ['nullable', 'string', Rule::in(['construction', 'business'])],
             'selected_id' => ['nullable', 'integer', 'min:1'],
@@ -44,6 +45,7 @@ class SearchSchedulesRequest extends FormRequest
         $this->merge([
             'location' => $this->normalizedString('location'),
             'general_contractor' => $this->normalizedString('general_contractor'),
+            'content' => $this->normalizedString('content'),
             'direction' => in_array($direction, ['asc', 'desc'], true) ? $direction : 'desc',
             'selected_type' => in_array($selectedType, ['construction', 'business'], true) ? $selectedType : null,
             'selected_id' => $this->normalizedPositiveInteger('selected_id'),
@@ -58,6 +60,11 @@ class SearchSchedulesRequest extends FormRequest
     public function generalContractorFilter(): ?string
     {
         return $this->validatedString('general_contractor');
+    }
+
+    public function contentFilter(): ?string
+    {
+        return $this->validatedString('content');
     }
 
     public function direction(): string
