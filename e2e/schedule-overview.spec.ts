@@ -208,6 +208,51 @@ test.describe('schedule search return flow', () => {
         expect(Math.abs(toolbarTopAfter)).toBeLessThanOrEqual(1);
     });
 
+    test('keeps the user scroll position when scrolling after returning from overview', async ({
+        page,
+    }) => {
+        await page.setViewportSize({ width: 1280, height: 420 });
+        await login(page);
+        await page.goto(
+            '/schedule-search?location=E2E%20Search%20Deep&direction=asc',
+        );
+
+        const result = page.getByRole('button', {
+            name: /E2E Search Deep 25/,
+        });
+
+        await scrollUntilVisible(page, result);
+        await result.scrollIntoViewIfNeeded();
+        await expect(result).toBeInViewport();
+
+        const scrollBeforeNavigate = await page.evaluate(() => window.scrollY);
+
+        await result.click();
+        await expect(page).toHaveURL(/\/schedule-overview\?.*return_to=/);
+
+        await page.getByRole('button', { name: '検索へ戻る' }).click();
+        await expect(page).toHaveURL(/\/schedule-search\?/);
+
+        await expect
+            .poll(async () => page.evaluate(() => window.scrollY))
+            .toBeGreaterThanOrEqual(Math.max(scrollBeforeNavigate - 20, 0));
+        await expect(
+            page.locator('[data-search-selected="true"]'),
+        ).toBeInViewport();
+        await expect(page).toHaveURL(/[?&]page=2/);
+
+        // Scrolling back into the page-1 region makes InfiniteScroll's URL sync
+        // drop the page query param; the scroll restore must not re-fire on that
+        // url change and yank the viewport back to the clicked result.
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await expect(page).not.toHaveURL(/[?&]page=/);
+
+        for (let sample = 0; sample < 3; sample++) {
+            await page.waitForTimeout(300);
+            expect(await page.evaluate(() => window.scrollY)).toBeLessThan(100);
+        }
+    });
+
     test('returns from overview to search after visiting construction and business edit pages', async ({
         page,
     }) => {

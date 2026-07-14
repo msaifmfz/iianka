@@ -467,6 +467,7 @@ export default function ScheduleSearchIndex({
     const { url } = usePage();
     const currentUrlRef = useRef(url);
     const restoredScrollUrlRef = useRef<string | null>(null);
+    const pendingVisitsRef = useRef(0);
     const [form, setForm] = useState<SearchForm>({
         location: filters.location ?? '',
         general_contractor: filters.general_contractor ?? '',
@@ -522,6 +523,26 @@ export default function ScheduleSearchIndex({
         return stopListening;
     }, []);
 
+    useEffect(() => {
+        // Track in-flight router requests (InfiniteScroll page fetches included)
+        // so the restore loop can wait out a slow page load instead of bailing
+        // at the deadline while the anchor's page is still on the wire.
+        const stopStart = router.on('start', () => {
+            pendingVisitsRef.current += 1;
+        });
+        const stopFinish = router.on('finish', () => {
+            pendingVisitsRef.current = Math.max(
+                0,
+                pendingVisitsRef.current - 1,
+            );
+        });
+
+        return () => {
+            stopStart();
+            stopFinish();
+        };
+    }, []);
+
     function visitSearch(nextFilters: Filters) {
         if (typeof window !== 'undefined') {
             clearStoredSearchState(
@@ -564,9 +585,17 @@ export default function ScheduleSearchIndex({
     }, [form, filters]);
 
     useEffect(() => {
+        // Compare via the page-stripped normalized url: InfiniteScroll's URL
+        // sync rewrites the page query param (and its encoding) while the user
+        // scrolls without firing 'navigate', and treating those rewrites as new
+        // urls would re-run a restore that already settled — forcefully yanking
+        // the viewport back to the anchor. Real navigations re-arm the restore
+        // by nulling the ref from the 'navigate' listener instead.
+        const normalizedUrl = normalizedSearchStateUrl(url, false);
+
         if (
             typeof window === 'undefined' ||
-            restoredScrollUrlRef.current === url
+            restoredScrollUrlRef.current === normalizedUrl
         ) {
             return;
         }
@@ -586,11 +615,11 @@ export default function ScheduleSearchIndex({
         // (results.data.length), refreshing the deadline to keep progressing.
         let frame = 0;
         let settled = false;
-        const deadline = performance.now() + scrollRestoreDeadline;
+        let deadline = performance.now() + scrollRestoreDeadline;
 
         const settle = () => {
             settled = true;
-            restoredScrollUrlRef.current = url;
+            restoredScrollUrlRef.current = normalizedUrl;
             // Reveal on the next frame (outside the synchronous effect body) so
             // the aligned position is painted in the same step it becomes visible.
             window.requestAnimationFrame(() => setRestoringScroll(false));
@@ -622,12 +651,19 @@ export default function ScheduleSearchIndex({
             }
 
             if (performance.now() >= deadline) {
-                document
-                    .querySelector('[data-search-selected="true"]')
-                    ?.scrollIntoView({ block: 'center' });
-                settle();
+                if (pendingVisitsRef.current > 0) {
+                    // A request is still in flight, so the anchor's page may
+                    // yet arrive; push the deadline back rather than settling
+                    // at a too-shallow position.
+                    deadline = performance.now() + scrollRestoreDeadline;
+                } else {
+                    document
+                        .querySelector('[data-search-selected="true"]')
+                        ?.scrollIntoView({ block: 'center' });
+                    settle();
 
-                return;
+                    return;
+                }
             }
 
             frame = window.requestAnimationFrame(restoreScroll);
