@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\StockExtractionStatus;
 use Database\Factories\ConstructionScheduleFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -19,6 +20,11 @@ use Override;
  * @property string|null $ends_at
  * @property string|null $time_note
  * @property string|null $navigation_address
+ * @property string|null $content
+ * @property string|null $content_hash
+ * @property int $content_version
+ * @property StockExtractionStatus|null $stock_extraction_status
+ * @property Carbon|null $stock_extracted_at
  * @property-read \Illuminate\Database\Eloquent\Collection<int, SiteGuideFile> $selectedGuideFiles
  */
 #[Fillable([
@@ -118,6 +124,9 @@ class ConstructionSchedule extends Model
         return [
             'scheduled_on' => 'date',
             'voucher_checked_at' => 'datetime',
+            'content_version' => 'integer',
+            'stock_extraction_status' => StockExtractionStatus::class,
+            'stock_extracted_at' => 'datetime',
         ];
     }
 

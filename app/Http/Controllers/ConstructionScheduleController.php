@@ -12,14 +12,20 @@ use App\Models\ConstructionSchedule;
 use App\Models\ConstructionSubcontractor;
 use App\Models\GeneralContractor;
 use App\Models\InternalNotice;
+use App\Models\ScheduleStockBalance;
 use App\Models\SiteGuideFile;
+use App\Models\Stock;
+use App\Models\StockAlias;
 use App\Models\User;
+use App\ScheduleStockSourceType;
 use App\Services\BusinessDate;
+use App\Services\Stock\ScheduleStockReconciliationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -197,16 +203,25 @@ class ConstructionScheduleController extends Controller
         ]);
     }
 
-    public function store(StoreConstructionScheduleRequest $request): RedirectResponse
+    public function store(StoreConstructionScheduleRequest $request, ScheduleStockReconciliationService $stockReconciliation): RedirectResponse
     {
         $validated = $request->validated();
-        $schedule = ConstructionSchedule::create($this->scheduleAttributes($validated));
 
-        $schedule->assignedUsers()->sync($request->input('assigned_user_ids', []));
-        $this->syncSubcontractors($schedule, $validated);
-        $schedule->selectedGuideFiles()->sync($request->input('site_guide_file_ids', []));
-        $this->storeGuideFiles($schedule, $request->file('guide_files', []), $validated['guide_file_names'] ?? []);
-        $this->rememberGeneralContractor($validated['general_contractor'] ?? null);
+        $schedule = DB::transaction(function () use ($request, $validated, $stockReconciliation): ConstructionSchedule {
+            $schedule = ConstructionSchedule::create($this->scheduleAttributes($validated));
+
+            // Reconcile before any disk writes: a stock validation failure
+            // rolls back the transaction but would leave stored files behind.
+            $stockReconciliation->reconcile($schedule, $request->user());
+
+            $schedule->assignedUsers()->sync($request->input('assigned_user_ids', []));
+            $this->syncSubcontractors($schedule, $validated);
+            $schedule->selectedGuideFiles()->sync($request->input('site_guide_file_ids', []));
+            $this->storeGuideFiles($schedule, $request->file('guide_files', []), $validated['guide_file_names'] ?? []);
+            $this->rememberGeneralContractor($validated['general_contractor'] ?? null);
+
+            return $schedule;
+        });
 
         $this->auditSuccess('construction_schedules.created', 'A construction schedule was created.', $schedule, [
             'assigned_user_ids' => $request->input('assigned_user_ids', []),
@@ -240,7 +255,29 @@ class ConstructionScheduleController extends Controller
             'schedule' => $this->schedulePayload(collect([$constructionSchedule]))->first(),
             'canManage' => request()->user()?->canManageContent() === true,
             'returnTo' => $this->returnTo($request),
+            'stockUsages' => $this->stockUsages($constructionSchedule),
         ]);
+    }
+
+    /**
+     * @return Collection<int, array{stock_id: int, name: string, quantity: string, is_active: bool}>
+     */
+    private function stockUsages(ConstructionSchedule $schedule): Collection
+    {
+        return ScheduleStockBalance::query()
+            ->where('schedule_type', ScheduleStockSourceType::ConstructionSchedule)
+            ->where('schedule_id', $schedule->id)
+            ->with('stock:id,name,is_active')
+            ->get()
+            ->toBase()
+            ->map(fn (ScheduleStockBalance $balance): array => [
+                'stock_id' => $balance->stock_id,
+                'name' => $balance->stock->name,
+                'quantity' => $balance->applied_quantity,
+                'is_active' => $balance->stock->is_active,
+            ])
+            ->sortBy('name')
+            ->values();
     }
 
     public function edit(Request $request, ConstructionSchedule $constructionSchedule): Response
@@ -256,15 +293,29 @@ class ConstructionScheduleController extends Controller
         ]);
     }
 
-    public function update(UpdateConstructionScheduleRequest $request, ConstructionSchedule $constructionSchedule): RedirectResponse
+    public function update(UpdateConstructionScheduleRequest $request, ConstructionSchedule $constructionSchedule, ScheduleStockReconciliationService $stockReconciliation): RedirectResponse
     {
         $validated = $request->validated();
-        $constructionSchedule->update($this->scheduleAttributes($validated));
-        $constructionSchedule->assignedUsers()->sync($request->input('assigned_user_ids', []));
-        $this->syncSubcontractors($constructionSchedule, $validated);
-        $constructionSchedule->selectedGuideFiles()->sync($request->input('site_guide_file_ids', []));
-        $this->storeGuideFiles($constructionSchedule, $request->file('guide_files', []), $validated['guide_file_names'] ?? []);
-        $this->rememberGeneralContractor($validated['general_contractor'] ?? null);
+        $contentVersion = $validated['content_version'] ?? null;
+
+        DB::transaction(function () use ($request, $validated, $constructionSchedule, $stockReconciliation, $contentVersion): void {
+            $constructionSchedule->update($this->scheduleAttributes($validated));
+
+            // Reconcile before any disk writes: a stale content version or
+            // other stock validation failure rolls back the transaction but
+            // would leave stored files behind.
+            $stockReconciliation->reconcile(
+                $constructionSchedule,
+                $request->user(),
+                $contentVersion === null ? null : (int) $contentVersion,
+            );
+
+            $constructionSchedule->assignedUsers()->sync($request->input('assigned_user_ids', []));
+            $this->syncSubcontractors($constructionSchedule, $validated);
+            $constructionSchedule->selectedGuideFiles()->sync($request->input('site_guide_file_ids', []));
+            $this->storeGuideFiles($constructionSchedule, $request->file('guide_files', []), $validated['guide_file_names'] ?? []);
+            $this->rememberGeneralContractor($validated['general_contractor'] ?? null);
+        });
 
         $this->auditSuccess('construction_schedules.updated', 'A construction schedule was updated.', $constructionSchedule, [
             'changed' => array_values(array_diff(array_keys($constructionSchedule->getChanges()), ['updated_at'])),
@@ -310,13 +361,16 @@ class ConstructionScheduleController extends Controller
         return back();
     }
 
-    public function destroy(Request $request, ConstructionSchedule $constructionSchedule): RedirectResponse
+    public function destroy(Request $request, ConstructionSchedule $constructionSchedule, ScheduleStockReconciliationService $stockReconciliation): RedirectResponse
     {
         abort_unless($request->user()?->canManageContent() === true, 403);
 
         $this->auditSuccess('construction_schedules.deleted', 'A construction schedule was deleted.', $constructionSchedule);
 
-        $constructionSchedule->delete();
+        DB::transaction(function () use ($request, $constructionSchedule, $stockReconciliation): void {
+            $stockReconciliation->releaseFor($constructionSchedule, $request->user());
+            $constructionSchedule->delete();
+        });
 
         $this->flashToast('工事予定を削除しました。');
 
@@ -602,7 +656,29 @@ class ConstructionScheduleController extends Controller
             'generalContractorOptions' => $this->generalContractorOptions(),
             'scheduleAvailability' => $this->scheduleAvailability($ignoredSchedule, $users->pluck('id')),
             'attendanceLeaveRecords' => $this->attendanceLeaveRecords($users->pluck('id')),
+            'stockOptions' => $this->stockOptions(),
         ];
+    }
+
+    /**
+     * @return Collection<int, array{id: int, name: string, aliases: Collection<int, string>, available_quantity: string, allows_fractional_quantity: bool}>
+     */
+    private function stockOptions(): Collection
+    {
+        return Stock::query()
+            ->where('is_active', true)
+            ->with(['aliases' => fn ($query) => $query->where('is_active', true)])
+            ->orderBy('name')
+            ->get()
+            ->toBase()
+            ->map(fn (Stock $stock): array => [
+                'id' => $stock->id,
+                'name' => $stock->name,
+                'aliases' => $stock->aliases->toBase()->map(fn (StockAlias $alias): string => $alias->alias)->values(),
+                'available_quantity' => $stock->current_quantity,
+                'allows_fractional_quantity' => $stock->allows_fractional_quantity,
+            ])
+            ->values();
     }
 
     /**
@@ -897,6 +973,7 @@ class ConstructionScheduleController extends Controller
             'general_contractor' => $schedule->general_contractor,
             'person_in_charge' => $schedule->person_in_charge,
             'content' => $schedule->content,
+            'content_version' => $schedule->content_version,
             'carry_out_note' => $schedule->carry_out_note,
             'navigation_address' => $schedule->navigation_address,
             'google_maps_url' => $schedule->googleMapsUrl(),

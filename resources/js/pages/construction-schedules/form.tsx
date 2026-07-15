@@ -30,6 +30,7 @@ import {
     RecentResourceBadge,
     recentResourceHighlightClass,
 } from '@/components/recent-resource-feedback';
+import { ScheduleContentEditor } from '@/components/schedule-content-editor';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -48,6 +49,7 @@ import type {
     AttendanceLeaveRecord,
     ScheduleAvailability,
     SiteGuideFile,
+    StockOption,
 } from '@/types';
 
 type Props = {
@@ -63,6 +65,7 @@ type Props = {
     generalContractorOptions: string[];
     scheduleAvailability: ScheduleAvailability[];
     attendanceLeaveRecords: AttendanceLeaveRecord[];
+    stockOptions: StockOption[];
 };
 
 type ScheduleForm = {
@@ -80,6 +83,7 @@ type ScheduleForm = {
     general_contractor: string;
     person_in_charge: string;
     content: string;
+    content_version: string;
     carry_out_note: string;
     navigation_address: string;
     assigned_user_ids: number[];
@@ -299,6 +303,7 @@ export default function ConstructionScheduleForm({
     generalContractorOptions,
     scheduleAvailability,
     attendanceLeaveRecords,
+    stockOptions,
 }: Props) {
     const { url } = usePage();
     const recentResource = useRecentResource();
@@ -327,6 +332,7 @@ export default function ConstructionScheduleForm({
             general_contractor: schedule?.general_contractor ?? '',
             person_in_charge: schedule?.person_in_charge ?? '',
             content: schedule?.content ?? '',
+            content_version: schedule?.content_version?.toString() ?? '',
             carry_out_note: schedule?.carry_out_note ?? '',
             navigation_address: schedule?.navigation_address ?? '',
             assigned_user_ids:
@@ -1382,13 +1388,17 @@ export default function ConstructionScheduleForm({
                         </FormField>
                     </section>
 
-                    <FormField label="内容（任意）" error={errors.content}>
-                        <textarea
-                            className="min-h-32 rounded-md border bg-transparent px-3 py-2 text-sm"
-                            value={data.content}
-                            onChange={(event) =>
-                                setData('content', event.target.value)
-                            }
+                    <FormField
+                        as="div"
+                        labelId="schedule-content-label"
+                        label="内容（任意）"
+                        error={errors.content}
+                    >
+                        <ScheduleContentEditor
+                            defaultValue={schedule?.content ?? ''}
+                            onChange={(content) => setData('content', content)}
+                            stocks={stockOptions}
+                            ariaLabelledBy="schedule-content-label"
                         />
                     </FormField>
 

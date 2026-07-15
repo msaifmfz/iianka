@@ -53,6 +53,7 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
                 'permissions' => [
                     'manage_users' => $request->user()?->canManageUsers() === true,
+                    'manage_stocks' => $request->user()?->isAdmin() === true,
                     'manage_content' => $request->user()?->canManageContent() === true,
                     'view_all_content' => $request->user()?->canViewAllContent() === true,
                     'view_audit_logs' => $request->user()?->canViewAuditLogs() === true,

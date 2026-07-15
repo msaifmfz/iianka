@@ -41,6 +41,7 @@ export type ConstructionSchedule = {
     general_contractor: string | null;
     person_in_charge: string | null;
     content: string | null;
+    content_version: number;
     carry_out_note: string | null;
     navigation_address: string | null;
     google_maps_url: string | null;
@@ -52,6 +53,21 @@ export type ConstructionSchedule = {
     subcontractors: ConstructionSubcontractor[];
     guide_files: SiteGuideFile[];
     selected_site_guide_file_ids: number[];
+};
+
+export type StockOption = {
+    id: number;
+    name: string;
+    aliases: string[];
+    available_quantity: string;
+    allows_fractional_quantity: boolean;
+};
+
+export type ScheduleStockUsage = {
+    stock_id: number;
+    name: string;
+    quantity: string;
+    is_active: boolean;
 };
 
 export type VoucherConfirmationSchedule = {

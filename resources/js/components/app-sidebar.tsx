@@ -11,10 +11,12 @@ import {
     Inbox,
     ListChecks,
     ClipboardPenLine,
+    Package,
     Search,
     UsersRound,
 } from 'lucide-react';
 import { index as auditLogIndex } from '@/actions/App/Http/Controllers/Admin/AuditLogController';
+import { index as adminStockIndex } from '@/actions/App/Http/Controllers/Admin/StockController';
 import { index as adminUserIndex } from '@/actions/App/Http/Controllers/Admin/UserController';
 import { index as attendanceRecordIndex } from '@/actions/App/Http/Controllers/AttendanceRecordController';
 import { index as cleaningDutyRuleIndex } from '@/actions/App/Http/Controllers/CleaningDutyRuleController';
@@ -116,6 +118,15 @@ export function AppSidebar() {
             href: cleaningDutyRuleIndex(),
             icon: ClipboardList,
         },
+        ...(auth.permissions.manage_stocks
+            ? [
+                  {
+                      title: '在庫管理',
+                      href: adminStockIndex(),
+                      icon: Package,
+                  },
+              ]
+            : []),
         ...(auth.permissions.manage_users
             ? [
                   {

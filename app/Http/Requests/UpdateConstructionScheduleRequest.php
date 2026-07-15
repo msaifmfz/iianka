@@ -25,6 +25,10 @@ class UpdateConstructionScheduleRequest extends FormRequest
     {
         $this->prepareConstructionScheduleFieldsForValidation();
         $this->prepareScheduleNumberForValidation();
+
+        if ($this->input('content_version') === '') {
+            $this->merge(['content_version' => null]);
+        }
     }
 
     /**
@@ -56,6 +60,7 @@ class UpdateConstructionScheduleRequest extends FormRequest
             'general_contractor' => ['nullable', 'string', 'max:255'],
             'person_in_charge' => ['nullable', 'string', 'max:255'],
             'content' => ['nullable', 'string'],
+            'content_version' => ['nullable', 'integer', 'min:1'],
             'carry_out_note' => ['nullable', 'string'],
             'navigation_address' => ['nullable', 'string', 'max:255'],
             'assigned_user_ids' => ['nullable', 'array'],

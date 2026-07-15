@@ -23,6 +23,7 @@ yarn-error.log
 /auth.json
 /.fleet
 /.codex-nightly/
+/.playwright-mcp/
 /.idea
 /.nova
 /.vscode

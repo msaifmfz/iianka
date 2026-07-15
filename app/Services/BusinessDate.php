@@ -8,7 +8,7 @@ use Illuminate\Support\Carbon;
 
 class BusinessDate
 {
-    private const string TIMEZONE = 'Asia/Tokyo';
+    public const string TIMEZONE = 'Asia/Tokyo';
 
     public static function today(): Carbon
     {

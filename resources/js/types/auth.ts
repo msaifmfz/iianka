@@ -18,6 +18,7 @@ export type Auth = {
     user: User;
     permissions: {
         manage_users: boolean;
+        manage_stocks: boolean;
         manage_content: boolean;
         view_all_content: boolean;
         view_audit_logs: boolean;

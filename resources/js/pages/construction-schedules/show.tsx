@@ -16,13 +16,15 @@ import {
     recentResourceMatches,
     useRecentResource,
 } from '@/hooks/use-recent-resource';
+import { formatStockQuantity } from '@/lib/stock';
 import { cn } from '@/lib/utils';
-import type { ConstructionSchedule } from '@/types';
+import type { ConstructionSchedule, ScheduleStockUsage } from '@/types';
 
 type Props = {
     schedule: ConstructionSchedule;
     canManage: boolean;
     returnTo: string | null;
+    stockUsages: ScheduleStockUsage[];
 };
 
 const statusLabels: Record<ConstructionSchedule['status'], string> = {
@@ -49,6 +51,7 @@ export default function ConstructionScheduleShow({
     schedule,
     canManage,
     returnTo,
+    stockUsages,
 }: Props) {
     const recentResource = useRecentResource();
     const isRecentResource = recentResourceMatches(
@@ -215,6 +218,36 @@ export default function ConstructionScheduleShow({
                                 {schedule.content || '未設定'}
                             </p>
                         </div>
+
+                        {stockUsages.length > 0 && (
+                            <div className="rounded-2xl border p-4 dark:border-neutral-800">
+                                <p className="text-sm text-muted-foreground">
+                                    使用在庫
+                                </p>
+                                <ul className="mt-2 grid gap-1">
+                                    {stockUsages.map((usage) => (
+                                        <li
+                                            key={usage.stock_id}
+                                            className="flex items-center gap-2"
+                                        >
+                                            <span className="font-medium">
+                                                {usage.name}
+                                            </span>
+                                            <span>
+                                                {formatStockQuantity(
+                                                    usage.quantity,
+                                                )}
+                                            </span>
+                                            {!usage.is_active && (
+                                                <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                                                    無効
+                                                </span>
+                                            )}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
 
                         <div className="rounded-2xl border p-4 dark:border-neutral-800">
                             <p className="text-sm text-muted-foreground">

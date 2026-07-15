@@ -24,6 +24,8 @@ export type FlashResourceType =
     | 'cleaning_duty_rule'
     | 'site_guide_file'
     | 'admin_user'
+    | 'stock'
+    | 'stock_purchase_cell'
     | 'voucher_confirmation'
     | 'attendance_cell'
     | 'construction_subcontractor'
