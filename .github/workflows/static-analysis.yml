@@ -110,11 +110,12 @@ jobs:
       - name: Psalm Taint Analysis
         run: composer analyse:taint -- --report=psalm-taint.sarif
 
-      # if: always() so findings still reach the Security tab when the step fails.
+      # always() so real findings still reach the Security tab when Psalm exits non-zero.
+      # hashFiles guard skips the upload when an earlier step died before writing the report.
       # Fork PRs lack security-events perms; add a repo guard if fork PRs appear.
       - name: Upload Taint SARIF
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('psalm-taint.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: psalm-taint.sarif
           category: psalm-taint

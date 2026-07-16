@@ -83,7 +83,7 @@
             "phpstan analyse --no-progress --memory-limit=1G"
         ],
         "analyse:taint": [
-            "psalm --taint-analysis --no-progress"
+            "psalm --taint-analysis --no-progress --ignore-baseline"
         ],
         "baseline:phpstan": [
             "phpstan analyse --generate-baseline=phpstan-baseline.neon --memory-limit=1G"
