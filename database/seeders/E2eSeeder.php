@@ -8,6 +8,7 @@ use App\Models\BusinessSchedule;
 use App\Models\ConstructionSchedule;
 use App\Models\ReceptionCase;
 use App\Models\ReceptionDocumentType;
+use App\Models\Stock;
 use App\Models\User;
 use App\ReceptionCaseStatus;
 use App\UserRole;
@@ -69,6 +70,11 @@ class E2eSeeder extends Seeder
             'is_admin' => false,
             'is_hidden_from_workers' => false,
         ])->save();
+
+        Stock::factory()
+            ->named('E2E養生テープ')
+            ->quantity('25.000')
+            ->create();
 
         ReceptionCase::create([
             'case_number' => 'WJA-C-20260703-9001',

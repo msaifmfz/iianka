@@ -29,7 +29,7 @@ export type StockTextMatch = {
     end: number;
 };
 
-const WORD_CHAR = /[\p{L}\p{N}\p{M}]/u;
+export const WORD_CHAR = /[\p{L}\p{N}\p{M}]/u;
 const WHITESPACE = /[\s\u00a0\u3000]/u;
 /**
  * Halfwidth and combining (semi)voiced sound marks. NFKC only composes them
