@@ -51,13 +51,12 @@ commit_preprocessors = [
 
 # Matched against the RAW subject (`feature: ...`); the template renders the parsed
 # description, so the prefix strips automatically.
+# Groups use the Keep a Changelog vocabulary (Added / Changed / Fixed) the header cites.
 # `<!-- N -->` forces group order (group_by sorts alphabetically); striptags removes it.
 commit_parsers = [
-    { message = '(?i)^feat(ure)?', group = "<!-- 0 -->Features" },
-    { message = '(?i)^fix', group = "<!-- 1 -->Bug Fixes" },
-    { message = '(?i)^perf', group = "<!-- 2 -->Performance" },
-    { message = '(?i)^refactor', group = "<!-- 3 -->Refactor" },
-    { message = '(?i)^chore', group = "<!-- 4 -->Maintenance" },
+    { message = '(?i)^feat(ure)?', group = "<!-- 0 -->Added" },
+    { message = '(?i)^(refactor|perf|chore)', group = "<!-- 1 -->Changed" },
+    { message = '(?i)^fix', group = "<!-- 2 -->Fixed" },
     { message = '(?i)^(ci|docs|test|style)', skip = true },
 ]
 

@@ -7,14 +7,15 @@ Only final releases are listed; `-rc.N` pre-releases fold into their final versi
 
 ## [0.3.0](https://github.com/msaifmfz/iianka/compare/v0.2.0...v0.3.0) - 2026-07-16
 
-### Features
+### Added
 
-- Static analysis and code-quality tooling: Larastan, Psalm, type-aware ESLint, and lefthook git hooks, enforced in CI
-- Extend static analysis over the test suite, with `casts()` inference and a baseline ratchet
-- Stock management: item catalog, term purchases, and schedule-driven usage tracking
-- Stock picker triggers mid-word, without a leading space
+- Static analysis and code-quality tooling — Larastan, Psalm, and type-aware ESLint — with git hooks, enforced in CI.
+- Static analysis extended across the test suite, with a baseline ratchet that blocks new violations.
+- Stock management: item catalog, term purchases, and schedule-driven usage tracking.
+- Stock picker triggers mid-word, without requiring a leading space.
+- Project changelog, generated from commit history and enforced by CI at release time.
 
-### Bug Fixes
+### Fixed
 
-- Generate Wayfinder types before type-aware ESLint in CI
-- Correct code-scanning setting in CI workflows
+- Wayfinder types are now generated before type-aware ESLint runs in CI.
+- Corrected the code-scanning configuration in the CI workflows.
