@@ -1,13 +1,14 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/react-starter-kit",
+    "name": "msaifmfz/iianka",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "Internal operations app: construction scheduling, attendance, reception and stock management.",
     "keywords": [
         "laravel",
-        "framework"
+        "inertia",
+        "internal"
     ],
-    "license": "MIT",
+    "license": "proprietary",
     "require": {
         "php": "^8.3",
         "inertiajs/inertia-laravel": "^3.0",

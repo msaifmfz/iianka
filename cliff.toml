@@ -1,0 +1,77 @@
+# git-cliff ~ https://git-cliff.org/docs/configuration
+#
+# Generate:  npm run changelog -- --tag vX.Y.0
+# Only ever --prepend. Never regenerate the whole file: sections are reworded after generation.
+
+[changelog]
+header = """
+# Changelog
+
+All notable changes to this project are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+Only final releases are listed; `-rc.N` pre-releases fold into their final version.\n
+"""
+body = """
+{% if version -%}
+    ## [{{ version | trim_start_matches(pat="v") }}]({% if previous.version %}<REPO>/compare/{{ previous.version }}...{{ version }}{% else %}<REPO>/commits/{{ version }}{% endif %}) - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else -%}
+    ## [Unreleased]
+{% endif -%}
+{% for group, commits in commits | group_by(attribute="group") %}
+    ### {{ group | striptags | trim | upper_first }}
+    {% for commit in commits %}
+        - {{ commit.message | split(pat="\n") | first | upper_first | trim }}\
+    {% endfor %}
+{% endfor %}\n
+"""
+# Compare links are inline in the heading, NOT a footer:
+# --prepend does not emit the footer, so footer link-refs would never be written.
+footer = ""
+trim = true
+postprocessors = [
+    { pattern = '<REPO>', replace = "https://github.com/msaifmfz/iianka" },
+]
+
+[git]
+conventional_commits = true
+# Drops the unprefixed commits (init, "v1", "many fixes") and merge commits
+# (merges are unconventional, so no explicit "^Merge" skip parser is needed).
+filter_unconventional = true
+filter_commits = false
+protect_breaking_commits = false
+split_commits = false
+
+commit_preprocessors = [
+    # (#42) -> markdown link. Runs BEFORE conventional parsing so the link lands
+    # inside the rendered description.
+    { pattern = '\(#([0-9]+)\)', replace = "([#${1}](<REPO>/issues/${1}))" },
+    { pattern = ' +$', replace = "" },
+]
+
+# Matched against the RAW subject (`feature: ...`); the template renders the parsed
+# description, so the prefix strips automatically.
+# `<!-- N -->` forces group order (group_by sorts alphabetically); striptags removes it.
+commit_parsers = [
+    { message = '(?i)^feat(ure)?', group = "<!-- 0 -->Features" },
+    { message = '(?i)^fix', group = "<!-- 1 -->Bug Fixes" },
+    { message = '(?i)^perf', group = "<!-- 2 -->Performance" },
+    { message = '(?i)^refactor', group = "<!-- 3 -->Refactor" },
+    { message = '(?i)^chore', group = "<!-- 4 -->Maintenance" },
+    { message = '(?i)^(ci|docs|test|style)', skip = true },
+]
+
+# Only final tags are releases. RC tags are invisible to git-cliff, so their
+# commits fold into the next final tag automatically.
+#
+# Do NOT use skip_tags — it DROPS the RC's commits entirely.
+# Do NOT use ignore_tags — v0.2.0 and v0.2.0-rc.1 both point at 68f3268; git-cliff
+# keys tags by commit id, the rc name wins the slot, and ignore_tags would delete v0.2.0.
+tag_pattern = '^v[0-9]+\.[0-9]+\.[0-9]+$'
+
+topo_order = false
+sort_commits = "oldest"
+
+# [remote.github] deliberately absent: configuring it makes git-cliff issue live
+# GitHub API calls (rate-limited, needs a token). URLs come from the <REPO>
+# postprocessor instead — generation stays offline and deterministic.

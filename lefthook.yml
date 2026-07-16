@@ -36,6 +36,22 @@ pre-commit:
             run: npx prettier --write --ignore-unknown {staged_files}
             stage_fixed: true
 
+commit-msg:
+  # Enforce the subject prefixes cliff.toml parses. Vocabulary must stay in sync
+  # with commit_parsers in cliff.toml. Escape hatch: git commit --no-verify.
+  jobs:
+    - name: subject-prefix
+      skip:
+        - merge
+        - rebase
+      run: |
+        head -n1 {1} | grep -qE '^((feature|fix|chore|ci|docs|refactor|perf|test|style|revert)(\([a-z0-9.-]+\))?!?: .+|Revert ".+"|Merge .+|(fixup|squash)!)' || {
+          echo "Commit subject must start with: feature|fix|chore|ci|docs|refactor|perf|test|style|revert"
+          echo "Example: feature: stock picker triggers mid-word"
+          echo "Got: $(head -n1 {1})"
+          exit 1
+        }
+
 pre-push:
   parallel: true
   jobs:

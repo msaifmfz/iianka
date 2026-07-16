@@ -70,12 +70,15 @@ jobs:
     if: ${{ github.event_name == 'release' }}
 
     steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v6
+
       - name: Validate release type and tag
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+          IS_PRERELEASE: ${{ github.event.release.prerelease }}
         run: |
           set -euo pipefail
-
-          TAG="${{ github.event.release.tag_name }}"
-          IS_PRERELEASE="${{ github.event.release.prerelease }}"
 
           echo "Release tag: $TAG"
           echo "Is pre-release: $IS_PRERELEASE"
@@ -89,6 +92,30 @@ jobs:
             echo "Error: production releases must not use rc tags. Tag '$TAG' looks like a release candidate."
             exit 1
           fi
+
+      - name: Validate changelog entry
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+
+          VERSION="${TAG#v}"
+          VERSION="${VERSION%%-rc.*}"
+
+          echo "Changelog version: $VERSION"
+
+          if [[ ! -f CHANGELOG.md ]]; then
+            echo "Error: CHANGELOG.md is missing at tag '$TAG'."
+            exit 1
+          fi
+
+          if ! grep -qF -- "## [$VERSION]" CHANGELOG.md; then
+            echo "Error: CHANGELOG.md has no '## [$VERSION]' section at tag '$TAG'."
+            echo "Run 'npm run changelog -- --tag v$VERSION' before tagging, review it, commit, then re-tag."
+            exit 1
+          fi
+
+          echo "Changelog section found for $VERSION"
 
   deploy_staging:
     name: Deploy staging
