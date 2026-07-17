@@ -251,23 +251,37 @@ class BusinessScheduleController extends Controller
      */
     private function formOptions(?BusinessSchedule $ignoredSchedule): array
     {
+        $selectedUserIds = $ignoredSchedule instanceof BusinessSchedule
+            ? $ignoredSchedule->assignedUsers->pluck('id')
+            : collect();
+
+        $users = User::query()
+            ->where(fn ($query) => $query
+                ->visibleToWorkers()
+                ->when($selectedUserIds->isNotEmpty(), fn ($query) => $query->orWhereIn('id', $selectedUserIds))
+            )
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
+
         return [
-            'users' => User::query()->orderBy('name')->get(['id', 'name', 'email']),
+            'users' => $users,
             'generalContractorOptions' => $this->generalContractorOptions(),
             'contentOptions' => $this->contentOptions(),
-            'scheduleAvailability' => $this->scheduleAvailability($ignoredSchedule),
-            'attendanceLeaveRecords' => $this->attendanceLeaveRecords(),
+            'scheduleAvailability' => $this->scheduleAvailability($ignoredSchedule, $users->pluck('id')),
+            'attendanceLeaveRecords' => $this->attendanceLeaveRecords($users->pluck('id')),
         ];
     }
 
     /**
+     * @param  Collection<int, int>  $userIds
      * @return Collection<int, array<string, mixed>>
      */
-    private function attendanceLeaveRecords(): Collection
+    private function attendanceLeaveRecords(Collection $userIds): Collection
     {
         return AttendanceRecord::query()
             ->with('user:id,name,email')
             ->where('status', AttendanceRecord::STATUS_LEAVE)
+            ->whereIn('user_id', $userIds)
             ->orderBy('work_date')
             ->get()
             ->map(fn (AttendanceRecord $record): array => [
@@ -281,16 +295,18 @@ class BusinessScheduleController extends Controller
     }
 
     /**
+     * @param  Collection<int, int>  $userIds
      * @return Collection<int, array<string, mixed>>
      */
-    private function scheduleAvailability(?BusinessSchedule $ignoredSchedule): Collection
+    private function scheduleAvailability(?BusinessSchedule $ignoredSchedule, Collection $userIds): Collection
     {
         $constructionSchedules = ConstructionSchedule::query()
-            ->with('assignedUsers:id,name,email')
+            ->with('assignedUsers:id,name,email,is_hidden_from_workers')
             ->whereNotNull('starts_at')
             ->whereNotNull('ends_at')
             ->whereHas('assignedUsers')
             ->get()
+            ->toBase()
             ->map(fn (ConstructionSchedule $schedule): array => [
                 'id' => $schedule->id,
                 'type' => 'construction',
@@ -299,17 +315,18 @@ class BusinessScheduleController extends Controller
                 'starts_at' => $schedule->starts_at,
                 'ends_at' => $schedule->ends_at,
                 'time' => $schedule->formattedTime(),
-                'user_ids' => $schedule->assignedUsers->pluck('id')->values(),
-                'user_names' => $schedule->assignedUsers->pluck('name')->values(),
+                'user_ids' => $schedule->assignedUsers->whereIn('id', $userIds)->pluck('id')->values(),
+                'user_names' => $schedule->assignedUsers->whereIn('id', $userIds)->pluck('name')->values(),
             ]);
 
         $businessSchedules = BusinessSchedule::query()
-            ->with('assignedUsers:id,name,email')
+            ->with('assignedUsers:id,name,email,is_hidden_from_workers')
             ->when($ignoredSchedule instanceof BusinessSchedule, fn ($query) => $query->whereKeyNot($ignoredSchedule->id))
             ->whereNotNull('starts_at')
             ->whereNotNull('ends_at')
             ->whereHas('assignedUsers')
             ->get()
+            ->toBase()
             ->map(fn (BusinessSchedule $schedule): array => [
                 'id' => $schedule->id,
                 'type' => 'business',
@@ -318,16 +335,17 @@ class BusinessScheduleController extends Controller
                 'starts_at' => $schedule->starts_at,
                 'ends_at' => $schedule->ends_at,
                 'time' => $schedule->formattedTime(),
-                'user_ids' => $schedule->assignedUsers->pluck('id')->values(),
-                'user_names' => $schedule->assignedUsers->pluck('name')->values(),
+                'user_ids' => $schedule->assignedUsers->whereIn('id', $userIds)->pluck('id')->values(),
+                'user_names' => $schedule->assignedUsers->whereIn('id', $userIds)->pluck('name')->values(),
             ]);
 
         $internalNotices = InternalNotice::query()
-            ->with('assignedUsers:id,name,email')
+            ->with('assignedUsers:id,name,email,is_hidden_from_workers')
             ->whereNotNull('starts_at')
             ->whereNotNull('ends_at')
             ->whereHas('assignedUsers')
             ->get()
+            ->toBase()
             ->map(fn (InternalNotice $notice): array => [
                 'id' => $notice->id,
                 'type' => 'internal_notice',
@@ -336,14 +354,14 @@ class BusinessScheduleController extends Controller
                 'starts_at' => $notice->starts_at,
                 'ends_at' => $notice->ends_at,
                 'time' => $notice->formattedTime(),
-                'user_ids' => $notice->assignedUsers->pluck('id')->values(),
-                'user_names' => $notice->assignedUsers->pluck('name')->values(),
+                'user_ids' => $notice->assignedUsers->whereIn('id', $userIds)->pluck('id')->values(),
+                'user_names' => $notice->assignedUsers->whereIn('id', $userIds)->pluck('name')->values(),
             ]);
 
-        return collect()
-            ->merge($constructionSchedules)
+        return $constructionSchedules
             ->merge($businessSchedules)
             ->merge($internalNotices)
+            ->filter(fn (array $schedule): bool => $schedule['user_ids']->isNotEmpty())
             ->sortBy([
                 ['scheduled_on', 'asc'],
                 ['starts_at', 'asc'],

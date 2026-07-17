@@ -1620,6 +1620,73 @@ test('business schedule edit form excludes the current schedule from availabilit
         );
 });
 
+test('business schedule create form hides users hidden from workers', function (): void {
+    $admin = User::factory()->admin()->create();
+    $worker = User::factory()->create(['name' => '表示 作業員']);
+    $hiddenUser = User::factory()->hiddenFromWorkers()->create(['name' => '非表示 管理者']);
+    $hiddenSchedule = BusinessSchedule::factory()->create([
+        'scheduled_on' => '2026-05-04',
+        'starts_at' => '09:00',
+        'ends_at' => '10:00',
+        'location' => '非表示担当の業務予定',
+    ]);
+    $hiddenSchedule->assignedUsers()->attach($hiddenUser);
+
+    $this->actingAs($admin)
+        ->get(route('business-schedules.create'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->component('business-schedules/form')
+            ->where('users', fn ($users): bool => collect($users)->contains(
+                fn (array $user): bool => $user['id'] === $worker->id && $user['name'] === '表示 作業員'
+            ) && ! collect($users)->contains(
+                fn (array $user): bool => $user['id'] === $hiddenUser->id || $user['name'] === '非表示 管理者'
+            ))
+            ->where('scheduleAvailability', fn ($schedules): bool => ! collect($schedules)->contains(
+                fn (array $schedule): bool => collect($schedule['user_ids'])->contains($hiddenUser->id)
+                    || collect($schedule['user_names'])->contains('非表示 管理者')
+            ))
+        );
+});
+
+test('business schedule edit form includes only selected users hidden from workers', function (): void {
+    $admin = User::factory()->admin()->create();
+    $worker = User::factory()->create(['name' => '表示 作業員']);
+    $selectedHiddenUser = User::factory()->hiddenFromWorkers()->create(['name' => '選択済み 非表示']);
+    $unselectedHiddenUser = User::factory()->hiddenFromWorkers()->create(['name' => '未選択 非表示']);
+    $schedule = BusinessSchedule::factory()->create([
+        'scheduled_on' => '2026-05-04',
+        'location' => '編集対象の業務予定',
+    ]);
+    $schedule->assignedUsers()->attach($selectedHiddenUser);
+
+    $otherSchedule = BusinessSchedule::factory()->create([
+        'scheduled_on' => '2026-05-05',
+        'starts_at' => '09:00',
+        'ends_at' => '10:00',
+        'location' => '未選択非表示の業務予定',
+    ]);
+    $otherSchedule->assignedUsers()->attach($unselectedHiddenUser);
+
+    $this->actingAs($admin)
+        ->get(route('business-schedules.edit', $schedule))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->component('business-schedules/form')
+            ->where('users', fn ($users): bool => collect($users)->contains(
+                fn (array $user): bool => $user['id'] === $worker->id && $user['name'] === '表示 作業員'
+            ) && collect($users)->contains(
+                fn (array $user): bool => $user['id'] === $selectedHiddenUser->id && $user['name'] === '選択済み 非表示'
+            ) && ! collect($users)->contains(
+                fn (array $user): bool => $user['id'] === $unselectedHiddenUser->id || $user['name'] === '未選択 非表示'
+            ))
+            ->where('scheduleAvailability', fn ($schedules): bool => ! collect($schedules)->contains(
+                fn (array $schedule): bool => collect($schedule['user_ids'])->contains($unselectedHiddenUser->id)
+                    || collect($schedule['user_names'])->contains('未選択 非表示')
+            ))
+        );
+});
+
 test('business schedule form includes remembered content options', function (): void {
     $admin = User::factory()->admin()->create();
 
