@@ -2,10 +2,13 @@ import { Head, Link, router } from '@inertiajs/react';
 import { FileSearch, Search } from 'lucide-react';
 import { useState } from 'react';
 import { index as auditLogIndex } from '@/actions/App/Http/Controllers/Admin/AuditLogController';
+import { Pagination } from '@/components/pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { NativeSelect } from '@/components/ui/native-select';
+import type { PaginatedResponse } from '@/types/ui';
 
 type AuditActor = {
     id: number;
@@ -36,20 +39,6 @@ type AuditLog = {
     created_at: string | null;
 };
 
-type PaginationLink = {
-    url: string | null;
-    label: string;
-    active: boolean;
-};
-
-type PaginatedLogs = {
-    data: AuditLog[];
-    from: number | null;
-    to: number | null;
-    total: number;
-    links: PaginationLink[];
-};
-
 type Filters = {
     search: string;
     event: string;
@@ -62,7 +51,7 @@ type Filters = {
 };
 
 type Props = {
-    logs: PaginatedLogs;
+    logs: PaginatedResponse<AuditLog>;
     filters: Filters;
     options: {
         events: FilterOption[];
@@ -204,7 +193,7 @@ export default function AuditLogsIndex({ logs, filters, options }: Props) {
                             </div>
 
                             <div className="grid gap-3 md:grid-cols-5">
-                                <select
+                                <NativeSelect
                                     value={form.event}
                                     onChange={(event) =>
                                         updateFilter(
@@ -212,7 +201,6 @@ export default function AuditLogsIndex({ logs, filters, options }: Props) {
                                             event.target.value,
                                         )
                                     }
-                                    className="h-9 rounded-md border bg-transparent px-3 text-sm"
                                 >
                                     <option value="">すべての操作</option>
                                     {options.events.map((event) => (
@@ -223,8 +211,8 @@ export default function AuditLogsIndex({ logs, filters, options }: Props) {
                                             {event.label}
                                         </option>
                                     ))}
-                                </select>
-                                <select
+                                </NativeSelect>
+                                <NativeSelect
                                     value={form.outcome}
                                     onChange={(event) =>
                                         updateFilter(
@@ -232,7 +220,6 @@ export default function AuditLogsIndex({ logs, filters, options }: Props) {
                                             event.target.value,
                                         )
                                     }
-                                    className="h-9 rounded-md border bg-transparent px-3 text-sm"
                                 >
                                     <option value="">すべての結果</option>
                                     {options.outcomes.map((outcome) => (
@@ -243,8 +230,8 @@ export default function AuditLogsIndex({ logs, filters, options }: Props) {
                                             {outcome.label}
                                         </option>
                                     ))}
-                                </select>
-                                <select
+                                </NativeSelect>
+                                <NativeSelect
                                     value={form.subject_type}
                                     onChange={(event) =>
                                         updateFilter(
@@ -252,7 +239,6 @@ export default function AuditLogsIndex({ logs, filters, options }: Props) {
                                             event.target.value,
                                         )
                                     }
-                                    className="h-9 rounded-md border bg-transparent px-3 text-sm"
                                 >
                                     <option value="">すべての対象</option>
                                     {options.subjectTypes.map((subjectType) => (
@@ -263,7 +249,7 @@ export default function AuditLogsIndex({ logs, filters, options }: Props) {
                                             {subjectType.label}
                                         </option>
                                     ))}
-                                </select>
+                                </NativeSelect>
                                 <Input
                                     type="datetime-local"
                                     step="1"
@@ -376,11 +362,22 @@ export default function AuditLogsIndex({ logs, filters, options }: Props) {
                                                 </div>
                                             </td>
                                             <td className="px-5 py-4">
-                                                <pre className="max-w-80 overflow-x-auto rounded-md bg-neutral-100 p-3 text-xs whitespace-pre-wrap dark:bg-neutral-900">
-                                                    {metadataPreview(
-                                                        log.metadata,
-                                                    )}
-                                                </pre>
+                                                <details className="group max-w-80">
+                                                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-md border px-3 py-2 text-xs font-medium dark:border-neutral-800 [&::-webkit-details-marker]:hidden">
+                                                        <span>詳細を表示</span>
+                                                        <span className="text-xs text-muted-foreground group-open:hidden">
+                                                            開く
+                                                        </span>
+                                                        <span className="hidden text-xs text-muted-foreground group-open:inline">
+                                                            閉じる
+                                                        </span>
+                                                    </summary>
+                                                    <pre className="mt-2 max-h-72 overflow-auto rounded-md bg-neutral-100 p-3 text-xs break-words whitespace-pre-wrap dark:bg-neutral-900">
+                                                        {metadataPreview(
+                                                            log.metadata,
+                                                        )}
+                                                    </pre>
+                                                </details>
                                             </td>
                                         </tr>
                                     ))}
@@ -480,32 +477,7 @@ export default function AuditLogsIndex({ logs, filters, options }: Props) {
                     </CardContent>
                 </Card>
 
-                <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
-                    <p>
-                        {logs.total > 0
-                            ? `${logs.from} - ${logs.to} / ${logs.total} 件`
-                            : '0 件'}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                        {logs.links.map((link, index) => (
-                            <Button
-                                key={`${link.label}-${index}`}
-                                asChild={link.url !== null}
-                                variant={link.active ? 'default' : 'outline'}
-                                size="sm"
-                                disabled={link.url === null}
-                            >
-                                {link.url ? (
-                                    <Link href={link.url} preserveScroll>
-                                        {link.label}
-                                    </Link>
-                                ) : (
-                                    <span>{link.label}</span>
-                                )}
-                            </Button>
-                        ))}
-                    </div>
-                </div>
+                <Pagination paginated={logs} />
             </div>
         </>
     );

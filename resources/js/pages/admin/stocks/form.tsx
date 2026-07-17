@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { ArrowLeft, Plus, Trash2, X } from 'lucide-react';
 import {
     destroy as stockDestroy,
@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { formatStockQuantity } from '@/lib/stock';
 import { fieldError } from '@/lib/validation';
 
@@ -40,6 +41,7 @@ type StockForm = {
 };
 
 export default function AdminStockForm({ managedStock }: Props) {
+    const { confirm: confirmDelete, dialog: deleteDialog } = useConfirmDialog();
     const { data, setData, post, processing, errors } = useForm<StockForm>({
         _method: managedStock ? 'put' : '',
         name: managedStock?.name ?? '',
@@ -63,6 +65,20 @@ export default function AdminStockForm({ managedStock }: Props) {
         );
     }
 
+    async function deleteStock(stock: ManagedStock) {
+        if (
+            !(await confirmDelete({
+                title: `${stock.name} を削除しますか？`,
+                confirmLabel: '削除',
+                variant: 'destructive',
+            }))
+        ) {
+            return;
+        }
+
+        router.delete(stockDestroy.url(stock.id));
+    }
+
     function setAlias(index: number, value: string) {
         setData(
             'aliases',
@@ -82,6 +98,7 @@ export default function AdminStockForm({ managedStock }: Props) {
     return (
         <>
             <Head title={managedStock ? '在庫編集' : '在庫追加'} />
+            {deleteDialog}
             <div className="mx-auto max-w-4xl space-y-6 px-2 py-4 sm:p-4 md:p-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
@@ -328,25 +345,15 @@ export default function AdminStockForm({ managedStock }: Props) {
                                         </Button>
                                     ) : (
                                         <Button
-                                            asChild
+                                            type="button"
                                             variant="destructive"
                                             className="w-full"
+                                            onClick={() =>
+                                                void deleteStock(managedStock)
+                                            }
                                         >
-                                            <Link
-                                                href={stockDestroy(
-                                                    managedStock.id,
-                                                )}
-                                                method="delete"
-                                                as="button"
-                                                onBefore={() =>
-                                                    confirm(
-                                                        `${managedStock.name} を削除しますか？`,
-                                                    )
-                                                }
-                                            >
-                                                <Trash2 className="size-4" />
-                                                在庫を削除
-                                            </Link>
+                                            <Trash2 className="size-4" />
+                                            在庫を削除
                                         </Button>
                                     )}
                                     {managedStock.has_history && (

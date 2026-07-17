@@ -7,6 +7,7 @@ import {
     edit as userEdit,
     index as userIndex,
 } from '@/actions/App/Http/Controllers/Admin/UserController';
+import { Pagination } from '@/components/pagination';
 import {
     RecentResourceBadge,
     recentResourceHighlightClass,
@@ -15,12 +16,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import {
     recentResourceMatches,
     useRecentResource,
 } from '@/hooks/use-recent-resource';
 import { cn } from '@/lib/utils';
-import type { FlashResourceAction } from '@/types/ui';
+import type { FlashResourceAction, PaginatedResponse } from '@/types/ui';
 
 type ManagedUser = {
     id: number;
@@ -38,25 +40,8 @@ type ManagedUser = {
     can_delete: boolean;
 };
 
-type PaginationLink = {
-    url: string | null;
-    label: string;
-    active: boolean;
-};
-
-type PaginatedUsers = {
-    data: ManagedUser[];
-    current_page: number;
-    from: number | null;
-    to: number | null;
-    total: number;
-    prev_page_url: string | null;
-    next_page_url: string | null;
-    links: PaginationLink[];
-};
-
 type Props = {
-    users: PaginatedUsers;
+    users: PaginatedResponse<ManagedUser>;
     filters: {
         search: string;
         role: string;
@@ -173,6 +158,22 @@ function UserRoleBadge({ user }: { user: ManagedUser }) {
 }
 
 function UserActions({ user }: { user: ManagedUser }) {
+    const { confirm: confirmDelete, dialog: deleteDialog } = useConfirmDialog();
+
+    async function deleteUser() {
+        if (
+            !(await confirmDelete({
+                title: `${user.name} を削除しますか？`,
+                confirmLabel: '削除',
+                variant: 'destructive',
+            }))
+        ) {
+            return;
+        }
+
+        router.delete(userDestroy.url(user.id), { preserveScroll: true });
+    }
+
     return (
         <div className="flex gap-2 sm:justify-end">
             <Button
@@ -187,22 +188,17 @@ function UserActions({ user }: { user: ManagedUser }) {
                 </Link>
             </Button>
             <Button
-                asChild
+                type="button"
                 variant="destructive"
                 size="sm"
                 disabled={!user.can_delete}
                 className="flex-1 sm:flex-none"
+                onClick={() => void deleteUser()}
             >
-                <Link
-                    href={userDestroy(user.id)}
-                    method="delete"
-                    as="button"
-                    onBefore={() => confirm(`${user.name} を削除しますか？`)}
-                >
-                    <Trash2 className="size-4" />
-                    削除
-                </Link>
+                <Trash2 className="size-4" />
+                削除
             </Button>
+            {deleteDialog}
         </div>
     );
 }
@@ -400,32 +396,7 @@ export default function AdminUsersIndex({ users, filters }: Props) {
                     </CardContent>
                 </Card>
 
-                <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
-                    <p>
-                        {users.total > 0
-                            ? `${users.from} - ${users.to} / ${users.total} 件`
-                            : '0 件'}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                        {users.links.map((link, index) => (
-                            <Button
-                                key={`${link.label}-${index}`}
-                                asChild={link.url !== null}
-                                variant={link.active ? 'default' : 'outline'}
-                                size="sm"
-                                disabled={link.url === null}
-                            >
-                                {link.url ? (
-                                    <Link href={link.url} preserveScroll>
-                                        {link.label}
-                                    </Link>
-                                ) : (
-                                    <span>{link.label}</span>
-                                )}
-                            </Button>
-                        ))}
-                    </div>
-                </div>
+                <Pagination paginated={users} />
             </div>
         </>
     );

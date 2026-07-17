@@ -1,10 +1,10 @@
-import { Head, Link, router } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { Head, Link } from '@inertiajs/react';
 import { index as archiveIndex } from '@/actions/App/Http/Controllers/ReceptionArchiveController';
 import { ReceptionCaseList } from '@/components/reception-case-list';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { useUrlFilters } from '@/hooks/use-url-filters';
 import type { ReceptionCase } from '@/types';
 import type { QueryParams } from '@/wayfinder';
 
@@ -19,59 +19,17 @@ type Filters = {
     completed_to: string;
 };
 
-const autoSearchDelay = 400;
-
-function compactFilters(filters: Filters): QueryParams {
-    return Object.fromEntries(
-        Object.entries(filters).filter(([, value]) => value !== ''),
-    );
-}
-
 export default function ReceptionArchiveIndex({ cases, filters }: Props) {
-    const [keyword, setKeyword] = useState(filters.keyword);
-    const [completedFrom, setCompletedFrom] = useState(filters.completed_from);
-    const [completedTo, setCompletedTo] = useState(filters.completed_to);
+    const { filters: localFilters, setFilter } = useUrlFilters(
+        filters,
+        archiveIndex.url(),
+    );
     const showQuery = {
         from: 'archive',
         keyword: filters.keyword || undefined,
         completed_from: filters.completed_from || undefined,
         completed_to: filters.completed_to || undefined,
     } satisfies QueryParams;
-
-    useEffect(() => {
-        const nextFilters = {
-            keyword,
-            completed_from: completedFrom,
-            completed_to: completedTo,
-        } satisfies Filters;
-
-        if (
-            nextFilters.keyword === filters.keyword &&
-            nextFilters.completed_from === filters.completed_from &&
-            nextFilters.completed_to === filters.completed_to
-        ) {
-            return;
-        }
-
-        const timeout = window.setTimeout(() => {
-            router.get(archiveIndex.url(), compactFilters(nextFilters), {
-                preserveScroll: true,
-                preserveState: true,
-                replace: true,
-            });
-        }, autoSearchDelay);
-
-        return () => {
-            window.clearTimeout(timeout);
-        };
-    }, [
-        keyword,
-        completedFrom,
-        completedTo,
-        filters.keyword,
-        filters.completed_from,
-        filters.completed_to,
-    ]);
 
     return (
         <>
@@ -92,26 +50,32 @@ export default function ReceptionArchiveIndex({ cases, filters }: Props) {
                         <div className="grid gap-3 lg:grid-cols-[1fr_12rem_12rem]">
                             <Input
                                 aria-label="検索キーワード"
-                                value={keyword}
+                                value={localFilters.keyword}
                                 onChange={(event) =>
-                                    setKeyword(event.target.value)
+                                    setFilter('keyword', event.target.value)
                                 }
                                 placeholder="案件ID、会社名、現場名、受付内容"
                             />
                             <Input
                                 aria-label="完了日開始"
                                 type="date"
-                                value={completedFrom}
+                                value={localFilters.completed_from}
                                 onChange={(event) =>
-                                    setCompletedFrom(event.target.value)
+                                    setFilter(
+                                        'completed_from',
+                                        event.target.value,
+                                    )
                                 }
                             />
                             <Input
                                 aria-label="完了日終了"
                                 type="date"
-                                value={completedTo}
+                                value={localFilters.completed_to}
                                 onChange={(event) =>
-                                    setCompletedTo(event.target.value)
+                                    setFilter(
+                                        'completed_to',
+                                        event.target.value,
+                                    )
                                 }
                             />
                         </div>

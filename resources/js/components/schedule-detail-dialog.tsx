@@ -7,6 +7,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { scheduleTypeLabel } from '@/lib/schedule-types';
 import type { ConstructionUser } from '@/types';
 
 export type ScheduleDetailEventType =
@@ -34,11 +35,7 @@ const scheduleDetailHoldDelay = 500;
 const touchScrollTolerance = 10;
 
 export function eventTypeLabel(type: ScheduleDetailEventType) {
-    return {
-        construction: '工事',
-        business: '業務予定',
-        internal_notice: '業務連絡',
-    }[type];
+    return scheduleTypeLabel(type);
 }
 
 export function eventNumberLabel(event: ScheduleDetailEvent) {

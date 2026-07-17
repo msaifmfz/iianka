@@ -52,6 +52,7 @@ import {
     parseBusinessDate,
 } from '@/lib/dates';
 import { rememberScheduleOverviewEditReturn } from '@/lib/schedule-overview-edit-return';
+import { scheduleTypeDescriptors } from '@/lib/schedule-types';
 import { index as overviewIndex } from '@/routes/schedule-overview';
 import type { AttendanceLeaveRecord, ConstructionUser } from '@/types';
 import type { FlashResource, FlashResourceType } from '@/types/ui';
@@ -398,14 +399,7 @@ function hourLabel(minutes: number) {
 }
 
 function eventTypeClass(type: TimelineEventType) {
-    return {
-        construction:
-            'border-orange-300 bg-orange-100 text-orange-950 dark:border-orange-300/40 dark:bg-orange-500/20 dark:text-orange-50 dark:shadow-orange-950/20',
-        business:
-            'border-violet-300 bg-violet-100 text-violet-950 dark:border-violet-300/40 dark:bg-violet-500/20 dark:text-violet-50 dark:shadow-violet-950/20',
-        internal_notice:
-            'border-sky-300 bg-sky-100 text-sky-950 dark:border-sky-300/40 dark:bg-sky-500/20 dark:text-sky-50 dark:shadow-sky-950/20',
-    }[type];
+    return scheduleTypeDescriptors[type].timelineClasses;
 }
 
 function eventKey(event: TimelineEvent) {
@@ -413,15 +407,7 @@ function eventKey(event: TimelineEvent) {
 }
 
 function eventResourceType(event: TimelineEvent): FlashResourceType {
-    if (event.type === 'construction') {
-        return 'construction_schedule';
-    }
-
-    if (event.type === 'business') {
-        return 'business_schedule';
-    }
-
-    return 'internal_notice';
+    return scheduleTypeDescriptors[event.type].resourceType;
 }
 
 function highlightedScheduleKey(highlightedSchedule: HighlightedSchedule) {

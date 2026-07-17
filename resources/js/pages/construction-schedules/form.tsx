@@ -33,6 +33,7 @@ import {
 import { ScheduleContentEditor } from '@/components/schedule-content-editor';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import {
     recentResourceMatches,
     useRecentResource,
@@ -297,6 +298,7 @@ export default function ConstructionScheduleForm({
 }: Props) {
     const { url } = usePage();
     const recentResource = useRecentResource();
+    const { confirm: confirmDelete, dialog: deleteDialog } = useConfirmDialog();
     const [guideFileSearch, setGuideFileSearch] = useState('');
     const [subcontractorSearch, setSubcontractorSearch] = useState('');
     const [editingSubcontractorId, setEditingSubcontractorId] = useState<
@@ -527,9 +529,15 @@ export default function ConstructionScheduleForm({
         });
     }
 
-    function deleteSubcontractor(subcontractor: ConstructionSubcontractor) {
+    async function deleteSubcontractor(
+        subcontractor: ConstructionSubcontractor,
+    ) {
         if (
-            !confirm(`${subcontractor.name} を今後の選択肢から削除しますか？`)
+            !(await confirmDelete({
+                title: `${subcontractor.name} を今後の選択肢から削除しますか？`,
+                confirmLabel: '削除',
+                variant: 'destructive',
+            }))
         ) {
             return;
         }
@@ -625,6 +633,7 @@ export default function ConstructionScheduleForm({
     return (
         <>
             <Head title={schedule ? '予定編集' : '新規予定'} />
+            {deleteDialog}
             <FloatingBackButton
                 onClick={handleGoBack}
                 className="bottom-5 md:bottom-6 xl:bottom-8"
@@ -962,7 +971,7 @@ export default function ConstructionScheduleForm({
                                                                     type="button"
                                                                     className="inline-flex items-center justify-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
                                                                     onClick={() =>
-                                                                        deleteSubcontractor(
+                                                                        void deleteSubcontractor(
                                                                             subcontractor,
                                                                         )
                                                                     }

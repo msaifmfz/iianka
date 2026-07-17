@@ -2,7 +2,6 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
     BriefcaseBusiness,
     CalendarDays,
-    ClipboardList,
     ChevronDown,
     ChevronLeft,
     ChevronRight,
@@ -59,6 +58,7 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import {
     recentResourceMatches,
     useRecentResource,
@@ -69,6 +69,7 @@ import {
     businessMonthTitle,
     parseBusinessDate,
 } from '@/lib/dates';
+import { scheduleTypeDescriptors } from '@/lib/schedule-types';
 import { cn, phoneHref } from '@/lib/utils';
 import type {
     ConstructionSchedule,
@@ -338,19 +339,7 @@ function scheduleKey(schedule: ScheduleEvent) {
 }
 
 function scheduleResourceType(schedule: ScheduleEvent): FlashResourceType {
-    if (schedule.type === 'construction') {
-        return 'construction_schedule';
-    }
-
-    if (schedule.type === 'business') {
-        return 'business_schedule';
-    }
-
-    if (schedule.type === 'internal_notice') {
-        return 'internal_notice';
-    }
-
-    return 'cleaning_duty_rule';
+    return scheduleTypeDescriptors[schedule.type].resourceType;
 }
 
 function scheduleResourceId(schedule: ScheduleEvent) {
@@ -667,6 +656,7 @@ function ScheduleCard({
     returnTo: string;
     recentResource: FlashResource | null;
 }) {
+    const { confirm: confirmDelete, dialog: deleteDialog } = useConfirmDialog();
     const scheduleDetail =
         schedule.type === 'construction'
             ? scheduleShow(schedule.id, {
@@ -708,34 +698,14 @@ function ScheduleCard({
               : schedule.type === 'internal_notice'
                 ? internalNoticeDestroy.url(schedule.id)
                 : null;
-    const typeBadge = {
-        construction:
-            'bg-orange-100 text-orange-900 dark:bg-orange-950 dark:text-orange-200',
-        business:
-            'bg-violet-100 text-violet-900 dark:bg-violet-950 dark:text-violet-200',
-        internal_notice:
-            'bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-200',
-        cleaning_duty:
-            'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200',
-    }[schedule.type];
+    const typeBadge = scheduleTypeDescriptors[schedule.type].badgeClasses;
     const title =
         schedule.type === 'construction' || schedule.type === 'business'
             ? schedule.location
             : schedule.title;
     const detailHint = '詳細を見る';
-    const typeLabel = {
-        construction: '工事',
-        business: '業務予定',
-        internal_notice: '業務連絡',
-        cleaning_duty: '掃除当番',
-    }[schedule.type];
-    const typeIcon = {
-        construction: Hammer,
-        business: BriefcaseBusiness,
-        internal_notice: Megaphone,
-        cleaning_duty: ClipboardList,
-    }[schedule.type];
-    const TypeIcon = typeIcon;
+    const typeLabel = scheduleTypeDescriptors[schedule.type].label;
+    const TypeIcon = scheduleTypeDescriptors[schedule.type].icon;
     const scheduleNumber =
         schedule.type === 'construction' || schedule.type === 'business'
             ? (schedule.schedule_number ?? '?')
@@ -753,14 +723,20 @@ function ScheduleCard({
         scheduleResourceType(schedule),
         scheduleResourceId(schedule),
     );
-    function deleteSchedule() {
+    async function deleteSchedule() {
         const confirmation = scheduleDeleteConfirmation(schedule);
 
         if (scheduleDeleteHref === null || confirmation === null) {
             return;
         }
 
-        if (!confirm(confirmation)) {
+        if (
+            !(await confirmDelete({
+                title: confirmation,
+                confirmLabel: '削除',
+                variant: 'destructive',
+            }))
+        ) {
             return;
         }
 
@@ -1001,7 +977,7 @@ function ScheduleCard({
                                     type="button"
                                     variant="outline"
                                     className="min-h-11 justify-center sm:justify-start"
-                                    onClick={deleteSchedule}
+                                    onClick={() => void deleteSchedule()}
                                 >
                                     <Trash2 className="size-4" />
                                     削除
@@ -1011,6 +987,7 @@ function ScheduleCard({
                     )}
                 </div>
             </CardContent>
+            {deleteDialog}
         </Card>
     );
 }

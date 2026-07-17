@@ -12,6 +12,7 @@ import {
 } from '@/components/recent-resource-feedback';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import {
     recentResourceMatches,
     useRecentResource,
@@ -41,9 +42,16 @@ export default function ConstructionSitesIndex({
     canManage,
 }: Props) {
     const recentResource = useRecentResource();
+    const { confirm: confirmDelete, dialog: deleteDialog } = useConfirmDialog();
 
-    function deleteGuideFile(file: SiteGuideFile) {
-        if (!confirm(`${file.name} を削除しますか？`)) {
+    async function deleteGuideFile(file: SiteGuideFile) {
+        if (
+            !(await confirmDelete({
+                title: `${file.name} を削除しますか？`,
+                confirmLabel: '削除',
+                variant: 'destructive',
+            }))
+        ) {
             return;
         }
 
@@ -55,6 +63,7 @@ export default function ConstructionSitesIndex({
     return (
         <>
             <Head title="現場案内図" />
+            {deleteDialog}
             <div className="mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6 xl:p-8">
                 <section className="rounded-2xl border bg-white p-5 shadow-sm sm:p-6 xl:p-7 dark:border-neutral-800 dark:bg-neutral-950">
                     <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
@@ -167,7 +176,9 @@ export default function ConstructionSitesIndex({
                                                     variant="outline"
                                                     size="sm"
                                                     onClick={() =>
-                                                        deleteGuideFile(file)
+                                                        void deleteGuideFile(
+                                                            file,
+                                                        )
                                                     }
                                                 >
                                                     <Trash2 className="size-4" />

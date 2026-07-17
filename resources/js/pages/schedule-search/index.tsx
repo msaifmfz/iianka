@@ -15,6 +15,7 @@ import type { ScheduleDetailEvent } from '@/components/schedule-detail-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { parseBusinessDate } from '@/lib/dates';
+import { scheduleTypeDescriptors } from '@/lib/schedule-types';
 import { index as overviewIndex } from '@/routes/schedule-overview';
 import { index as searchIndex } from '@/routes/schedule-search';
 import type { ConstructionUser } from '@/types';
@@ -374,13 +375,11 @@ function scheduleDetailEvent(schedule: SearchSchedule): ScheduleDetailEvent {
 }
 
 function typeLabel(type: SearchScheduleType) {
-    return type === 'construction' ? '工事' : '業務予定';
+    return scheduleTypeDescriptors[type].label;
 }
 
 function typeClasses(type: SearchScheduleType) {
-    return type === 'construction'
-        ? 'border-orange-200 bg-orange-50 text-orange-900 dark:border-orange-300/30 dark:bg-orange-500/15 dark:text-orange-100'
-        : 'border-violet-200 bg-violet-50 text-violet-900 dark:border-violet-300/30 dark:bg-violet-500/15 dark:text-violet-100';
+    return scheduleTypeDescriptors[type].chipClasses;
 }
 
 function filtersFromForm(form: SearchForm): Filters {

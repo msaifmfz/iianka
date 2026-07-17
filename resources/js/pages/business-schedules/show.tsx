@@ -12,6 +12,7 @@ import {
 } from '@/components/recent-resource-feedback';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import {
     recentResourceMatches,
     useRecentResource,
@@ -40,6 +41,7 @@ export default function BusinessScheduleShow({
     returnTo,
 }: Props) {
     const recentResource = useRecentResource();
+    const { confirm: confirmDelete, dialog: deleteDialog } = useConfirmDialog();
     const isRecentResource = recentResourceMatches(
         recentResource,
         'business_schedule',
@@ -63,8 +65,14 @@ export default function BusinessScheduleShow({
         router.visit(fallbackReturnTo);
     }
 
-    function deleteSchedule() {
-        if (!confirm('この業務予定を削除しますか？')) {
+    async function deleteSchedule() {
+        if (
+            !(await confirmDelete({
+                title: 'この業務予定を削除しますか？',
+                confirmLabel: '削除',
+                variant: 'destructive',
+            }))
+        ) {
             return;
         }
 
@@ -74,6 +82,7 @@ export default function BusinessScheduleShow({
     return (
         <>
             <Head title={`${schedule.location} - 業務予定詳細`} />
+            {deleteDialog}
             <FloatingBackButton onClick={handleReturnToIndex} />
             <div className="mx-auto w-full max-w-7xl space-y-6 p-4 pb-24 md:p-6 md:pb-6 xl:p-8">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -88,7 +97,7 @@ export default function BusinessScheduleShow({
                             <Button
                                 type="button"
                                 variant="outline"
-                                onClick={deleteSchedule}
+                                onClick={() => void deleteSchedule()}
                             >
                                 <Trash2 className="size-4" />
                                 削除
