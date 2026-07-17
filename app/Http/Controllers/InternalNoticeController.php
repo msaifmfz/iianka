@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\HandlesScheduleReturnTo;
 use App\Http\Requests\StoreInternalNoticeRequest;
 use App\Http\Requests\UpdateInternalNoticeRequest;
 use App\Models\InternalNotice;
@@ -15,6 +16,8 @@ use Inertia\Response;
 
 class InternalNoticeController extends Controller
 {
+    use HandlesScheduleReturnTo;
+
     public function index(): RedirectResponse
     {
         return redirect()->route('construction-schedules.index', [
@@ -135,44 +138,6 @@ class InternalNoticeController extends Controller
 
         return redirect()
             ->route('construction-schedules.index', ['type' => 'internal_notice']);
-    }
-
-    private function returnTo(Request $request): ?string
-    {
-        $returnTo = $request->query('return_to');
-
-        if (! is_string($returnTo) || ! $this->isAllowedReturnTo($returnTo)) {
-            return null;
-        }
-
-        return $returnTo;
-    }
-
-    private function isAllowedReturnTo(string $returnTo): bool
-    {
-        return str_starts_with($returnTo, '/construction-schedules')
-            || str_starts_with($returnTo, '/schedule-overview');
-    }
-
-    /**
-     * @return array{initialScheduledOn: string|null, initialStartsAt: string|null, initialEndsAt: string|null, initialAssignedUserIds: list<int>}
-     */
-    private function initialFormValues(Request $request): array
-    {
-        $scheduledOn = $request->query('scheduled_on');
-        $startsAt = $request->query('starts_at');
-        $endsAt = $request->query('ends_at');
-
-        return [
-            'initialScheduledOn' => is_string($scheduledOn) && $scheduledOn !== '' ? $scheduledOn : null,
-            'initialStartsAt' => is_string($startsAt) && $startsAt !== '' ? $startsAt : null,
-            'initialEndsAt' => is_string($endsAt) && $endsAt !== '' ? $endsAt : null,
-            'initialAssignedUserIds' => collect($request->array('assigned_user_ids'))
-                ->filter(fn (mixed $userId): bool => is_numeric($userId))
-                ->map(fn (mixed $userId): int => (int) $userId)
-                ->values()
-                ->all(),
-        ];
     }
 
     /**

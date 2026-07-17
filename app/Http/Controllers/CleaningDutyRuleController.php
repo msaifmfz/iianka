@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\HandlesScheduleReturnTo;
 use App\Http\Requests\StoreCleaningDutyRuleRequest;
 use App\Http\Requests\UpdateCleaningDutyRuleRequest;
 use App\Models\CleaningDutyRule;
@@ -15,6 +16,8 @@ use Inertia\Response;
 
 class CleaningDutyRuleController extends Controller
 {
+    use HandlesScheduleReturnTo;
+
     public function index(Request $request): Response
     {
         abort_unless($request->user()?->canViewAllContent() === true, 403);
@@ -131,15 +134,12 @@ class CleaningDutyRuleController extends Controller
             ->route('cleaning-duty-rules.index');
     }
 
-    private function returnTo(Request $request): ?string
+    /**
+     * @return list<string>
+     */
+    protected function allowedReturnToPrefixes(): array
     {
-        $returnTo = $request->query('return_to');
-
-        if (! is_string($returnTo) || ! str_starts_with($returnTo, '/construction-schedules')) {
-            return null;
-        }
-
-        return $returnTo;
+        return ['/construction-schedules'];
     }
 
     private function scheduledOn(Request $request): ?string

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\HandlesScheduleReturnTo;
 use App\Models\AttendanceRecord;
 use App\Models\BusinessSchedule;
 use App\Models\ConstructionSchedule;
@@ -18,6 +19,8 @@ use Throwable;
 
 class ScheduleOverviewController extends Controller
 {
+    use HandlesScheduleReturnTo;
+
     public function __invoke(Request $request): Response
     {
         $date = $this->selectedDate($request);
@@ -83,15 +86,12 @@ class ScheduleOverviewController extends Controller
         ];
     }
 
-    private function returnTo(Request $request): ?string
+    /**
+     * @return list<string>
+     */
+    protected function allowedReturnToPrefixes(): array
     {
-        $returnTo = $request->query('return_to');
-
-        if (! is_string($returnTo) || ! str_starts_with($returnTo, '/schedule-search')) {
-            return null;
-        }
-
-        return $returnTo;
+        return ['/schedule-search'];
     }
 
     /**
