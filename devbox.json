@@ -1,0 +1,35 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.17.5/.schema/devbox.schema.json",
+  "packages": [
+    "php@8.5",
+    "php85Packages.composer@2",
+    "nodejs@22",
+    "sqlite@3",
+    "git@2"
+  ],
+  "env": {
+    "PLAYWRIGHT_BROWSERS_PATH": "$PWD/.devbox/playwright"
+  },
+  "shell": {
+    "scripts": {
+      "setup": [
+        "composer setup",
+        "npm exec -- playwright install"
+      ],
+      "doctor": [
+        "php --version",
+        "composer --version",
+        "node --version",
+        "npm --version",
+        "sqlite3 --version",
+        "node -e \"process.exit(process.version.startsWith('v22.') ? 0 : 1)\"",
+        "composer validate --strict --no-check-publish",
+        "composer check-platform-reqs --lock"
+      ],
+      "dev": "composer dev",
+      "test": "composer test",
+      "check": "composer check",
+      "test:e2e": "npm run test:e2e -- --workers=1"
+    }
+  }
+}

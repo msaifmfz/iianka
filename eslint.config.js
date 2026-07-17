@@ -144,6 +144,10 @@ export default [
     },
     {
         ignores: [
+            '.devbox/**',
+            '.playwright/**',
+            'playwright-report/**',
+            'test-results/**',
             'vendor',
             'node_modules',
             'public',

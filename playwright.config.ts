@@ -101,7 +101,7 @@ export default defineConfig({
                 `touch ${e2eDatabasePath}`,
                 `${e2eEnvPrefix} php artisan config:clear --no-interaction`,
                 `${e2eEnvPrefix} php artisan migrate:fresh --force --seed --seeder=E2eSeeder --no-interaction`,
-                `${e2eEnvPrefix} php artisan serve --host=127.0.0.1 --port=8010`,
+                `${e2eEnvPrefix} php artisan serve --host=127.0.0.1 --port=8010 --no-reload`,
             ].join(' && '),
             url: appUrl,
             reuseExistingServer: false,

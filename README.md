@@ -17,20 +17,42 @@ stock management · admin.
 
 ## Local setup
 
+Install [Devbox](https://www.jetify.com/docs/devbox/installing-devbox/) and direnv once on a new Mac:
+
 ```bash
-composer setup   # install deps, .env, key, migrate, npm install, build
-composer dev     # serve + queue + pail + vite (concurrently)
+curl -fsSL https://get.jetify.com/devbox | bash
+# Open a new terminal after the installer finishes.
+devbox global add direnv@2
 ```
+
+Add the following to `~/.zshrc`, then run `exec zsh`:
+
+```bash
+eval "$(devbox global shellenv)"
+eval "$(direnv hook zsh)"
+```
+
+Initialize the repository once. After `direnv allow`, entering the directory automatically
+activates PHP 8.5, Composer 2, Node 22, SQLite, and Git from the committed Devbox lockfile.
+
+```bash
+direnv allow
+devbox run setup   # dependencies, .env, SQLite, migrations, assets, hooks, Playwright browsers
+devbox run dev     # serve + queue + pail + vite (concurrently)
+```
+
+Run `devbox run doctor` to verify the pinned runtime and Composer platform requirements.
 
 ## Quality checks
 
 ```bash
-composer check      # pint, rector, psalm, phpstan, JS lint/format/types
-composer test       # config clear, pint check, Pest
-composer security   # psalm taint analysis + composer audit
+devbox run check       # pint, rector, psalm, phpstan, JS lint/format/types
+devbox run test        # config clear, pint check, Pest
+devbox run test:e2e    # Chromium, Firefox, and WebKit
+composer security      # psalm taint analysis + composer audit
 ```
 
-Git hooks install automatically via `npm install` (lefthook): `pre-commit` auto-fixes
+The setup command installs Lefthook explicitly: `pre-commit` auto-fixes
 staged files, `pre-push` runs static analysis, `commit-msg` enforces the subject prefix.
 See `CLAUDE.md` for the full static-analysis and baseline policy.
 
