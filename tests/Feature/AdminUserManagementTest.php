@@ -58,6 +58,28 @@ test('admins can create users', function (): void {
         ->and(User::query()->where('login_id', 'new-member')->value('is_hidden_from_workers'))->toBeTrue();
 });
 
+test('user creation rolls back all writes when a write fails', function (): void {
+    $admin = User::factory()->admin()->create();
+
+    User::updated(function (): void {
+        throw new RuntimeException('boom');
+    });
+
+    $this->actingAs($admin)
+        ->post(route('admin.users.store'), [
+            'name' => 'New Member',
+            'login_id' => 'new-member',
+            'email' => null,
+            'password' => 'password',
+            'password_confirmation' => 'password',
+            'role' => UserRole::Editor->value,
+            'is_hidden_from_workers' => true,
+        ])
+        ->assertServerError();
+
+    expect(User::query()->where('login_id', 'new-member')->exists())->toBeFalse();
+});
+
 test('admins can update user roles', function (): void {
     $admin = User::factory()->admin()->create();
     $member = User::factory()->create();

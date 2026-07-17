@@ -9,6 +9,7 @@ use App\Models\User;
 use App\UserRole;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -70,18 +71,22 @@ class UserController extends Controller
     {
         $validated = $request->validated();
 
-        $user = User::create([
-            'name' => $validated['name'],
-            'login_id' => $validated['login_id'],
-            'email' => $validated['email'] ?: null,
-            'password' => $validated['password'],
-        ]);
-        $role = UserRole::from($validated['role']);
-        $user->forceFill([
-            'role' => $role,
-            'is_admin' => $role === UserRole::Admin,
-            'is_hidden_from_workers' => $validated['is_hidden_from_workers'],
-        ])->save();
+        $user = DB::transaction(function () use ($validated): User {
+            $user = User::create([
+                'name' => $validated['name'],
+                'login_id' => $validated['login_id'],
+                'email' => $validated['email'] ?: null,
+                'password' => $validated['password'],
+            ]);
+            $role = UserRole::from($validated['role']);
+            $user->forceFill([
+                'role' => $role,
+                'is_admin' => $role === UserRole::Admin,
+                'is_hidden_from_workers' => $validated['is_hidden_from_workers'],
+            ])->save();
+
+            return $user;
+        });
 
         $this->auditSuccess('admin.users.created', 'An admin created a user account.', $user, [
             'role' => $user->role->value,
