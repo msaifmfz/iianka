@@ -8,8 +8,7 @@ import {
     Pencil,
     Plus,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
-import type { CSSProperties } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
     create as createBusinessSchedule,
     edit as editBusinessSchedule,
@@ -45,6 +44,7 @@ import {
     recentResourceMatches,
     useRecentResource,
 } from '@/hooks/use-recent-resource';
+import { useSlotDragSelection } from '@/hooks/use-slot-drag-selection';
 import {
     adjacentBusinessMonth,
     businessDateString,
@@ -53,6 +53,25 @@ import {
 } from '@/lib/dates';
 import { rememberScheduleOverviewEditReturn } from '@/lib/schedule-overview-edit-return';
 import { scheduleTypeDescriptors } from '@/lib/schedule-types';
+import {
+    dragSelectionRange,
+    eventKey,
+    eventsForUser,
+    eventPositionStyle,
+    hourLabel,
+    isSameTimelineRow,
+    layoutTimelineEvents,
+    minuteInputValue,
+    selectionPositionStyle,
+    slotIsSelected,
+    slotOverlapsEvents,
+    timelineBounds,
+    timelineGridStyle,
+    timelineHour,
+    timelineRowHeight,
+    timelineRowStyle,
+} from '@/lib/timeline';
+import type { TimelineEvent, TimelineEventType } from '@/lib/timeline';
 import { index as overviewIndex } from '@/routes/schedule-overview';
 import type { AttendanceLeaveRecord, ConstructionUser } from '@/types';
 import type { FlashResource, FlashResourceType } from '@/types/ui';
@@ -88,26 +107,9 @@ type Props = {
     returnTo: string | null;
 };
 
-type TimelineEventType = 'construction' | 'business' | 'internal_notice';
-
 type HighlightedSchedule = {
     type: Extract<TimelineEventType, 'construction' | 'business'> | null;
     id: number | null;
-};
-
-type TimelineEvent = {
-    id: number;
-    type: TimelineEventType;
-    schedule_number: number | null;
-    title: string;
-    location: string | null;
-    content: string | null;
-    carry_out_note?: string | null;
-    time: string;
-    starts_at: string | null;
-    ends_at: string | null;
-    time_note: string | null;
-    assigned_users: ConstructionUser[];
 };
 
 type SelectedDayTimeline = {
@@ -122,27 +124,6 @@ type CreateSlot = {
     endHour: number;
     rowName: string;
     userId: number | null;
-};
-
-type DragSelection = {
-    date: string;
-    rowName: string;
-    userId: number | null;
-    anchorHour: number;
-    currentHour: number;
-    pointerId: number;
-};
-
-type PendingDragSelection = {
-    date: string;
-    rowName: string;
-    userId: number | null;
-    anchorHour: number;
-    pointerId: number;
-    startX: number;
-    startY: number;
-    rowElement: HTMLDivElement;
-    timeoutId: number;
 };
 
 type CalendarCell = CalendarDay & {
@@ -336,74 +317,8 @@ function voucherConfirmationValue(day: CalendarDay) {
     return `${confirmedVoucherCount(day)}/${day.voucher_confirmation_count}`;
 }
 
-const timelineDefaultStart = 8 * 60;
-const timelineDefaultEnd = 20 * 60;
-const timelineHour = 60;
-const timelineSlotWidth = 47;
-const timelineAssigneeColumnWidth = '7rem';
-const timelineUntimedColumnWidth = '9rem';
-const timelineRowMinHeight = 48;
-const timelineEventLaneHeight = 44;
-const timelineEventBlockHeight = 36;
-const timelineEventBlockInset = 4;
-const touchSelectionDelay = 260;
-const touchScrollTolerance = 10;
-
-function timeToMinutes(time: string | null) {
-    if (time === null) {
-        return null;
-    }
-
-    const [hours, minutes] = time.slice(0, 5).split(':').map(Number);
-
-    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
-        return null;
-    }
-
-    return hours * 60 + minutes;
-}
-
-function timelineBounds(events: TimelineEvent[]) {
-    const timedMinutes = events.flatMap((event) => {
-        const startsAt = timeToMinutes(event.starts_at);
-        const endsAt = timeToMinutes(event.ends_at);
-
-        if (startsAt === null) {
-            return [];
-        }
-
-        return [startsAt, endsAt ?? timelineDefaultEnd];
-    });
-    const minMinutes = Math.min(timelineDefaultStart, ...timedMinutes);
-    const maxMinutes = Math.max(timelineDefaultEnd, ...timedMinutes);
-    const startsAt = Math.floor(minMinutes / timelineHour) * timelineHour;
-    const endsAt = Math.ceil(maxMinutes / timelineHour) * timelineHour;
-    const hours: number[] = [];
-
-    for (let minute = startsAt; minute <= endsAt; minute += timelineHour) {
-        hours.push(minute);
-    }
-
-    return {
-        startsAt,
-        endsAt,
-        hours,
-        duration: Math.max(endsAt - startsAt, timelineHour),
-        slotCount: Math.max(hours.length - 1, 1),
-        width: Math.max(hours.length - 1, 1) * timelineSlotWidth,
-    };
-}
-
-function hourLabel(minutes: number) {
-    return `${String(Math.floor(minutes / timelineHour)).padStart(2, '0')}:00`;
-}
-
 function eventTypeClass(type: TimelineEventType) {
     return scheduleTypeDescriptors[type].timelineClasses;
-}
-
-function eventKey(event: TimelineEvent) {
-    return `${event.type}-${event.id}`;
 }
 
 function eventResourceType(event: TimelineEvent): FlashResourceType {
@@ -431,67 +346,6 @@ function canReturnToStoredSearchHistory(returnTo: string) {
     );
 }
 
-function eventRange(
-    event: TimelineEvent,
-    bounds: ReturnType<typeof timelineBounds>,
-) {
-    const startsAt = timeToMinutes(event.starts_at) ?? bounds.startsAt;
-    const endsAt = timeToMinutes(event.ends_at) ?? bounds.endsAt;
-
-    return {
-        startsAt,
-        endsAt: Math.max(endsAt, startsAt + 15),
-    };
-}
-
-function layoutTimelineEvents(
-    events: TimelineEvent[],
-    bounds: ReturnType<typeof timelineBounds>,
-) {
-    const laneEnds: number[] = [];
-
-    return [...events]
-        .sort((firstEvent, secondEvent) => {
-            const firstRange = eventRange(firstEvent, bounds);
-            const secondRange = eventRange(secondEvent, bounds);
-
-            if (firstRange.startsAt !== secondRange.startsAt) {
-                return firstRange.startsAt - secondRange.startsAt;
-            }
-
-            if (firstRange.endsAt !== secondRange.endsAt) {
-                return firstRange.endsAt - secondRange.endsAt;
-            }
-
-            return eventKey(firstEvent).localeCompare(eventKey(secondEvent));
-        })
-        .map((event) => {
-            const range = eventRange(event, bounds);
-            const laneIndex = laneEnds.findIndex(
-                (laneEnd) => laneEnd <= range.startsAt,
-            );
-            const lane = laneIndex === -1 ? laneEnds.length : laneIndex;
-
-            laneEnds[lane] = range.endsAt;
-
-            return {
-                event,
-                lane,
-            };
-        });
-}
-
-function timelineRowHeight(laneCount: number) {
-    if (laneCount <= 0) {
-        return timelineRowMinHeight;
-    }
-
-    return Math.max(
-        timelineRowMinHeight,
-        timelineEventBlockInset * 2 + laneCount * timelineEventLaneHeight,
-    );
-}
-
 function eventEditRoute(event: TimelineEvent, returnTo?: string) {
     const options =
         returnTo === undefined ? undefined : { query: { return_to: returnTo } };
@@ -515,12 +369,6 @@ function rememberEventEditReturn(event: TimelineEvent, returnTo: string) {
         eventEditRoute(event, returnTo).url,
         returnTo,
     );
-}
-
-function minuteInputValue(minutes: number) {
-    const clampedMinutes = Math.min(Math.max(minutes, 0), 23 * 60 + 59);
-
-    return `${String(Math.floor(clampedMinutes / timelineHour)).padStart(2, '0')}:${String(clampedMinutes % timelineHour).padStart(2, '0')}`;
 }
 
 function eventCreateRoute(
@@ -580,162 +428,6 @@ function TimelineEventBorderBadges({
             )}
         </span>
     );
-}
-
-function timelineGridStyle(
-    bounds: ReturnType<typeof timelineBounds>,
-): CSSProperties {
-    return {
-        gridTemplateColumns: `repeat(${bounds.slotCount}, minmax(0, 1fr))`,
-    };
-}
-
-function timelineRowStyle(
-    bounds: ReturnType<typeof timelineBounds>,
-): CSSProperties {
-    return {
-        gridTemplateColumns: `${timelineAssigneeColumnWidth} ${timelineUntimedColumnWidth} ${bounds.width}px`,
-    };
-}
-
-function eventPositionStyle(
-    event: TimelineEvent,
-    bounds: ReturnType<typeof timelineBounds>,
-    lane = 0,
-): CSSProperties {
-    const { startsAt, endsAt } = eventRange(event, bounds);
-    const left = ((startsAt - bounds.startsAt) / bounds.duration) * 100;
-    const width = ((endsAt - startsAt) / bounds.duration) * 100;
-
-    return {
-        left: `${Math.max(left, 0)}%`,
-        width: `${Math.min(Math.max(width, 2), 100 - Math.max(left, 0))}%`,
-        top: `${timelineEventBlockInset + lane * timelineEventLaneHeight}px`,
-        height: `${timelineEventBlockHeight}px`,
-    };
-}
-
-function selectionPositionStyle(
-    selection: DragSelection,
-    bounds: ReturnType<typeof timelineBounds>,
-): CSSProperties {
-    const range = dragSelectionRange(selection);
-    const left = ((range.startsAt - bounds.startsAt) / bounds.duration) * 100;
-    const width = ((range.endsAt - range.startsAt) / bounds.duration) * 100;
-
-    return {
-        left: `${Math.max(left, 0)}%`,
-        width: `${Math.min(Math.max(width, 2), 100 - Math.max(left, 0))}%`,
-    };
-}
-
-function eventsForUser(events: TimelineEvent[], userId: number | null) {
-    return events.filter((event) => {
-        if (userId === null) {
-            return event.assigned_users.length === 0;
-        }
-
-        return event.assigned_users.some((user) => user.id === userId);
-    });
-}
-
-function slotOverlapsEvents(
-    startsAt: number,
-    bounds: ReturnType<typeof timelineBounds>,
-    events: TimelineEvent[],
-) {
-    const endsAt = startsAt + timelineHour;
-
-    return events.some((event) => {
-        const eventStartsAt = timeToMinutes(event.starts_at);
-
-        if (eventStartsAt === null) {
-            return false;
-        }
-
-        const eventEndsAt = timeToMinutes(event.ends_at) ?? bounds.endsAt;
-
-        return startsAt < eventEndsAt && endsAt > eventStartsAt;
-    });
-}
-
-function dragSelectionRange(selection: DragSelection) {
-    const startsAt = Math.min(selection.anchorHour, selection.currentHour);
-    const endsAt =
-        Math.max(selection.anchorHour, selection.currentHour) + timelineHour;
-
-    return { startsAt, endsAt };
-}
-
-function isSameTimelineRow(
-    selection: DragSelection,
-    date: string,
-    rowName: string,
-    userId: number | null,
-) {
-    return (
-        selection.date === date &&
-        selection.rowName === rowName &&
-        selection.userId === userId
-    );
-}
-
-function slotIsSelected(
-    selection: DragSelection | null,
-    date: string,
-    rowName: string,
-    userId: number | null,
-    hour: number,
-) {
-    if (
-        selection === null ||
-        !isSameTimelineRow(selection, date, rowName, userId)
-    ) {
-        return false;
-    }
-
-    const range = dragSelectionRange(selection);
-
-    return hour >= range.startsAt && hour < range.endsAt;
-}
-
-function pointerHourFromPosition(
-    clientX: number,
-    element: HTMLElement,
-    bounds: ReturnType<typeof timelineBounds>,
-) {
-    const rect = element.getBoundingClientRect();
-    const rawRatio = (clientX - rect.left) / rect.width;
-    const ratio = Math.min(Math.max(rawRatio, 0), 0.999999);
-    const slotIndex = Math.min(
-        Math.max(Math.floor(ratio * bounds.slotCount), 0),
-        bounds.slotCount - 1,
-    );
-
-    return bounds.startsAt + slotIndex * timelineHour;
-}
-
-function contiguousSelectionHour(
-    anchorHour: number,
-    targetHour: number,
-    availableHours: Set<number>,
-) {
-    const direction = targetHour >= anchorHour ? timelineHour : -timelineHour;
-    let selectedHour = anchorHour;
-
-    for (
-        let hour = anchorHour;
-        direction > 0 ? hour <= targetHour : hour >= targetHour;
-        hour += direction
-    ) {
-        if (!availableHours.has(hour)) {
-            break;
-        }
-
-        selectedHour = hour;
-    }
-
-    return selectedHour;
 }
 
 function TimelineSlotLink({
@@ -1069,7 +761,10 @@ function DayTimeline({
     recentResource: FlashResource | null;
     returnTo: string;
 }) {
-    const bounds = timelineBounds(selectedDayTimeline.events);
+    const bounds = useMemo(
+        () => timelineBounds(selectedDayTimeline.events),
+        [selectedDayTimeline.events],
+    );
     const searchHighlightedEventKey =
         highlightedScheduleKey(highlightedSchedule);
     const [highlightedEventKey, setHighlightedEventKey] = useState<
@@ -1083,60 +778,44 @@ function DayTimeline({
         userId: number | null;
     } | null>(null);
     const [detailEvent, setDetailEvent] = useState<TimelineEvent | null>(null);
-    const [dragSelection, setDragSelection] = useState<DragSelection | null>(
-        null,
-    );
-    const dragSelectionRef = useRef<DragSelection | null>(null);
-    const pendingDragSelectionRef = useRef<PendingDragSelection | null>(null);
-
-    useEffect(() => {
-        return () => {
-            const pendingSelection = pendingDragSelectionRef.current;
-
-            if (pendingSelection !== null) {
-                window.clearTimeout(pendingSelection.timeoutId);
-            }
-        };
-    }, []);
-
-    const isDraggingSlotSelection = dragSelection !== null;
-
-    useEffect(() => {
-        if (!isDraggingSlotSelection) {
-            return;
-        }
-
-        const preventTouchScroll = (event: TouchEvent) => {
-            event.preventDefault();
-        };
-
-        window.addEventListener('touchmove', preventTouchScroll, {
-            passive: false,
-        });
-
-        return () => {
-            window.removeEventListener('touchmove', preventTouchScroll);
-        };
-    }, [isDraggingSlotSelection]);
+    const {
+        dragSelection,
+        startSlotSelection,
+        updateSlotSelection,
+        finishSlotSelection,
+        cancelSlotSelection,
+    } = useSlotDragSelection({
+        date: selectedDetail.date,
+        bounds,
+        onSlotSelected: setCreateSlot,
+    });
 
     const hasUnassignedEvents = selectedDayTimeline.events.some(
         (event) => event.assigned_users.length === 0,
     );
-    const leaveRecordsByUserId = new Map(
-        selectedDayTimeline.attendanceLeaveRecords.map((record) => [
-            record.user_id,
-            record,
-        ]),
+    const leaveRecordsByUserId = useMemo(
+        () =>
+            new Map(
+                selectedDayTimeline.attendanceLeaveRecords.map((record) => [
+                    record.user_id,
+                    record,
+                ]),
+            ),
+        [selectedDayTimeline.attendanceLeaveRecords],
     );
-    const rows: { id: number | null; name: string; muted?: boolean }[] = [
-        ...selectedDayTimeline.users.map((user) => ({
-            id: user.id,
-            name: user.name,
-        })),
-        ...(hasUnassignedEvents
-            ? [{ id: null, name: '担当者未設定', muted: true }]
-            : []),
-    ];
+    const rows: { id: number | null; name: string; muted?: boolean }[] =
+        useMemo(
+            () => [
+                ...selectedDayTimeline.users.map((user) => ({
+                    id: user.id,
+                    name: user.name,
+                })),
+                ...(hasUnassignedEvents
+                    ? [{ id: null, name: '担当者未設定', muted: true }]
+                    : []),
+            ],
+            [selectedDayTimeline.users, hasUnassignedEvents],
+        );
     const timelineWidth = `calc(21rem + ${bounds.width}px)`;
 
     function toggleHighlightedEvent(event: TimelineEvent) {
@@ -1154,266 +833,6 @@ function DayTimeline({
         createSlot === null ? null : minuteInputValue(createSlot.hour);
     const slotEndsAt =
         createSlot === null ? null : minuteInputValue(createSlot.endHour);
-
-    function commitDragSelection(selection: DragSelection | null) {
-        dragSelectionRef.current = selection;
-        setDragSelection(selection);
-    }
-
-    function clearPendingDragSelection() {
-        const pendingSelection = pendingDragSelectionRef.current;
-
-        if (pendingSelection === null) {
-            return;
-        }
-
-        window.clearTimeout(pendingSelection.timeoutId);
-        pendingDragSelectionRef.current = null;
-    }
-
-    function safelyCapturePointer(element: HTMLElement, pointerId: number) {
-        try {
-            element.setPointerCapture(pointerId);
-        } catch {
-            return false;
-        }
-
-        return true;
-    }
-
-    function safelyReleasePointer(element: HTMLElement, pointerId: number) {
-        if (!element.hasPointerCapture(pointerId)) {
-            return;
-        }
-
-        element.releasePointerCapture(pointerId);
-    }
-
-    function activatePendingDragSelection(pointerId: number) {
-        const pendingSelection = pendingDragSelectionRef.current;
-
-        if (
-            pendingSelection === null ||
-            pendingSelection.pointerId !== pointerId
-        ) {
-            return;
-        }
-
-        pendingDragSelectionRef.current = null;
-
-        if (
-            !safelyCapturePointer(
-                pendingSelection.rowElement,
-                pendingSelection.pointerId,
-            )
-        ) {
-            return;
-        }
-
-        commitDragSelection({
-            date: pendingSelection.date,
-            rowName: pendingSelection.rowName,
-            userId: pendingSelection.userId,
-            anchorHour: pendingSelection.anchorHour,
-            currentHour: pendingSelection.anchorHour,
-            pointerId: pendingSelection.pointerId,
-        });
-    }
-
-    function startSlotSelection(
-        event: React.PointerEvent<HTMLDivElement>,
-        rowName: string,
-        userId: number | null,
-        availableHours: Set<number>,
-    ) {
-        if (event.button !== 0) {
-            return;
-        }
-
-        const slotButton = (event.target as HTMLElement).closest<HTMLElement>(
-            '[data-timeline-slot-hour]',
-        );
-
-        if (slotButton === null) {
-            return;
-        }
-
-        const hour = Number(slotButton.dataset.timelineSlotHour);
-
-        if (!availableHours.has(hour)) {
-            return;
-        }
-
-        const rowElement = event.currentTarget;
-
-        clearPendingDragSelection();
-
-        if (event.pointerType === 'touch' || event.pointerType === 'pen') {
-            const pointerId = event.pointerId;
-
-            pendingDragSelectionRef.current = {
-                date: selectedDetail.date,
-                rowName,
-                userId,
-                anchorHour: hour,
-                pointerId,
-                startX: event.clientX,
-                startY: event.clientY,
-                rowElement,
-                timeoutId: window.setTimeout(() => {
-                    activatePendingDragSelection(pointerId);
-                }, touchSelectionDelay),
-            };
-
-            return;
-        }
-
-        safelyCapturePointer(rowElement, event.pointerId);
-        event.preventDefault();
-
-        commitDragSelection({
-            date: selectedDetail.date,
-            rowName,
-            userId,
-            anchorHour: hour,
-            currentHour: hour,
-            pointerId: event.pointerId,
-        });
-    }
-
-    function updateSlotSelection(
-        event: React.PointerEvent<HTMLDivElement>,
-        rowName: string,
-        userId: number | null,
-        availableHours: Set<number>,
-    ) {
-        const pendingSelection = pendingDragSelectionRef.current;
-
-        if (
-            pendingSelection !== null &&
-            pendingSelection.pointerId === event.pointerId
-        ) {
-            const movedX = Math.abs(event.clientX - pendingSelection.startX);
-            const movedY = Math.abs(event.clientY - pendingSelection.startY);
-
-            if (
-                movedX > touchScrollTolerance ||
-                movedY > touchScrollTolerance
-            ) {
-                clearPendingDragSelection();
-            }
-
-            return;
-        }
-
-        const activeSelection = dragSelectionRef.current;
-
-        if (
-            activeSelection === null ||
-            activeSelection.pointerId !== event.pointerId ||
-            !isSameTimelineRow(
-                activeSelection,
-                selectedDetail.date,
-                rowName,
-                userId,
-            )
-        ) {
-            return;
-        }
-
-        event.preventDefault();
-
-        const rowElement = event.currentTarget;
-        const clientX = event.clientX;
-
-        setDragSelection((selection) => {
-            if (
-                selection === null ||
-                selection.pointerId !== event.pointerId ||
-                !isSameTimelineRow(
-                    selection,
-                    selectedDetail.date,
-                    rowName,
-                    userId,
-                )
-            ) {
-                return selection;
-            }
-
-            const targetHour = pointerHourFromPosition(
-                clientX,
-                rowElement,
-                bounds,
-            );
-            const currentHour = contiguousSelectionHour(
-                selection.anchorHour,
-                targetHour,
-                availableHours,
-            );
-            const nextSelection = {
-                ...selection,
-                currentHour,
-            };
-
-            dragSelectionRef.current = nextSelection;
-
-            return nextSelection;
-        });
-    }
-
-    function finishSlotSelection(event: React.PointerEvent<HTMLDivElement>) {
-        const pendingSelection = pendingDragSelectionRef.current;
-
-        if (
-            pendingSelection !== null &&
-            pendingSelection.pointerId === event.pointerId
-        ) {
-            clearPendingDragSelection();
-            setCreateSlot({
-                date: pendingSelection.date,
-                hour: pendingSelection.anchorHour,
-                endHour: pendingSelection.anchorHour + timelineHour,
-                rowName: pendingSelection.rowName,
-                userId: pendingSelection.userId,
-            });
-
-            return;
-        }
-
-        const selection = dragSelectionRef.current;
-
-        if (selection === null || selection.pointerId !== event.pointerId) {
-            return;
-        }
-
-        safelyReleasePointer(event.currentTarget, event.pointerId);
-
-        event.preventDefault();
-
-        const range = dragSelectionRange(selection);
-
-        commitDragSelection(null);
-        setCreateSlot({
-            date: selection.date,
-            hour: range.startsAt,
-            endHour: range.endsAt,
-            rowName: selection.rowName,
-            userId: selection.userId,
-        });
-    }
-
-    function cancelSlotSelection(event: React.PointerEvent<HTMLDivElement>) {
-        clearPendingDragSelection();
-
-        if (dragSelectionRef.current !== null) {
-            safelyReleasePointer(
-                event.currentTarget,
-                dragSelectionRef.current.pointerId,
-            );
-        }
-
-        commitDragSelection(null);
-    }
 
     function createFromSlot(type: TimelineEventType) {
         if (
