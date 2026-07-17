@@ -9,3 +9,13 @@ export function formatStockQuantity(quantity: string): string {
 
     return quantity.replace(/0+$/, '').replace(/\.$/, '');
 }
+
+export function signedStockQuantity(value: string): string {
+    return value.startsWith('-')
+        ? formatStockQuantity(value)
+        : `+${formatStockQuantity(value)}`;
+}
+
+export function isZeroStockQuantity(value: string): boolean {
+    return /^-?0(\.0+)?$/.test(value);
+}

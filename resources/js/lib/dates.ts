@@ -26,3 +26,29 @@ export function businessDateString(date = new Date()) {
 export function parseBusinessDate(date: string) {
     return new Date(`${date}T12:00:00Z`);
 }
+
+const monthTitleFormatter = new Intl.DateTimeFormat('ja-JP', {
+    year: 'numeric',
+    month: 'long',
+    timeZone: 'Asia/Tokyo',
+});
+
+export function businessMonthTitle(date: string) {
+    return monthTitleFormatter.format(parseBusinessDate(date));
+}
+
+/** First day of the month `offset` months away from the given business date. */
+export function adjacentBusinessMonth(date: string, offset: number) {
+    const parsed = parseBusinessDate(date);
+
+    return businessDateString(
+        new Date(
+            Date.UTC(
+                parsed.getUTCFullYear(),
+                parsed.getUTCMonth() + offset,
+                1,
+                12,
+            ),
+        ),
+    );
+}

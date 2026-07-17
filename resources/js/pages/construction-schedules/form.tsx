@@ -39,7 +39,7 @@ import {
 } from '@/hooks/use-recent-resource';
 import { businessDateString } from '@/lib/dates';
 import { consumeScheduleOverviewEditReturn } from '@/lib/schedule-overview-edit-return';
-import { cn } from '@/lib/utils';
+import { cn, phoneHref, toggleNumber } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import type {
     ConstructionSchedule,
@@ -172,16 +172,6 @@ const preferredTimeSlots = [
 
 const guideFileAccept =
     'application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif';
-
-function toggleNumber(values: number[], value: number) {
-    return values.includes(value)
-        ? values.filter((item) => item !== value)
-        : [...values, value];
-}
-
-function phoneHref(phone: string) {
-    return `tel:${phone.replace(/[^\d+]/g, '')}`;
-}
 
 function guideFileTypeLabel(file: SiteGuideFile) {
     if (file.mime_type?.includes('pdf')) {

@@ -21,7 +21,11 @@ import {
     recentResourceMatches,
     useRecentResource,
 } from '@/hooks/use-recent-resource';
-import { formatStockQuantity } from '@/lib/stock';
+import {
+    formatStockQuantity,
+    isZeroStockQuantity,
+    signedStockQuantity,
+} from '@/lib/stock';
 import { cn } from '@/lib/utils';
 import type { FlashResource } from '@/types/ui';
 
@@ -65,20 +69,13 @@ type Props = {
     today: string;
 };
 
-function signedQuantity(value: string) {
-    return value.startsWith('-')
-        ? formatStockQuantity(value)
-        : `+${formatStockQuantity(value)}`;
-}
+const signedQuantity = signedStockQuantity;
+const isZero = isZeroStockQuantity;
 
 function shortDate(isoDate: string) {
     const [, month, day] = isoDate.split('-');
 
     return `${Number(month)}/${Number(day)}`;
-}
-
-function isZero(value: string) {
-    return /^-?0(\.0+)?$/.test(value);
 }
 
 function QuantityText({

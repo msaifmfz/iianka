@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { formatStockQuantity } from '@/lib/stock';
+import { fieldError } from '@/lib/validation';
 
 type ManagedStock = {
     id: number;
@@ -49,7 +50,6 @@ export default function AdminStockForm({ managedStock }: Props) {
         aliases: managedStock?.aliases.map((alias) => alias.alias) ?? [],
         initial_quantity: '',
     });
-    const formErrors = errors as Record<string, string | undefined>;
     const submitLabel = managedStock ? '在庫を修正' : '在庫を追加';
     const processingLabel = managedStock
         ? '在庫を修正中...'
@@ -160,9 +160,15 @@ export default function AdminStockForm({ managedStock }: Props) {
                                                 <X className="size-4" />
                                             </Button>
                                         </div>
-                                        {formErrors[`aliases.${index}`] && (
+                                        {fieldError(
+                                            errors,
+                                            `aliases.${index}`,
+                                        ) && (
                                             <p className="text-xs text-destructive">
-                                                {formErrors[`aliases.${index}`]}
+                                                {fieldError(
+                                                    errors,
+                                                    `aliases.${index}`,
+                                                )}
                                             </p>
                                         )}
                                     </div>

@@ -9,6 +9,7 @@ import FormField from '@/components/form-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { businessDateString } from '@/lib/dates';
+import { toggleNumber } from '@/lib/utils';
 import type { ConstructionUser, InternalNotice } from '@/types';
 
 type Props = {
@@ -33,12 +34,6 @@ type InternalNoticeForm = {
     memo: string;
     assigned_user_ids: number[];
 };
-
-function toggleNumber(values: number[], value: number) {
-    return values.includes(value)
-        ? values.filter((item) => item !== value)
-        : [...values, value];
-}
 
 export default function InternalNoticeForm({
     notice,

@@ -9,6 +9,7 @@ import { index as scheduleIndex } from '@/actions/App/Http/Controllers/Construct
 import FormField from '@/components/form-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { toggleNumber } from '@/lib/utils';
 import type { CleaningDutyRule, ConstructionUser } from '@/types';
 
 type WeekdayOption = {
@@ -32,12 +33,6 @@ type CleaningDutyRuleForm = {
     sort_order: number;
     assigned_user_ids: number[];
 };
-
-function toggleNumber(values: number[], value: number) {
-    return values.includes(value)
-        ? values.filter((item) => item !== value)
-        : [...values, value];
-}
 
 export default function CleaningDutyRuleForm({
     rule,

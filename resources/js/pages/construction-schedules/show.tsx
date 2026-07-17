@@ -17,7 +17,7 @@ import {
     useRecentResource,
 } from '@/hooks/use-recent-resource';
 import { formatStockQuantity } from '@/lib/stock';
-import { cn } from '@/lib/utils';
+import { cn, phoneHref } from '@/lib/utils';
 import type { ConstructionSchedule, ScheduleStockUsage } from '@/types';
 
 type Props = {
@@ -41,10 +41,6 @@ function Detail({ label, value }: { label: string; value: React.ReactNode }) {
             <div className="mt-1 font-medium">{value || '未設定'}</div>
         </div>
     );
-}
-
-function phoneHref(phone: string) {
-    return `tel:${phone.replace(/[^\d+]/g, '')}`;
 }
 
 export default function ConstructionScheduleShow({

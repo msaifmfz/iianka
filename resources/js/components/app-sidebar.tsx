@@ -30,7 +30,6 @@ import {
 } from '@/actions/App/Http/Controllers/ReceptionCaseController';
 import { index as receptionDocumentTypeIndex } from '@/actions/App/Http/Controllers/ReceptionDocumentTypeController';
 import { index as receptionHomeIndex } from '@/actions/App/Http/Controllers/ReceptionHomeController';
-import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import {
@@ -71,16 +70,8 @@ const mainNavItems: NavItem[] = [
     },
 ];
 
-const footerNavItems: NavItem[] = [];
-const emptyAttention = {
-    schedule_count: 0,
-    pending_voucher_count: 0,
-    internal_notice_count: 0,
-};
-
 export function AppSidebar() {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { auth, attention = emptyAttention } = usePage().props;
+    const { auth } = usePage().props;
     const navigationItems = [
         {
             ...mainNavItems[0],
@@ -101,12 +92,8 @@ export function AppSidebar() {
                     date: businessDateString(),
                 },
             }),
-            // badge: attention.schedule_count || null,
         },
-        {
-            ...mainNavItems[3],
-            // badge: attention.pending_voucher_count || null,
-        },
+        mainNavItems[3],
         mainNavItems[4],
         {
             title: '出勤管理',
@@ -180,25 +167,12 @@ export function AppSidebar() {
 
     return (
         <Sidebar collapsible="icon" variant="inset">
-            {/* <SidebarHeader> */}
-            {/*     <SidebarMenu> */}
-            {/*         <SidebarMenuItem> */}
-            {/*             <SidebarMenuButton size="lg" asChild> */}
-            {/*                 <Link href={dashboard()} prefetch> */}
-            {/*                     <AppLogo /> */}
-            {/*                 </Link> */}
-            {/*             </SidebarMenuButton> */}
-            {/*         </SidebarMenuItem> */}
-            {/*     </SidebarMenu> */}
-            {/* </SidebarHeader> */}
-
             <SidebarContent>
                 <NavMain items={navigationItems} />
                 <NavMain items={receptionItems} label="受付" />
             </SidebarContent>
 
             <SidebarFooter>
-                <NavFooter items={footerNavItems} className="mt-auto" />
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

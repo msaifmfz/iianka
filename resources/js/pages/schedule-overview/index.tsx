@@ -45,7 +45,12 @@ import {
     recentResourceMatches,
     useRecentResource,
 } from '@/hooks/use-recent-resource';
-import { businessDateString, parseBusinessDate } from '@/lib/dates';
+import {
+    adjacentBusinessMonth,
+    businessDateString,
+    businessMonthTitle,
+    parseBusinessDate,
+} from '@/lib/dates';
 import { rememberScheduleOverviewEditReturn } from '@/lib/schedule-overview-edit-return';
 import { index as overviewIndex } from '@/routes/schedule-overview';
 import type { AttendanceLeaveRecord, ConstructionUser } from '@/types';
@@ -161,30 +166,22 @@ function formatInputDate(date: Date) {
 }
 
 function adjacentMonthDate(selectedDate: string, offset: number) {
-    const date = parseDate(selectedDate);
-
-    return formatInputDate(
-        new Date(
-            Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + offset, 1, 12),
-        ),
-    );
+    return adjacentBusinessMonth(selectedDate, offset);
 }
 
 function monthTitle(date: string) {
-    return new Intl.DateTimeFormat('ja-JP', {
-        year: 'numeric',
-        month: 'long',
-        timeZone: 'Asia/Tokyo',
-    }).format(parseDate(date));
+    return businessMonthTitle(date);
 }
 
+const detailDateFormatter = new Intl.DateTimeFormat('ja-JP', {
+    month: 'long',
+    day: 'numeric',
+    weekday: 'short',
+    timeZone: 'Asia/Tokyo',
+});
+
 function detailDate(date: string) {
-    return new Intl.DateTimeFormat('ja-JP', {
-        month: 'long',
-        day: 'numeric',
-        weekday: 'short',
-        timeZone: 'Asia/Tokyo',
-    }).format(parseDate(date));
+    return detailDateFormatter.format(parseDate(date));
 }
 
 function calendarCells(

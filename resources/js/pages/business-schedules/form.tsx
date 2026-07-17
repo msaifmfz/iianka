@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { businessDateString } from '@/lib/dates';
 import { consumeScheduleOverviewEditReturn } from '@/lib/schedule-overview-edit-return';
-import { cn } from '@/lib/utils';
+import { cn, toggleNumber } from '@/lib/utils';
 import type {
     AttendanceLeaveRecord,
     BusinessSchedule,
@@ -61,12 +61,6 @@ const preferredTimeSlots = [
     ['13:00', '17:00'],
     ['08:00', '17:00'],
 ] as const;
-
-function toggleNumber(values: number[], value: number) {
-    return values.includes(value)
-        ? values.filter((item) => item !== value)
-        : [...values, value];
-}
 
 function timeToMinutes(time: string) {
     const [hours, minutes] = time.slice(0, 5).split(':').map(Number);

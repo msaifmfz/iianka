@@ -1,5 +1,6 @@
 import { usePage } from '@inertiajs/react';
 import { Badge } from '@/components/ui/badge';
+import { parseBusinessDate } from '@/lib/dates';
 import type {
     ReceptionCasePriority,
     ReceptionCaseStatus,
@@ -67,16 +68,19 @@ export function ReceptionPriorityBadge({
     );
 }
 
+const receptionDateFormatter = new Intl.DateTimeFormat('ja-JP', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'Asia/Tokyo',
+});
+
 export function formatReceptionDate(value: string | null): string {
     if (!value) {
         return '未設定';
     }
 
-    return new Intl.DateTimeFormat('ja-JP', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-    }).format(new Date(`${value}T00:00:00`));
+    return receptionDateFormatter.format(parseBusinessDate(value));
 }
 
 export function formatReceptionDateTime(value: string | null): string {

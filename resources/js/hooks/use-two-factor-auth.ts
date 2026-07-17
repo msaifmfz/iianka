@@ -1,6 +1,7 @@
 import { useHttp } from '@inertiajs/react';
 import { useCallback, useState } from 'react';
 import { qrCode, recoveryCodes, secretKey } from '@/routes/two-factor';
+import type { TwoFactorSecretKey, TwoFactorSetupData } from '@/types/auth';
 
 export type UseTwoFactorAuthReturn = {
     qrCodeSvg: string | null;
@@ -48,10 +49,7 @@ export const useTwoFactorAuth = (): UseTwoFactorAuthReturn => {
 
     const fetchQrCode = useCallback(async (): Promise<void> => {
         try {
-            const { svg } = (await submit(qrCode())) as {
-                svg: string;
-                url: string;
-            };
+            const { svg } = (await submit(qrCode())) as TwoFactorSetupData;
 
             setQrCodeSvg(svg);
         } catch {
@@ -62,9 +60,9 @@ export const useTwoFactorAuth = (): UseTwoFactorAuthReturn => {
 
     const fetchSetupKey = useCallback(async (): Promise<void> => {
         try {
-            const { secretKey: key } = (await submit(secretKey())) as {
-                secretKey: string;
-            };
+            const { secretKey: key } = (await submit(
+                secretKey(),
+            )) as TwoFactorSecretKey;
 
             setManualSetupKey(key);
         } catch {

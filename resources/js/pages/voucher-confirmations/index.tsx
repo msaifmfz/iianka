@@ -24,7 +24,7 @@ import {
     recentResourceMatches,
     useRecentResource,
 } from '@/hooks/use-recent-resource';
-import { businessDateString } from '@/lib/dates';
+import { adjacentBusinessMonth, businessMonthTitle } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import type { VoucherConfirmationSchedule } from '@/types';
 import type { FlashResource } from '@/types/ui';
@@ -98,12 +98,7 @@ function formatDateTime(dateTime: string | null) {
     }).format(new Date(dateTime));
 }
 
-function adjacentMonthDate(date: string, offset: number) {
-    const [year, month] = date.split('-').map(Number);
-    const value = new Date(Date.UTC(year, month - 1 + offset, 1, 12));
-
-    return businessDateString(value);
-}
+const adjacentMonthDate = adjacentBusinessMonth;
 
 function filterQuery(
     filters: Props['filters'],
@@ -361,11 +356,7 @@ export default function VoucherConfirmationsIndex({
     const recentResource = useRecentResource();
     const previousMonthDate = adjacentMonthDate(filters.date, -1);
     const nextMonthDate = adjacentMonthDate(filters.date, 1);
-    const monthTitle = new Intl.DateTimeFormat('ja-JP', {
-        year: 'numeric',
-        month: 'long',
-        timeZone: 'Asia/Tokyo',
-    }).format(new Date(`${filters.date}T00:00:00+09:00`));
+    const monthTitle = businessMonthTitle(filters.date);
     const selectedRangeLabel =
         filters.day === 'all' ? '月すべて' : formatDate(filters.day);
     const todayInMonth =

@@ -63,8 +63,13 @@ import {
     recentResourceMatches,
     useRecentResource,
 } from '@/hooks/use-recent-resource';
-import { businessDateString, parseBusinessDate } from '@/lib/dates';
-import { cn } from '@/lib/utils';
+import {
+    adjacentBusinessMonth,
+    businessDateString,
+    businessMonthTitle,
+    parseBusinessDate,
+} from '@/lib/dates';
+import { cn, phoneHref } from '@/lib/utils';
 import type {
     ConstructionSchedule,
     ConstructionUser,
@@ -162,31 +167,23 @@ const scheduleTypePriority: Record<ScheduleType, number> = {
 
 const scheduleIndexScrollStorageKey = 'construction-schedules:index-scroll:';
 
+const scheduleDateFormatter = new Intl.DateTimeFormat('ja-JP', {
+    month: 'long',
+    day: 'numeric',
+    weekday: 'short',
+    timeZone: 'Asia/Tokyo',
+});
+
 function formatDate(date: string) {
-    return new Intl.DateTimeFormat('ja-JP', {
-        month: 'long',
-        day: 'numeric',
-        weekday: 'short',
-        timeZone: 'Asia/Tokyo',
-    }).format(parseBusinessDate(date));
+    return scheduleDateFormatter.format(parseBusinessDate(date));
 }
 
 function formatInputDate(date: Date) {
     return businessDateString(date);
 }
 
-function phoneHref(phone: string) {
-    return `tel:${phone.replace(/[^\d+]/g, '')}`;
-}
-
 function adjacentMonthDate(selectedDate: string, offset: number) {
-    const date = parseBusinessDate(selectedDate);
-
-    return formatInputDate(
-        new Date(
-            Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + offset, 1, 12),
-        ),
-    );
+    return adjacentBusinessMonth(selectedDate, offset);
 }
 
 function allScheduleTypesSelected(types: ScheduleType[]) {
@@ -1129,11 +1126,7 @@ export default function ConstructionSchedulesIndex({
     const nextDecadeDate = adjacentYearDate(filters.date, 10);
     const selectedYear = parseBusinessDate(filters.date).getUTCFullYear();
     const yearOptions = surroundingYears(filters.date);
-    const monthTitle = new Intl.DateTimeFormat('ja-JP', {
-        year: 'numeric',
-        month: 'long',
-        timeZone: 'Asia/Tokyo',
-    }).format(parseBusinessDate(filters.date));
+    const monthTitle = businessMonthTitle(filters.date);
     const hasSelectedUserFilter =
         canViewAllContent && filters.user_ids.length > 0;
     const filteredMySchedules = sortSchedulesByPriority(

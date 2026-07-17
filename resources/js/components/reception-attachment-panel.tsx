@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAudioRecorder } from '@/hooks/use-audio-recorder';
 import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
+import { formatMinutesSeconds } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type {
     ReceptionAttachmentConstraints,
@@ -51,13 +52,6 @@ type AttachmentDeleteResponse = {
 
 function fileNameWithoutExtension(name: string): string {
     return name.replace(/\.[^/.]+$/, '');
-}
-
-function formatTimer(seconds: number): string {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 }
 
 function formatUploadLimit(kilobytes: number): string {
@@ -401,7 +395,7 @@ export default function ReceptionAttachmentPanel({
                                         onClick={() => stopRecording(true)}
                                     >
                                         <Square className="size-4" />
-                                        {formatTimer(recordingSeconds)}
+                                        {formatMinutesSeconds(recordingSeconds)}
                                     </Button>
                                     <Button
                                         type="button"

@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { fieldOrElementError } from '@/lib/validation';
 import type { ReceptionDocumentType } from '@/types';
 
 type Props = {
@@ -156,15 +157,10 @@ function orderDocumentTypesByIds(
 }
 
 function orderErrorMessage(errors: Record<string, string>): string {
-    if (errors.ordered_ids) {
-        return errors.ordered_ids;
-    }
-
-    const elementError = Object.entries(errors).find(([key]) =>
-        key.startsWith('ordered_ids.'),
+    return (
+        fieldOrElementError(errors, 'ordered_ids') ??
+        '表示順を保存できませんでした。'
     );
-
-    return elementError?.[1] ?? '表示順を保存できませんでした。';
 }
 
 export default function ReceptionDocumentTypesIndex({ documentTypes }: Props) {

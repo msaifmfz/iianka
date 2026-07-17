@@ -9,30 +9,12 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { formatBytes, formatMinutesSeconds } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { ReceptionCaseAttachment } from '@/types';
 
-function formatBytes(size: number | null): string {
-    if (size === null) {
-        return '-';
-    }
-
-    if (size < 1024 * 1024) {
-        return `${Math.max(1, Math.round(size / 1024))}KB`;
-    }
-
-    return `${(size / 1024 / 1024).toFixed(1)}MB`;
-}
-
 function formatDuration(seconds: number | null): string {
-    if (seconds === null) {
-        return '';
-    }
-
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    return seconds === null ? '' : formatMinutesSeconds(seconds);
 }
 
 function formatDate(value: string | null): string {

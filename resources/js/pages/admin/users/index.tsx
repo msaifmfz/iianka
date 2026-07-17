@@ -1,13 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import {
-    BadgeCheck,
-    KeyRound,
-    Pencil,
-    Plus,
-    Search,
-    Trash2,
-    EyeOff,
-} from 'lucide-react';
+import { EyeOff, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import {
     create as userCreate,
@@ -180,36 +172,6 @@ function UserRoleBadge({ user }: { user: ManagedUser }) {
     return <Badge variant={variant}>{user.role_label}</Badge>;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function UserSecurityBadges({ user }: { user: ManagedUser }) {
-    return (
-        <div className="flex flex-wrap gap-2">
-            <Badge
-                variant={
-                    user.email === null
-                        ? 'outline'
-                        : user.email_verified_at
-                          ? 'secondary'
-                          : 'outline'
-                }
-            >
-                <BadgeCheck className="size-3" />
-                {user.email === null
-                    ? 'メール未登録'
-                    : user.email_verified_at
-                      ? 'メール認証済み'
-                      : '未認証'}
-            </Badge>
-            <Badge
-                variant={user.two_factor_confirmed_at ? 'secondary' : 'outline'}
-            >
-                <KeyRound className="size-3" />
-                {user.two_factor_confirmed_at ? '2FA 有効' : '2FA 未設定'}
-            </Badge>
-        </div>
-    );
-}
-
 function UserActions({ user }: { user: ManagedUser }) {
     return (
         <div className="flex gap-2 sm:justify-end">
@@ -361,16 +323,6 @@ export default function AdminUsersIndex({ users, filters }: Props) {
                                                     )}
                                                 </dd>
                                             </div>
-                                            {/* <div className="grid gap-2"> */}
-                                            {/*     <dt className="text-muted-foreground"> */}
-                                            {/*         セキュリティ */}
-                                            {/*     </dt> */}
-                                            {/*     <dd> */}
-                                            {/*         <UserSecurityBadges */}
-                                            {/*             user={user} */}
-                                            {/*         /> */}
-                                            {/*     </dd> */}
-                                            {/* </div> */}
                                         </dl>
 
                                         <div className="mt-4 border-t pt-4 dark:border-neutral-800">
@@ -387,9 +339,6 @@ export default function AdminUsersIndex({ users, filters }: Props) {
                                     <tr>
                                         <th className="px-5 py-3">ユーザー</th>
                                         <th className="px-5 py-3">権限</th>
-                                        {/* <th className="px-5 py-3"> */}
-                                        {/*     セキュリティ */}
-                                        {/* </th> */}
                                         <th className="px-5 py-3">作成日</th>
                                         <th className="px-5 py-3 text-right">
                                             操作
@@ -429,11 +378,6 @@ export default function AdminUsersIndex({ users, filters }: Props) {
                                                         user={user}
                                                     />
                                                 </td>
-                                                {/* <td className="px-5 py-4"> */}
-                                                {/*     <UserSecurityBadges */}
-                                                {/*         user={user} */}
-                                                {/*     /> */}
-                                                {/* </td> */}
                                                 <td className="px-5 py-4 text-muted-foreground">
                                                     {formatDate(
                                                         user.created_at,

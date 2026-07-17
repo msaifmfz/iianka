@@ -22,7 +22,11 @@ import {
     recentResourceMatches,
     useRecentResource,
 } from '@/hooks/use-recent-resource';
-import { businessDateString, parseBusinessDate } from '@/lib/dates';
+import {
+    businessDateString,
+    businessMonthTitle,
+    parseBusinessDate,
+} from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import type {
     AttendanceRecord,
@@ -62,15 +66,7 @@ type AttendanceForm = {
     note: string;
 };
 
-const japaneseWeekdayLabels: Record<string, string> = {
-    日: '日',
-    月: '月',
-    火: '火',
-    水: '水',
-    木: '木',
-    金: '金',
-    土: '土',
-};
+const japaneseWeekdays = ['日', '月', '火', '水', '木', '金', '土'];
 
 const statusLabels: Record<AttendanceStatus, string> = {
     working: '出勤',
@@ -90,11 +86,7 @@ function dayLabel(day: AttendanceDay) {
 }
 
 function monthLabel(date: string) {
-    return new Intl.DateTimeFormat('ja-JP', {
-        year: 'numeric',
-        month: 'long',
-        timeZone: 'Asia/Tokyo',
-    }).format(parseBusinessDate(date));
+    return businessMonthTitle(date);
 }
 
 function dateLabel(date: string) {
@@ -127,13 +119,14 @@ function shortDateLabel(date: string) {
 }
 
 function japaneseWeekdayName(day: AttendanceDay): string {
-    return (
-        japaneseWeekdayLabels[day.weekday] ??
-        new Intl.DateTimeFormat('ja-JP', {
-            weekday: 'long',
-            timeZone: 'Asia/Tokyo',
-        }).format(parseBusinessDate(day.date))
-    );
+    if (japaneseWeekdays.includes(day.weekday)) {
+        return day.weekday;
+    }
+
+    return new Intl.DateTimeFormat('ja-JP', {
+        weekday: 'long',
+        timeZone: 'Asia/Tokyo',
+    }).format(parseBusinessDate(day.date));
 }
 
 function statusClass(status: AttendanceStatus | undefined) {
