@@ -13,6 +13,7 @@ use App\ReceptionCaseStatus;
 use App\Services\BusinessDate;
 use App\Services\ReceptionCaseNumberGenerator;
 use App\Services\ReceptionCaseWorkflow;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 
 /**
@@ -395,6 +396,33 @@ test('workflow managers assign explicitly before starting work', function (): vo
             ->where('caseData.activities.1.from_assigned_user', null)
             ->where('caseData.activities.1.to_assigned_user', null)
         );
+});
+
+test('workflow transitions record audit entries outside the transition transaction', function (): void {
+    $manager = User::factory()->editor()->create();
+    $assignee = User::factory()->create();
+    $case = ReceptionCase::factory()->received()->create();
+
+    $transactionLevels = [];
+    AuditLog::creating(function () use (&$transactionLevels): void {
+        $transactionLevels[] = DB::transactionLevel();
+    });
+
+    $this->actingAs($manager)
+        ->patch(route('reception.cases.assign', $case), [
+            'assigned_user_id' => $assignee->id,
+        ])
+        ->assertRedirect();
+
+    $this->patch(route('reception.cases.start', $case))
+        ->assertRedirect();
+
+    expect(AuditLog::query()->where('event', 'reception_cases.assigned')->exists())->toBeTrue()
+        ->and(AuditLog::query()->where('event', 'reception_cases.started')->exists())->toBeTrue()
+        ->and($transactionLevels)->toHaveCount(2)
+        // Level 1 is the RefreshDatabase wrapper; the workflow's own
+        // transaction (level 2) must already be committed when audits write.
+        ->and($transactionLevels)->each->toBe(1);
 });
 
 test('only workflow managers can set assignees from review cases', function (): void {

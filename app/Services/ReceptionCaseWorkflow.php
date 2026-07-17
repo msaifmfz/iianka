@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\AuditLog;
 use App\Models\ReceptionCase;
 use App\Models\ReceptionCaseActivity;
 use App\Models\User;
@@ -118,10 +119,10 @@ class ReceptionCaseWorkflow
                 'to_assigned_user_id' => $toAssignedUserId,
             ]);
 
-            $this->auditLogger->success('reception_cases.assigned', 'A reception case was assigned.', $locked, [
+            DB::afterCommit(fn (): ?AuditLog => $this->auditLogger->success('reception_cases.assigned', 'A reception case was assigned.', $locked, [
                 'from_assigned_user_id' => $fromAssignedUserId,
                 'to_assigned_user_id' => $toAssignedUserId,
-            ], $actor);
+            ], $actor));
 
             return true;
         });
@@ -185,7 +186,7 @@ class ReceptionCaseWorkflow
 
             $locked->recordActivity($actor, $activityType, $activity);
 
-            $this->auditLogger->success($auditEvent, $auditDescription, $locked, [], $actor);
+            DB::afterCommit(fn (): ?AuditLog => $this->auditLogger->success($auditEvent, $auditDescription, $locked, [], $actor));
 
             return true;
         });
