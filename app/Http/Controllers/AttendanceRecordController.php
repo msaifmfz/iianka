@@ -13,12 +13,13 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 class AttendanceRecordController extends Controller
 {
     public function index(Request $request): Response
     {
-        $month = Carbon::parse($request->query('month', $this->defaultMonth()->toDateString()))->startOfMonth();
+        $month = $this->selectedMonth($request);
         $startsOn = $month->copy()->day(21);
         $endsOn = $month->copy()->addMonthNoOverflow()->day(20);
         $canManage = $request->user()?->canManageContent() === true;
@@ -103,6 +104,21 @@ class AttendanceRecordController extends Controller
         $this->flashToast('出勤状況を未設定に戻しました。');
 
         return back();
+    }
+
+    private function selectedMonth(Request $request): Carbon
+    {
+        $requestedMonth = $request->query('month');
+
+        if (! is_string($requestedMonth) || $requestedMonth === '') {
+            return $this->defaultMonth();
+        }
+
+        try {
+            return Carbon::parse($requestedMonth)->startOfMonth();
+        } catch (Throwable) {
+            return $this->defaultMonth();
+        }
     }
 
     private function defaultMonth(): Carbon

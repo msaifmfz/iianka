@@ -77,6 +77,28 @@ test('attendance records default to the current attendance period month', functi
     'next period start uses same month' => ['2026-09-21 09:00:00', '2026-09-01', 30, '2026-09-21', '2026-10-20'],
 ]);
 
+test('malformed ?month= falls back to the default period month', function (string $month): void {
+    Carbon::setTestNow(Carbon::parse('2026-08-21 09:00:00', 'Asia/Tokyo'));
+
+    try {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get(route('attendance-records.index', ['month' => $month]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page): Assert => $page
+                ->component('attendance-records/index')
+                ->where('filters.month', '2026-08-01')
+            );
+    } finally {
+        Carbon::setTestNow();
+    }
+})->with([
+    'garbage' => ['not-a-date'],
+    'impossible date' => ['2026-99-99'],
+    'empty string' => [''],
+]);
+
 test('admins cannot view hidden users on attendance records', function (): void {
     $admin = User::factory()->admin()->create();
     $worker = User::factory()->create(['name' => '山田 太郎']);
