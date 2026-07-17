@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
+use Override;
 use RuntimeException;
 
 /**
@@ -40,5 +41,18 @@ class SiteGuideFile extends Model
         }
 
         return $path;
+    }
+
+    public function deleteStoredFile(): void
+    {
+        Storage::disk($this->disk)->delete($this->path);
+    }
+
+    #[Override]
+    protected static function booted(): void
+    {
+        self::deleted(function (SiteGuideFile $file): void {
+            $file->deleteStoredFile();
+        });
     }
 }

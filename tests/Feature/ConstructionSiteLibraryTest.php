@@ -281,6 +281,40 @@ test('admins can delete standalone site guide files', function (): void {
     $this->assertModelMissing($guideFile);
 });
 
+test('deleting a site guide file removes it from storage', function (): void {
+    Storage::fake('local');
+
+    $admin = User::factory()->admin()->create();
+    $path = UploadedFile::fake()->create('guide.pdf', 100, 'application/pdf')->store('site-guides', 'local');
+    $guideFile = SiteGuideFile::factory()->create(['path' => $path]);
+
+    $this->actingAs($admin)
+        ->delete(route('construction-sites.destroy', $guideFile))
+        ->assertRedirect(route('construction-sites.index'));
+
+    $this->assertModelMissing($guideFile);
+    Storage::disk('local')->assertMissing($path);
+});
+
+test('replacing a site guide file removes the old file from storage', function (): void {
+    Storage::fake('local');
+
+    $admin = User::factory()->admin()->create();
+    $oldPath = UploadedFile::fake()->create('old.pdf', 100, 'application/pdf')->store('site-guides', 'local');
+    $guideFile = SiteGuideFile::factory()->create(['path' => $oldPath]);
+
+    $this->actingAs($admin)
+        ->put(route('construction-sites.update', $guideFile), [
+            'name' => '差し替え案内図',
+            'guide_file' => UploadedFile::fake()->create('new.pdf', 100, 'application/pdf'),
+        ])
+        ->assertRedirect(route('construction-sites.show', $guideFile));
+
+    $guideFile->refresh();
+    Storage::disk('local')->assertExists($guideFile->path);
+    Storage::disk('local')->assertMissing($oldPath);
+});
+
 test('admins must provide a unique name when renaming a standalone site guide file', function (): void {
     Storage::fake('local');
 

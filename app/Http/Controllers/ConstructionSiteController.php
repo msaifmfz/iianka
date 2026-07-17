@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -85,9 +86,13 @@ class ConstructionSiteController extends Controller
     public function update(UpdateConstructionSiteRequest $request, SiteGuideFile $siteGuideFile): RedirectResponse
     {
         $attributes = $request->safe()->only('name');
+        $previousDisk = null;
+        $previousPath = null;
 
         if ($request->hasFile('guide_file')) {
             $file = $request->file('guide_file');
+            $previousDisk = $siteGuideFile->disk;
+            $previousPath = $siteGuideFile->path;
 
             $attributes = [
                 ...$attributes,
@@ -99,6 +104,11 @@ class ConstructionSiteController extends Controller
         }
 
         $siteGuideFile->update($attributes);
+
+        // Remove the replaced file only after the row points at the new one.
+        if ($previousDisk !== null && $previousPath !== null) {
+            Storage::disk($previousDisk)->delete($previousPath);
+        }
 
         $this->auditSuccess('site_guide_files.updated', 'A site guide file was updated.', $siteGuideFile, [
             'changed' => array_values(array_diff(array_keys($siteGuideFile->getChanges()), ['updated_at'])),
