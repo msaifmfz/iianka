@@ -52,6 +52,7 @@ import {
     parseBusinessDate,
 } from '@/lib/dates';
 import { rememberScheduleOverviewEditReturn } from '@/lib/schedule-overview-edit-return';
+import { searchReturnStorageKey } from '@/lib/schedule-search-storage';
 import { scheduleTypeDescriptors } from '@/lib/schedule-types';
 import {
     dragSelectionRange,
@@ -331,10 +332,6 @@ function highlightedScheduleKey(highlightedSchedule: HighlightedSchedule) {
     }
 
     return `${highlightedSchedule.type}-${highlightedSchedule.id}`;
-}
-
-function searchReturnStorageKey(url: string) {
-    return `schedule-search:return:${url}`;
 }
 
 function canReturnToStoredSearchHistory(returnTo: string) {
