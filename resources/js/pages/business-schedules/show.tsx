@@ -5,6 +5,7 @@ import {
     edit as businessScheduleEdit,
 } from '@/actions/App/Http/Controllers/BusinessScheduleController';
 import { index as scheduleIndex } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
+import { Detail } from '@/components/detail-item';
 import { FloatingBackButton } from '@/components/floating-back-button';
 import {
     RecentResourceBadge,
@@ -17,6 +18,7 @@ import {
     recentResourceMatches,
     useRecentResource,
 } from '@/hooks/use-recent-resource';
+import { visitReturnTo } from '@/lib/return-to';
 import { cn } from '@/lib/utils';
 import type { BusinessSchedule } from '@/types';
 
@@ -25,15 +27,6 @@ type Props = {
     canManage: boolean;
     returnTo: string | null;
 };
-
-function Detail({ label, value }: { label: string; value: React.ReactNode }) {
-    return (
-        <div className="rounded-2xl bg-neutral-50 p-4 dark:bg-neutral-900">
-            <p className="text-sm text-muted-foreground">{label}</p>
-            <div className="mt-1 font-medium">{value || '未設定'}</div>
-        </div>
-    );
-}
 
 export default function BusinessScheduleShow({
     schedule,
@@ -56,13 +49,7 @@ export default function BusinessScheduleShow({
     });
 
     function handleReturnToIndex() {
-        if (typeof window !== 'undefined' && returnTo !== null) {
-            router.visit(returnTo);
-
-            return;
-        }
-
-        router.visit(fallbackReturnTo);
+        visitReturnTo(returnTo, fallbackReturnTo);
     }
 
     async function deleteSchedule() {

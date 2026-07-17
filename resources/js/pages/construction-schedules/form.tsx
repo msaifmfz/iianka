@@ -1,7 +1,5 @@
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import {
-    AlertTriangle,
-    CheckCircle2,
     ExternalLink,
     Files,
     FileText,
@@ -30,7 +28,9 @@ import {
     RecentResourceBadge,
     recentResourceHighlightClass,
 } from '@/components/recent-resource-feedback';
+import { ScheduleAvailabilityPanel } from '@/components/schedule-availability-panel';
 import { ScheduleContentEditor } from '@/components/schedule-content-editor';
+import { ScheduleStaffPicker } from '@/components/schedule-staff-picker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
@@ -38,8 +38,15 @@ import {
     recentResourceMatches,
     useRecentResource,
 } from '@/hooks/use-recent-resource';
+import { useScheduleTimeFields } from '@/hooks/use-schedule-time-fields';
 import { businessDateString } from '@/lib/dates';
-import { consumeScheduleOverviewEditReturn } from '@/lib/schedule-overview-edit-return';
+import { goBackToReturnTo } from '@/lib/return-to';
+import {
+    availableTimeSlots,
+    conflictsWithSchedules,
+    matchingBusySchedules,
+    matchingLeaveRecords,
+} from '@/lib/schedule-availability';
 import { cn, phoneHref, toggleNumber } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import type {
@@ -161,16 +168,6 @@ const siteRegionOptions = [
 ] as const;
 
 const timeNotePresets = ['本日中', '午前中', '午後中', '時間未定'];
-const preferredTimeSlots = [
-    ['08:00', '10:00'],
-    ['10:00', '12:00'],
-    ['13:00', '15:00'],
-    ['15:00', '17:00'],
-    ['08:00', '12:00'],
-    ['13:00', '17:00'],
-    ['08:00', '17:00'],
-] as const;
-
 const guideFileAccept =
     'application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif';
 
@@ -202,83 +199,6 @@ function fileSizeLabel(size: number) {
     }
 
     return `${size} B`;
-}
-
-function timeToMinutes(time: string) {
-    const [hours, minutes] = time.slice(0, 5).split(':').map(Number);
-
-    return hours * 60 + minutes;
-}
-
-function timesOverlap(
-    startsAt: string,
-    endsAt: string,
-    existingStartsAt: string,
-    existingEndsAt: string,
-) {
-    return (
-        timeToMinutes(startsAt) < timeToMinutes(existingEndsAt) &&
-        timeToMinutes(endsAt) > timeToMinutes(existingStartsAt)
-    );
-}
-
-function conflictsWithSchedules(
-    startsAt: string,
-    endsAt: string,
-    schedules: ScheduleAvailability[],
-) {
-    if (
-        !startsAt ||
-        !endsAt ||
-        timeToMinutes(startsAt) >= timeToMinutes(endsAt)
-    ) {
-        return false;
-    }
-
-    return schedules.some((schedule) =>
-        timesOverlap(startsAt, endsAt, schedule.starts_at, schedule.ends_at),
-    );
-}
-
-function matchingBusySchedules(
-    schedules: ScheduleAvailability[],
-    scheduledOn: string,
-    assignedUserIds: number[],
-) {
-    if (assignedUserIds.length === 0) {
-        return [];
-    }
-
-    return schedules.filter(
-        (schedule) =>
-            schedule.scheduled_on === scheduledOn &&
-            schedule.user_ids.some((userId) =>
-                assignedUserIds.includes(userId),
-            ),
-    );
-}
-
-function matchingLeaveRecords(
-    records: AttendanceLeaveRecord[],
-    scheduledOn: string,
-    assignedUserIds: number[],
-) {
-    if (assignedUserIds.length === 0) {
-        return [];
-    }
-
-    return records.filter(
-        (record) =>
-            record.work_date === scheduledOn &&
-            assignedUserIds.includes(record.user_id),
-    );
-}
-
-function availableTimeSlots(schedules: ScheduleAvailability[]) {
-    return preferredTimeSlots.filter(
-        ([startsAt, endsAt]) =>
-            !conflictsWithSchedules(startsAt, endsAt, schedules),
-    );
 }
 
 export default function ConstructionScheduleForm({
@@ -416,29 +336,7 @@ export default function ConstructionScheduleForm({
     }
 
     function handleGoBack() {
-        if (returnTo !== null && returnTo !== undefined) {
-            if (
-                typeof window !== 'undefined' &&
-                window.history.length > 1 &&
-                consumeScheduleOverviewEditReturn(url, returnTo)
-            ) {
-                window.history.back();
-
-                return;
-            }
-
-            router.visit(returnTo, { replace: true });
-
-            return;
-        }
-
-        if (typeof window !== 'undefined' && window.history.length > 1) {
-            window.history.back();
-
-            return;
-        }
-
-        router.visit(scheduleIndex());
+        goBackToReturnTo(url, returnTo, scheduleIndex());
     }
 
     function addGuideUploads(files: File[]) {
@@ -590,45 +488,8 @@ export default function ConstructionScheduleForm({
         );
     }
 
-    function selectTimeNotePreset(timeNote: string) {
-        setData((values) => ({
-            ...values,
-            starts_at: '',
-            ends_at: '',
-            time_note: timeNote,
-        }));
-    }
-
-    function setStartTime(startsAt: string) {
-        setData((values) => ({
-            ...values,
-            starts_at: startsAt,
-            time_note: timeNotePresets.includes(values.time_note)
-                ? ''
-                : values.time_note,
-        }));
-    }
-
-    function setEndTime(endsAt: string) {
-        setData((values) => ({
-            ...values,
-            ends_at: endsAt,
-            time_note: timeNotePresets.includes(values.time_note)
-                ? ''
-                : values.time_note,
-        }));
-    }
-
-    function setTimeRange(startsAt: string, endsAt: string) {
-        setData((values) => ({
-            ...values,
-            starts_at: startsAt,
-            ends_at: endsAt,
-            time_note: timeNotePresets.includes(values.time_note)
-                ? ''
-                : values.time_note,
-        }));
-    }
+    const { selectTimeNotePreset, setStartTime, setEndTime, setTimeRange } =
+        useScheduleTimeFields(setData, timeNotePresets);
 
     return (
         <>
@@ -683,82 +544,15 @@ export default function ConstructionScheduleForm({
                                 placeholder="例: 1"
                             />
                         </FormField>
-                        <div className="rounded-2xl border p-4 md:col-span-3 dark:border-neutral-800">
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                                <div>
-                                    <h2 className="font-semibold">スタッフ</h2>
-                                    <p className="mt-1 text-xs text-muted-foreground">
-                                        選択したスタッフの予定をもとに空き時間を表示します。
-                                    </p>
-                                </div>
-                                {data.assigned_user_ids.length > 0 && (
-                                    <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900 dark:bg-amber-950 dark:text-amber-100">
-                                        {data.assigned_user_ids.length}名選択中
-                                    </span>
-                                )}
-                            </div>
-                            <div className="mt-3 grid gap-2 sm:grid-cols-2 md:grid-cols-3">
-                                {users.map((user) => (
-                                    <label
-                                        key={user.id}
-                                        className={cn(
-                                            'flex items-center gap-2 rounded-xl border p-3 text-sm transition',
-                                            data.assigned_user_ids.includes(
-                                                user.id,
-                                            )
-                                                ? 'border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100'
-                                                : 'border-neutral-200 hover:bg-muted/50 dark:border-neutral-800',
-                                        )}
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            checked={data.assigned_user_ids.includes(
-                                                user.id,
-                                            )}
-                                            onChange={() =>
-                                                setData(
-                                                    'assigned_user_ids',
-                                                    toggleNumber(
-                                                        data.assigned_user_ids,
-                                                        user.id,
-                                                    ),
-                                                )
-                                            }
-                                        />
-                                        {user.name}
-                                    </label>
-                                ))}
-                            </div>
-                            {errors.assigned_user_ids && (
-                                <p className="mt-2 text-xs text-destructive">
-                                    {errors.assigned_user_ids}
-                                </p>
-                            )}
-                            {leaveRecords.length > 0 && (
-                                <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-100">
-                                    <div className="flex items-center gap-2 font-semibold">
-                                        <AlertTriangle className="size-4" />
-                                        選択した日に休みの担当者がいます
-                                    </div>
-                                    <div className="mt-2 flex flex-wrap gap-2">
-                                        {leaveRecords.map((record) => (
-                                            <span
-                                                key={record.id}
-                                                className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-rose-900 ring-1 ring-rose-200 dark:bg-neutral-950 dark:text-rose-100 dark:ring-rose-900"
-                                            >
-                                                {record.user_name}
-                                                {record.note
-                                                    ? `: ${record.note}`
-                                                    : ''}
-                                            </span>
-                                        ))}
-                                    </div>
-                                    <p className="mt-2 text-xs">
-                                        登録は続行できます。必要に応じて担当者を調整してください。
-                                    </p>
-                                </div>
-                            )}
-                        </div>
+                        <ScheduleStaffPicker
+                            users={users}
+                            assignedUserIds={data.assigned_user_ids}
+                            leaveRecords={leaveRecords}
+                            error={errors.assigned_user_ids}
+                            onChangeAssignedUserIds={(userIds) =>
+                                setData('assigned_user_ids', userIds)
+                            }
+                        />
                         <div className="rounded-2xl border p-4 md:col-span-3 dark:border-neutral-800">
                             <div className="flex flex-wrap items-center justify-between gap-3">
                                 <div>
@@ -1137,99 +931,17 @@ export default function ConstructionScheduleForm({
                                 }
                             />
                         </FormField>
-                        <div className="rounded-2xl border bg-neutral-50 p-4 md:col-span-3 dark:border-neutral-800 dark:bg-neutral-900/50">
-                            <div className="flex flex-wrap items-start justify-between gap-3">
-                                <div>
-                                    <h2 className="font-semibold">
-                                        時間の空き状況
-                                    </h2>
-                                    <p className="mt-1 text-xs text-muted-foreground">
-                                        {data.assigned_user_ids.length === 0
-                                            ? 'スタッフを選択すると、その日の重複予定を確認できます。'
-                                            : `${data.scheduled_on} の選択スタッフの予定を表示しています。`}
-                                    </p>
-                                </div>
-                                {data.assigned_user_ids.length > 0 &&
-                                    (hasTimeConflict ? (
-                                        <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-800 dark:bg-rose-950 dark:text-rose-100">
-                                            <AlertTriangle className="size-3.5" />
-                                            重複あり
-                                        </span>
-                                    ) : (
-                                        data.starts_at &&
-                                        data.ends_at && (
-                                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-100">
-                                                <CheckCircle2 className="size-3.5" />
-                                                登録可能
-                                            </span>
-                                        )
-                                    ))}
-                            </div>
-
-                            {busySchedules.length > 0 ? (
-                                <div className="mt-4 grid gap-2 md:grid-cols-2">
-                                    {busySchedules.map((busySchedule) => (
-                                        <div
-                                            key={`${busySchedule.type}-${busySchedule.id}`}
-                                            className="rounded-xl bg-white p-3 text-sm ring-1 ring-neutral-200 dark:bg-neutral-950 dark:ring-neutral-800"
-                                        >
-                                            <div className="flex flex-wrap items-center justify-between gap-2">
-                                                <span className="font-semibold">
-                                                    {busySchedule.time}
-                                                </span>
-                                                <span className="text-xs text-muted-foreground">
-                                                    {busySchedule.user_names.join(
-                                                        '、',
-                                                    )}
-                                                </span>
-                                            </div>
-                                            <p className="mt-1 text-muted-foreground">
-                                                {busySchedule.title}
-                                            </p>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                data.assigned_user_ids.length > 0 && (
-                                    <p className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
-                                        この日の選択スタッフには時間指定の予定がありません。
-                                    </p>
-                                )
+                        <ScheduleAvailabilityPanel
+                            scheduledOn={data.scheduled_on}
+                            assignedUserCount={data.assigned_user_ids.length}
+                            busySchedules={busySchedules}
+                            hasTimeConflict={hasTimeConflict}
+                            hasTimeRange={Boolean(
+                                data.starts_at && data.ends_at,
                             )}
-
-                            {data.assigned_user_ids.length > 0 && (
-                                <div className="mt-4">
-                                    <p className="text-xs font-semibold text-muted-foreground">
-                                        空き時間クイック選択
-                                    </p>
-                                    <div className="mt-2 flex flex-wrap gap-2">
-                                        {suggestedTimeSlots.length > 0 ? (
-                                            suggestedTimeSlots.map(
-                                                ([startsAt, endsAt]) => (
-                                                    <button
-                                                        key={`${startsAt}-${endsAt}`}
-                                                        type="button"
-                                                        className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold ring-1 ring-neutral-200 transition hover:bg-amber-50 hover:text-amber-900 dark:bg-neutral-950 dark:ring-neutral-800 dark:hover:bg-amber-950/40 dark:hover:text-amber-100"
-                                                        onClick={() =>
-                                                            setTimeRange(
-                                                                startsAt,
-                                                                endsAt,
-                                                            )
-                                                        }
-                                                    >
-                                                        {startsAt} - {endsAt}
-                                                    </button>
-                                                ),
-                                            )
-                                        ) : (
-                                            <span className="text-sm text-muted-foreground">
-                                                推奨枠はすべて既存予定と重なっています。予定一覧を見ながら手入力してください。
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+                            suggestedTimeSlots={suggestedTimeSlots}
+                            onSelectTimeSlot={setTimeRange}
+                        />
                         <FormField label="時間メモ" error={errors.time_note}>
                             <Input
                                 value={data.time_note}
