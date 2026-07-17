@@ -13,6 +13,7 @@ class SiteGuideFileController extends Controller
     public function show(Request $request, SiteGuideFile $siteGuideFile): BinaryFileResponse
     {
         abort_unless($request->user() !== null, 403);
+        abort_unless($siteGuideFile->fileExists(), 404);
 
         $this->auditSuccess('site_guide_files.downloaded', 'A site guide file was downloaded.', $siteGuideFile);
 

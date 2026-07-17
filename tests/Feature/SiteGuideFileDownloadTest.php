@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\AuditLog;
 use App\Models\SiteGuideFile;
 use App\Models\User;
 use Illuminate\Support\Facades\Storage;
@@ -22,6 +23,21 @@ test('authenticated users can open private guide files', function (): void {
         ->get(route('site-guide-files.show', $file))
         ->assertOk()
         ->assertHeader('content-disposition', 'inline; filename="guide.pdf"');
+});
+
+test('missing guide files return 404 instead of a server error', function (): void {
+    Storage::fake('local');
+
+    $file = SiteGuideFile::factory()->create([
+        'disk' => 'local',
+        'path' => 'site-guides/gone.pdf',
+    ]);
+
+    $this->actingAs(User::factory()->create())
+        ->get(route('site-guide-files.show', $file))
+        ->assertNotFound();
+
+    expect(AuditLog::query()->where('event', 'site_guide_files.downloaded')->exists())->toBeFalse();
 });
 
 test('guests cannot open private guide files', function (): void {

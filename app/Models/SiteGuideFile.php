@@ -43,6 +43,11 @@ class SiteGuideFile extends Model
         return $path;
     }
 
+    public function fileExists(): bool
+    {
+        return Storage::disk($this->disk)->exists($this->path);
+    }
+
     public function deleteStoredFile(): void
     {
         Storage::disk($this->disk)->delete($this->path);
