@@ -1,43 +1,19 @@
-import { Head, router, useForm, usePage } from '@inertiajs/react';
-import {
-    ExternalLink,
-    Files,
-    FileText,
-    Pencil,
-    Phone,
-    Plus,
-    Save,
-    Search,
-    Trash2,
-    UploadCloud,
-    X,
-} from 'lucide-react';
-import { useState } from 'react';
+import { Head, useForm, usePage } from '@inertiajs/react';
+import {} from 'lucide-react';
 import {
     index as scheduleIndex,
     store as scheduleStore,
     update as scheduleUpdate,
 } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
-import {
-    destroy as subcontractorDestroy,
-    update as subcontractorUpdate,
-} from '@/actions/App/Http/Controllers/ConstructionSubcontractorController';
 import { FloatingBackButton } from '@/components/floating-back-button';
 import FormField from '@/components/form-field';
-import {
-    RecentResourceBadge,
-    recentResourceHighlightClass,
-} from '@/components/recent-resource-feedback';
 import { ScheduleAvailabilityPanel } from '@/components/schedule-availability-panel';
 import { ScheduleContentEditor } from '@/components/schedule-content-editor';
 import { ScheduleStaffPicker } from '@/components/schedule-staff-picker';
+import { SiteGuideFilePicker } from '@/components/site-guide-file-picker';
+import { SubcontractorPicker } from '@/components/subcontractor-picker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
-import {
-    recentResourceMatches,
-    useRecentResource,
-} from '@/hooks/use-recent-resource';
 import { useScheduleTimeFields } from '@/hooks/use-schedule-time-fields';
 import { businessDateString } from '@/lib/dates';
 import { goBackToReturnTo } from '@/lib/return-to';
@@ -47,7 +23,6 @@ import {
     matchingBusySchedules,
     matchingLeaveRecords,
 } from '@/lib/schedule-availability';
-import { cn, phoneHref, toggleNumber } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import type {
     ConstructionSchedule,
@@ -103,11 +78,6 @@ type ScheduleForm = {
     site_guide_file_ids: number[];
     guide_files: File[];
     guide_file_names: string[];
-};
-
-type ExistingSubcontractorForm = {
-    name: string;
-    phone: string;
 };
 
 const statuses: { value: ConstructionScheduleStatus; label: string }[] = [
@@ -168,39 +138,6 @@ const siteRegionOptions = [
 ] as const;
 
 const timeNotePresets = ['本日中', '午前中', '午後中', '時間未定'];
-const guideFileAccept =
-    'application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif';
-
-function guideFileTypeLabel(file: SiteGuideFile) {
-    if (file.mime_type?.includes('pdf')) {
-        return 'PDF';
-    }
-
-    if (file.mime_type?.startsWith('image/')) {
-        return '画像';
-    }
-
-    return 'ファイル';
-}
-
-function defaultGuideFileName(file: File) {
-    const nameWithoutExtension = file.name.replace(/\.[^/.]+$/, '').trim();
-
-    return nameWithoutExtension || file.name;
-}
-
-function fileSizeLabel(size: number) {
-    if (size >= 1024 * 1024) {
-        return `${(size / 1024 / 1024).toFixed(1)} MB`;
-    }
-
-    if (size >= 1024) {
-        return `${Math.ceil(size / 1024)} KB`;
-    }
-
-    return `${size} B`;
-}
-
 export default function ConstructionScheduleForm({
     schedule,
     returnTo,
@@ -217,13 +154,6 @@ export default function ConstructionScheduleForm({
     stockOptions,
 }: Props) {
     const { url } = usePage();
-    const recentResource = useRecentResource();
-    const { confirm: confirmDelete, dialog: deleteDialog } = useConfirmDialog();
-    const [guideFileSearch, setGuideFileSearch] = useState('');
-    const [subcontractorSearch, setSubcontractorSearch] = useState('');
-    const [editingSubcontractorId, setEditingSubcontractorId] = useState<
-        number | null
-    >(null);
     const { data, setData, post, processing, progress, errors } =
         useForm<ScheduleForm>({
             _method: schedule ? 'put' : '',
@@ -259,43 +189,6 @@ export default function ConstructionScheduleForm({
             guide_files: [],
             guide_file_names: [],
         });
-    const {
-        data: editingSubcontractorData,
-        setData: setEditingSubcontractorData,
-        patch: patchSubcontractor,
-        processing: processingSubcontractorUpdate,
-        errors: subcontractorErrors,
-        clearErrors: clearSubcontractorErrors,
-        reset: resetEditingSubcontractor,
-    } = useForm<ExistingSubcontractorForm>({
-        name: '',
-        phone: '',
-    });
-
-    const formErrors = errors as Record<string, string | undefined>;
-    const subcontractorSearchTerm = subcontractorSearch
-        .trim()
-        .toLocaleLowerCase();
-    const filteredSubcontractors =
-        subcontractorSearchTerm === ''
-            ? subcontractors
-            : subcontractors.filter((subcontractor) =>
-                  `${subcontractor.name} ${subcontractor.phone ?? ''}`
-                      .toLocaleLowerCase()
-                      .includes(subcontractorSearchTerm),
-              );
-    const guideFileSearchTerm = guideFileSearch.trim().toLocaleLowerCase();
-    const filteredSiteGuideFiles =
-        guideFileSearchTerm === ''
-            ? siteGuideFiles
-            : siteGuideFiles.filter((file) =>
-                  `${file.name} ${guideFileTypeLabel(file)}`
-                      .toLocaleLowerCase()
-                      .includes(guideFileSearchTerm),
-              );
-    const selectedVisibleSiteGuideFileIds = filteredSiteGuideFiles
-        .filter((file) => data.site_guide_file_ids.includes(file.id))
-        .map((file) => file.id);
     const busySchedules = matchingBusySchedules(
         scheduleAvailability,
         data.scheduled_on,
@@ -339,162 +232,12 @@ export default function ConstructionScheduleForm({
         goBackToReturnTo(url, returnTo, scheduleIndex());
     }
 
-    function addGuideUploads(files: File[]) {
-        if (files.length === 0) {
-            return;
-        }
-
-        setData((values) => ({
-            ...values,
-            guide_files: [...values.guide_files, ...files],
-            guide_file_names: [
-                ...values.guide_file_names,
-                ...files.map((file) => defaultGuideFileName(file)),
-            ],
-        }));
-    }
-
-    function removeGuideUpload(index: number) {
-        setData((values) => ({
-            ...values,
-            guide_files: values.guide_files.filter(
-                (_file, fileIndex) => fileIndex !== index,
-            ),
-            guide_file_names: values.guide_file_names.filter(
-                (_name, nameIndex) => nameIndex !== index,
-            ),
-        }));
-    }
-
-    function addNewSubcontractor() {
-        setData((values) => ({
-            ...values,
-            new_subcontractors: [
-                ...values.new_subcontractors,
-                { name: '', phone: '' },
-            ],
-        }));
-    }
-
-    function updateNewSubcontractor(
-        index: number,
-        field: 'name' | 'phone',
-        value: string,
-    ) {
-        setData((values) => ({
-            ...values,
-            new_subcontractors: values.new_subcontractors.map(
-                (subcontractor, subcontractorIndex) =>
-                    subcontractorIndex === index
-                        ? { ...subcontractor, [field]: value }
-                        : subcontractor,
-            ),
-        }));
-    }
-
-    function removeNewSubcontractor(index: number) {
-        setData((values) => ({
-            ...values,
-            new_subcontractors: values.new_subcontractors.filter(
-                (_subcontractor, subcontractorIndex) =>
-                    subcontractorIndex !== index,
-            ),
-        }));
-    }
-
-    function editSubcontractor(subcontractor: ConstructionSubcontractor) {
-        clearSubcontractorErrors();
-        setEditingSubcontractorId(subcontractor.id);
-        setEditingSubcontractorData({
-            name: subcontractor.name,
-            phone: subcontractor.phone ?? '',
-        });
-    }
-
-    function cancelSubcontractorEdit() {
-        clearSubcontractorErrors();
-        setEditingSubcontractorId(null);
-        resetEditingSubcontractor();
-    }
-
-    function saveSubcontractorEdit(subcontractor: ConstructionSubcontractor) {
-        patchSubcontractor(subcontractorUpdate.url(subcontractor.id), {
-            preserveScroll: true,
-            onSuccess: () => {
-                setEditingSubcontractorId(null);
-                resetEditingSubcontractor();
-            },
-        });
-    }
-
-    async function deleteSubcontractor(
-        subcontractor: ConstructionSubcontractor,
-    ) {
-        if (
-            !(await confirmDelete({
-                title: `${subcontractor.name} を今後の選択肢から削除しますか？`,
-                confirmLabel: '削除',
-                variant: 'destructive',
-            }))
-        ) {
-            return;
-        }
-
-        router.delete(subcontractorDestroy.url(subcontractor.id), {
-            preserveScroll: true,
-            onSuccess: () => {
-                if (!schedule) {
-                    setData(
-                        'subcontractor_ids',
-                        data.subcontractor_ids.filter(
-                            (subcontractorId) =>
-                                subcontractorId !== subcontractor.id,
-                        ),
-                    );
-                }
-            },
-        });
-    }
-
-    function updateGuideUploadName(index: number, name: string) {
-        setData((values) => ({
-            ...values,
-            guide_file_names: values.guide_file_names.map(
-                (guideFileName, nameIndex) =>
-                    nameIndex === index ? name : guideFileName,
-            ),
-        }));
-    }
-
-    function selectVisibleGuideFiles() {
-        setData('site_guide_file_ids', [
-            ...new Set([
-                ...data.site_guide_file_ids,
-                ...filteredSiteGuideFiles.map((file) => file.id),
-            ]),
-        ]);
-    }
-
-    function clearVisibleGuideFiles() {
-        const visibleFileIds = new Set(
-            filteredSiteGuideFiles.map((file) => file.id),
-        );
-
-        setData(
-            'site_guide_file_ids',
-            data.site_guide_file_ids.filter(
-                (fileId) => !visibleFileIds.has(fileId),
-            ),
-        );
-    }
-
     const { selectTimeNotePreset, setStartTime, setEndTime, setTimeRange } =
         useScheduleTimeFields(setData, timeNotePresets);
 
     return (
         <>
             <Head title={schedule ? '予定編集' : '新規予定'} />
-            {deleteDialog}
             <FloatingBackButton
                 onClick={handleGoBack}
                 className="bottom-5 md:bottom-6 xl:bottom-8"
@@ -553,366 +296,28 @@ export default function ConstructionScheduleForm({
                                 setData('assigned_user_ids', userIds)
                             }
                         />
-                        <div className="rounded-2xl border p-4 md:col-span-3 dark:border-neutral-800">
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                                <div>
-                                    <h2 className="font-semibold">下請け</h2>
-                                    <p className="mt-1 text-xs text-muted-foreground">
-                                        工事予定に入る下請けを選択し、電話番号をすぐ確認できます。
-                                    </p>
-                                </div>
-                                {(data.subcontractor_ids.length > 0 ||
-                                    data.new_subcontractors.length > 0) && (
-                                    <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-semibold text-neutral-700 dark:bg-neutral-900 dark:text-neutral-200">
-                                        選択 {data.subcontractor_ids.length} /
-                                        追加 {data.new_subcontractors.length}
-                                    </span>
-                                )}
-                            </div>
-
-                            <div className="relative mt-3">
-                                <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                                <Input
-                                    value={subcontractorSearch}
-                                    onChange={(event) =>
-                                        setSubcontractorSearch(
-                                            event.target.value,
-                                        )
-                                    }
-                                    className="pl-9"
-                                    placeholder="名前・電話番号で検索"
-                                />
-                            </div>
-
-                            <div className="mt-3 max-h-80 overflow-y-auto rounded-lg border dark:border-neutral-800">
-                                <div className="grid gap-2 p-2 sm:grid-cols-2">
-                                    {filteredSubcontractors.map(
-                                        (subcontractor) => {
-                                            const isSelected =
-                                                data.subcontractor_ids.includes(
-                                                    subcontractor.id,
-                                                );
-                                            const isEditing =
-                                                editingSubcontractorId ===
-                                                subcontractor.id;
-                                            const isRecentResource =
-                                                recentResourceMatches(
-                                                    recentResource,
-                                                    'construction_subcontractor',
-                                                    subcontractor.id,
-                                                );
-
-                                            return (
-                                                <div
-                                                    key={subcontractor.id}
-                                                    className={cn(
-                                                        'flex items-start justify-between gap-3 rounded-xl border p-3 text-sm transition motion-reduce:transition-none',
-                                                        isSelected
-                                                            ? 'border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100'
-                                                            : 'border-neutral-200 hover:bg-muted/50 dark:border-neutral-800',
-                                                        isEditing &&
-                                                            'border-sky-300 bg-sky-50 text-sky-950 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-100',
-                                                        isRecentResource &&
-                                                            recentResourceHighlightClass,
-                                                    )}
-                                                >
-                                                    {isEditing ? (
-                                                        <div className="grid min-w-0 flex-1 gap-2">
-                                                            <div className="grid gap-2 sm:grid-cols-2">
-                                                                <Input
-                                                                    value={
-                                                                        editingSubcontractorData.name
-                                                                    }
-                                                                    onChange={(
-                                                                        event,
-                                                                    ) =>
-                                                                        setEditingSubcontractorData(
-                                                                            'name',
-                                                                            event
-                                                                                .target
-                                                                                .value,
-                                                                        )
-                                                                    }
-                                                                    placeholder="名前"
-                                                                    autoFocus
-                                                                />
-                                                                <Input
-                                                                    value={
-                                                                        editingSubcontractorData.phone
-                                                                    }
-                                                                    onChange={(
-                                                                        event,
-                                                                    ) =>
-                                                                        setEditingSubcontractorData(
-                                                                            'phone',
-                                                                            event
-                                                                                .target
-                                                                                .value,
-                                                                        )
-                                                                    }
-                                                                    placeholder="電話番号（任意）"
-                                                                />
-                                                            </div>
-                                                            {(subcontractorErrors.name ||
-                                                                subcontractorErrors.phone) && (
-                                                                <div className="grid gap-1 text-xs text-destructive sm:grid-cols-2">
-                                                                    <span>
-                                                                        {
-                                                                            subcontractorErrors.name
-                                                                        }
-                                                                    </span>
-                                                                    <span>
-                                                                        {
-                                                                            subcontractorErrors.phone
-                                                                        }
-                                                                    </span>
-                                                                </div>
-                                                            )}
-                                                            <div className="flex flex-wrap gap-2">
-                                                                <button
-                                                                    type="button"
-                                                                    className="inline-flex items-center gap-1 rounded-md bg-sky-700 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-sky-500 dark:text-sky-950 dark:hover:bg-sky-400"
-                                                                    onClick={() =>
-                                                                        saveSubcontractorEdit(
-                                                                            subcontractor,
-                                                                        )
-                                                                    }
-                                                                    disabled={
-                                                                        processingSubcontractorUpdate
-                                                                    }
-                                                                >
-                                                                    <Save className="size-3.5" />
-                                                                    {processingSubcontractorUpdate
-                                                                        ? '下請け情報を保存中...'
-                                                                        : '下請け情報を保存'}
-                                                                </button>
-                                                                <button
-                                                                    type="button"
-                                                                    className="inline-flex items-center gap-1 rounded-md border bg-background px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                                                                    onClick={
-                                                                        cancelSubcontractorEdit
-                                                                    }
-                                                                >
-                                                                    <X className="size-3.5" />
-                                                                    キャンセル
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <>
-                                                            <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-2">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    className="mt-1"
-                                                                    checked={
-                                                                        isSelected
-                                                                    }
-                                                                    onChange={() =>
-                                                                        setData(
-                                                                            'subcontractor_ids',
-                                                                            toggleNumber(
-                                                                                data.subcontractor_ids,
-                                                                                subcontractor.id,
-                                                                            ),
-                                                                        )
-                                                                    }
-                                                                />
-                                                                <span className="min-w-0">
-                                                                    <span className="block truncate font-medium">
-                                                                        {
-                                                                            subcontractor.name
-                                                                        }
-                                                                    </span>
-                                                                    {isRecentResource &&
-                                                                        recentResource !==
-                                                                            null && (
-                                                                            <RecentResourceBadge
-                                                                                action={
-                                                                                    recentResource.action
-                                                                                }
-                                                                                className="mt-2"
-                                                                            />
-                                                                        )}
-                                                                    {subcontractor.phone && (
-                                                                        <a
-                                                                            href={phoneHref(
-                                                                                subcontractor.phone,
-                                                                            )}
-                                                                            className="mt-1 inline-flex items-center gap-1 text-xs text-sky-700 hover:underline dark:text-sky-300"
-                                                                        >
-                                                                            <Phone className="size-3.5" />
-                                                                            {
-                                                                                subcontractor.phone
-                                                                            }
-                                                                        </a>
-                                                                    )}
-                                                                </span>
-                                                            </label>
-                                                            <div className="flex shrink-0 flex-col gap-2">
-                                                                <button
-                                                                    type="button"
-                                                                    className="inline-flex items-center justify-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                                                                    onClick={() =>
-                                                                        editSubcontractor(
-                                                                            subcontractor,
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    <Pencil className="size-3.5" />
-                                                                    編集
-                                                                </button>
-                                                                <button
-                                                                    type="button"
-                                                                    className="inline-flex items-center justify-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                                                                    onClick={() =>
-                                                                        void deleteSubcontractor(
-                                                                            subcontractor,
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    <Trash2 className="size-3.5" />
-                                                                    削除
-                                                                </button>
-                                                            </div>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            );
-                                        },
-                                    )}
-                                    {subcontractors.length === 0 && (
-                                        <p className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground sm:col-span-2 dark:border-neutral-800">
-                                            登録済みの下請けはまだありません。下の入力から追加できます。
-                                        </p>
-                                    )}
-                                    {subcontractors.length > 0 &&
-                                        filteredSubcontractors.length === 0 && (
-                                            <p className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground sm:col-span-2 dark:border-neutral-800">
-                                                一致する下請けはありません。
-                                            </p>
-                                        )}
-                                </div>
-                            </div>
-
-                            {errors.subcontractor_ids && (
-                                <p className="mt-2 text-xs text-destructive">
-                                    {errors.subcontractor_ids}
-                                </p>
-                            )}
-
-                            <div className="mt-4 grid gap-3 rounded-lg border bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900/40">
-                                <div className="flex flex-wrap items-center justify-between gap-3">
-                                    <p className="text-sm font-medium">
-                                        新しく追加する下請け
-                                    </p>
-                                    <button
-                                        type="button"
-                                        className="inline-flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm font-medium transition hover:bg-muted"
-                                        onClick={addNewSubcontractor}
-                                    >
-                                        <Plus className="size-4" />
-                                        行を追加
-                                    </button>
-                                </div>
-
-                                {data.new_subcontractors.length > 0 ? (
-                                    <div className="grid gap-2">
-                                        {data.new_subcontractors.map(
-                                            (subcontractor, index) => (
-                                                <div
-                                                    key={index}
-                                                    className="grid gap-2 rounded-lg border bg-background p-3 dark:border-neutral-800"
-                                                >
-                                                    <div className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
-                                                        <FormField
-                                                            label="名前"
-                                                            required
-                                                        >
-                                                            <Input
-                                                                required
-                                                                value={
-                                                                    subcontractor.name
-                                                                }
-                                                                onChange={(
-                                                                    event,
-                                                                ) =>
-                                                                    updateNewSubcontractor(
-                                                                        index,
-                                                                        'name',
-                                                                        event
-                                                                            .target
-                                                                            .value,
-                                                                    )
-                                                                }
-                                                                placeholder="名前"
-                                                            />
-                                                        </FormField>
-                                                        <FormField label="電話番号">
-                                                            <Input
-                                                                value={
-                                                                    subcontractor.phone
-                                                                }
-                                                                onChange={(
-                                                                    event,
-                                                                ) =>
-                                                                    updateNewSubcontractor(
-                                                                        index,
-                                                                        'phone',
-                                                                        event
-                                                                            .target
-                                                                            .value,
-                                                                    )
-                                                                }
-                                                                placeholder="電話番号（任意）"
-                                                            />
-                                                        </FormField>
-                                                        <button
-                                                            type="button"
-                                                            className="inline-flex items-center justify-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground md:self-end"
-                                                            onClick={() =>
-                                                                removeNewSubcontractor(
-                                                                    index,
-                                                                )
-                                                            }
-                                                        >
-                                                            <Trash2 className="size-3.5" />
-                                                            削除
-                                                        </button>
-                                                    </div>
-                                                    {(formErrors[
-                                                        `new_subcontractors.${index}.name`
-                                                    ] ||
-                                                        formErrors[
-                                                            `new_subcontractors.${index}.phone`
-                                                        ]) && (
-                                                        <div className="grid gap-1 text-xs text-destructive md:grid-cols-2">
-                                                            <span>
-                                                                {
-                                                                    formErrors[
-                                                                        `new_subcontractors.${index}.name`
-                                                                    ]
-                                                                }
-                                                            </span>
-                                                            <span>
-                                                                {
-                                                                    formErrors[
-                                                                        `new_subcontractors.${index}.phone`
-                                                                    ]
-                                                                }
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ),
-                                        )}
-                                    </div>
-                                ) : (
-                                    <p className="text-sm text-muted-foreground">
-                                        複数の下請けをまとめて追加できます。
-                                    </p>
-                                )}
-                            </div>
-                        </div>
+                        <SubcontractorPicker
+                            subcontractors={subcontractors}
+                            selectedIds={data.subcontractor_ids}
+                            onChangeSelectedIds={(ids) =>
+                                setData('subcontractor_ids', ids)
+                            }
+                            newSubcontractors={data.new_subcontractors}
+                            onChangeNewSubcontractors={(next) =>
+                                setData('new_subcontractors', next)
+                            }
+                            errors={errors}
+                            onDeleted={(subcontractorId) => {
+                                if (!schedule) {
+                                    setData(
+                                        'subcontractor_ids',
+                                        data.subcontractor_ids.filter(
+                                            (id) => id !== subcontractorId,
+                                        ),
+                                    );
+                                }
+                            }}
+                        />
                         <FormField label="開始時間" error={errors.starts_at}>
                             <Input
                                 type="time"
@@ -1127,312 +532,23 @@ export default function ConstructionScheduleForm({
                     </FormField>
 
                     <section className="grid gap-4">
-                        <div className="rounded-2xl border p-4 dark:border-neutral-800">
-                            <div className="flex flex-wrap items-start justify-between gap-3">
-                                <div>
-                                    <h2 className="font-semibold">
-                                        現場案内図
-                                    </h2>
-                                    <p className="mt-1 text-xs text-muted-foreground">
-                                        登録済みの案内図を探して選択、または新しいファイルをまとめて追加できます。
-                                    </p>
-                                </div>
-                                {(data.site_guide_file_ids.length > 0 ||
-                                    data.guide_files.length > 0) && (
-                                    <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-semibold text-neutral-700 dark:bg-neutral-900 dark:text-neutral-200">
-                                        選択 {data.site_guide_file_ids.length} /
-                                        追加 {data.guide_files.length}
-                                    </span>
-                                )}
-                            </div>
-
-                            <div className="mt-4 grid gap-3">
-                                <div className="grid gap-2">
-                                    <div className="flex flex-wrap items-center justify-between gap-2">
-                                        <p className="text-sm font-medium">
-                                            登録済みから選択
-                                        </p>
-                                        {filteredSiteGuideFiles.length > 0 && (
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    type="button"
-                                                    className="rounded-md border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                                                    disabled={
-                                                        selectedVisibleSiteGuideFileIds.length ===
-                                                        filteredSiteGuideFiles.length
-                                                    }
-                                                    onClick={
-                                                        selectVisibleGuideFiles
-                                                    }
-                                                >
-                                                    表示中をすべて選択
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    className="rounded-md border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                                                    disabled={
-                                                        selectedVisibleSiteGuideFileIds.length ===
-                                                        0
-                                                    }
-                                                    onClick={
-                                                        clearVisibleGuideFiles
-                                                    }
-                                                >
-                                                    表示中を解除
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="relative">
-                                        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                                        <Input
-                                            value={guideFileSearch}
-                                            onChange={(event) =>
-                                                setGuideFileSearch(
-                                                    event.target.value,
-                                                )
-                                            }
-                                            className="pl-9"
-                                            placeholder="表示名で検索"
-                                        />
-                                    </div>
-
-                                    <div className="max-h-80 overflow-y-auto rounded-lg border dark:border-neutral-800">
-                                        {siteGuideFiles.length === 0 ? (
-                                            <p className="p-3 text-sm text-muted-foreground">
-                                                登録済みの案内図はまだありません。下のアップロードから追加できます。
-                                            </p>
-                                        ) : filteredSiteGuideFiles.length ? (
-                                            <div className="grid gap-2 p-2">
-                                                {filteredSiteGuideFiles.map(
-                                                    (file) => {
-                                                        const isSelected =
-                                                            data.site_guide_file_ids.includes(
-                                                                file.id,
-                                                            );
-                                                        const inputId = `site-guide-file-${file.id}`;
-
-                                                        return (
-                                                            <div
-                                                                key={file.id}
-                                                                className={cn(
-                                                                    'flex items-start gap-3 rounded-lg border p-3 transition',
-                                                                    isSelected
-                                                                        ? 'border-primary bg-primary/5'
-                                                                        : 'border-neutral-200 hover:bg-muted/50 dark:border-neutral-800',
-                                                                )}
-                                                            >
-                                                                <label
-                                                                    htmlFor={
-                                                                        inputId
-                                                                    }
-                                                                    className="flex min-w-0 flex-1 cursor-pointer items-start gap-3 text-sm"
-                                                                >
-                                                                    <input
-                                                                        id={
-                                                                            inputId
-                                                                        }
-                                                                        type="checkbox"
-                                                                        className="mt-1"
-                                                                        checked={
-                                                                            isSelected
-                                                                        }
-                                                                        onChange={() =>
-                                                                            setData(
-                                                                                'site_guide_file_ids',
-                                                                                toggleNumber(
-                                                                                    data.site_guide_file_ids,
-                                                                                    file.id,
-                                                                                ),
-                                                                            )
-                                                                        }
-                                                                    />
-                                                                    <span className="min-w-0 space-y-1">
-                                                                        <span className="flex min-w-0 items-center gap-2 font-medium">
-                                                                            <FileText className="size-4 shrink-0 text-muted-foreground" />
-                                                                            <span className="truncate">
-                                                                                {
-                                                                                    file.name
-                                                                                }
-                                                                            </span>
-                                                                        </span>
-                                                                        <span className="block text-xs text-muted-foreground">
-                                                                            {guideFileTypeLabel(
-                                                                                file,
-                                                                            )}
-                                                                        </span>
-                                                                    </span>
-                                                                </label>
-                                                                <a
-                                                                    href={
-                                                                        file.url
-                                                                    }
-                                                                    target="_blank"
-                                                                    rel="noreferrer"
-                                                                    className="inline-flex shrink-0 items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                                                                >
-                                                                    <ExternalLink className="size-3.5" />
-                                                                    確認
-                                                                </a>
-                                                            </div>
-                                                        );
-                                                    },
-                                                )}
-                                            </div>
-                                        ) : (
-                                            <p className="p-3 text-sm text-muted-foreground">
-                                                一致する案内図はありません。
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="grid gap-3 rounded-lg border bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900/40">
-                                    <div className="flex flex-wrap items-center justify-between gap-3">
-                                        <div className="flex min-w-0 items-center gap-2">
-                                            <Files className="size-4 shrink-0 text-muted-foreground" />
-                                            <p className="text-sm font-medium">
-                                                新しく追加するファイル
-                                            </p>
-                                        </div>
-                                        <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm font-medium transition hover:bg-muted">
-                                            <UploadCloud className="size-4" />
-                                            ファイルを選択
-                                            <input
-                                                className="hidden"
-                                                type="file"
-                                                multiple
-                                                accept={guideFileAccept}
-                                                onChange={(event) => {
-                                                    addGuideUploads(
-                                                        Array.from(
-                                                            event.currentTarget
-                                                                .files ?? [],
-                                                        ),
-                                                    );
-                                                    event.currentTarget.value =
-                                                        '';
-                                                }}
-                                            />
-                                        </label>
-                                    </div>
-
-                                    {data.guide_files.length > 0 ? (
-                                        <div className="max-h-96 overflow-y-auto rounded-lg border bg-background dark:border-neutral-800">
-                                            <div className="grid gap-2 p-2">
-                                                {data.guide_files.map(
-                                                    (file, index) => (
-                                                        <div
-                                                            key={`${file.name}-${file.lastModified}-${index}`}
-                                                            className="grid gap-2 rounded-lg border p-3 dark:border-neutral-800"
-                                                        >
-                                                            <div className="flex min-w-0 items-start justify-between gap-3">
-                                                                <div className="min-w-0">
-                                                                    <p className="truncate text-sm font-medium">
-                                                                        {
-                                                                            file.name
-                                                                        }
-                                                                    </p>
-                                                                    <p className="mt-1 text-xs text-muted-foreground">
-                                                                        {fileSizeLabel(
-                                                                            file.size,
-                                                                        )}
-                                                                    </p>
-                                                                    {formErrors[
-                                                                        `guide_files.${index}`
-                                                                    ] && (
-                                                                        <p className="mt-1 text-xs text-destructive">
-                                                                            {
-                                                                                formErrors[
-                                                                                    `guide_files.${index}`
-                                                                                ]
-                                                                            }
-                                                                        </p>
-                                                                    )}
-                                                                </div>
-                                                                <button
-                                                                    type="button"
-                                                                    className="inline-flex shrink-0 items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                                                                    onClick={() =>
-                                                                        removeGuideUpload(
-                                                                            index,
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    <Trash2 className="size-3.5" />
-                                                                    削除
-                                                                </button>
-                                                            </div>
-                                                            <div className="grid gap-1.5">
-                                                                <label
-                                                                    htmlFor={`guide-file-name-${index}`}
-                                                                    className="text-xs font-medium text-muted-foreground"
-                                                                >
-                                                                    表示名
-                                                                </label>
-                                                                <Input
-                                                                    id={`guide-file-name-${index}`}
-                                                                    required
-                                                                    value={
-                                                                        data
-                                                                            .guide_file_names[
-                                                                            index
-                                                                        ] ?? ''
-                                                                    }
-                                                                    onChange={(
-                                                                        event,
-                                                                    ) =>
-                                                                        updateGuideUploadName(
-                                                                            index,
-                                                                            event
-                                                                                .target
-                                                                                .value,
-                                                                        )
-                                                                    }
-                                                                    placeholder="例: 搬入口案内図"
-                                                                />
-                                                                {formErrors[
-                                                                    `guide_file_names.${index}`
-                                                                ] && (
-                                                                    <p className="text-xs text-destructive">
-                                                                        {
-                                                                            formErrors[
-                                                                                `guide_file_names.${index}`
-                                                                            ]
-                                                                        }
-                                                                    </p>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    ),
-                                                )}
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <p className="text-sm text-muted-foreground">
-                                            PDF / JPEG / PNG / WebP / HEIC /
-                                            HEIF、50MBまで。複数ファイルをまとめて選ぶと、ファイル名から表示名を自動入力します。
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-                            {data.guide_files.length > 0 && (
-                                <p className="mt-2 text-xs text-muted-foreground">
-                                    {data.guide_files.length} ファイル選択中
-                                </p>
-                            )}
-                            {errors.guide_files && (
-                                <p className="mt-2 text-xs text-destructive">
-                                    {errors.guide_files}
-                                </p>
-                            )}
-                            {formErrors.guide_file_names && (
-                                <p className="mt-2 text-xs text-destructive">
-                                    {formErrors.guide_file_names}
-                                </p>
-                            )}
-                        </div>
+                        <SiteGuideFilePicker
+                            siteGuideFiles={siteGuideFiles}
+                            selectedIds={data.site_guide_file_ids}
+                            onChangeSelectedIds={(ids) =>
+                                setData('site_guide_file_ids', ids)
+                            }
+                            uploads={data.guide_files}
+                            uploadNames={data.guide_file_names}
+                            onChangeUploads={(files, names) =>
+                                setData((values) => ({
+                                    ...values,
+                                    guide_files: files,
+                                    guide_file_names: names,
+                                }))
+                            }
+                            errors={errors}
+                        />
                     </section>
 
                     {progress && (
