@@ -57,6 +57,7 @@ class ConstructionScheduleController extends Controller
         $businessSchedules = collect();
         /** @var Collection<int, InternalNotice> $internalNotices */
         $internalNotices = collect();
+        $allCleaningDutyOccurrences = $this->cleaningDutyOccurrences($startsOn, $endsOn);
         /** @var Collection<int, array<string, mixed>> $cleaningDutyOccurrences */
         $cleaningDutyOccurrences = collect();
 
@@ -91,7 +92,7 @@ class ConstructionScheduleController extends Controller
         }
 
         if ($types->contains('cleaning_duty')) {
-            $cleaningDutyOccurrences = $this->cleaningDutyOccurrences($startsOn, $endsOn);
+            $cleaningDutyOccurrences = $allCleaningDutyOccurrences;
         }
 
         $monthStart = $date->copy()->startOfMonth();
@@ -119,7 +120,7 @@ class ConstructionScheduleController extends Controller
             ->whereDate('scheduled_on', '>=', $startsOn->toDateString())
             ->whereDate('scheduled_on', '<=', $endsOn->toDateString())
             ->get();
-        $allMyCleaningDutyOccurrences = $this->cleaningDutyOccurrences($startsOn, $endsOn)
+        $allMyCleaningDutyOccurrences = $allCleaningDutyOccurrences
             ->filter(fn (array $occurrence): bool => $occurrence['assigned_users']->contains('id', $user->id));
         $myConstructionSchedules = $constructionSchedules->filter(
             fn (ConstructionSchedule $schedule) => $schedule->assignedUsers->contains('id', $user->id)
