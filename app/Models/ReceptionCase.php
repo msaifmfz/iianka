@@ -50,7 +50,10 @@ class ReceptionCase extends Model
 
     /**
      * @var array<string, mixed>
+     *
+     * @psalm-suppress InvalidAttribute Psalm does not yet recognize PHP 8.5 property overrides.
      */
+    #[Override]
     protected $attributes = [
         'status' => 'draft',
         'priority' => 'normal',

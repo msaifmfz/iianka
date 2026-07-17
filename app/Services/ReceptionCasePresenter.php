@@ -243,7 +243,7 @@ class ReceptionCasePresenter
             return $chain;
         }
 
-        $lastUser = $chain[array_key_last($chain)] ?? null;
+        $lastUser = array_last($chain) ?? null;
 
         if (($lastUser['id'] ?? null) === $user->id) {
             return $chain;

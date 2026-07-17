@@ -17,13 +17,7 @@ final readonly class StockParseResult
 
     public function hasIgnoredMentions(): bool
     {
-        foreach ($this->mentions as $mention) {
-            if ($mention->status !== StockMentionStatus::Recognized) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($this->mentions, fn (ParsedStockMention $mention): bool => $mention->status !== StockMentionStatus::Recognized);
     }
 
     /**

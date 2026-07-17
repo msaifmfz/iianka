@@ -22,7 +22,10 @@ class HandleInertiaRequests extends Middleware
      * @see https://inertiajs.com/server-side-setup#root-template
      *
      * @var string
+     *
+     * @psalm-suppress InvalidAttribute Psalm does not yet recognize PHP 8.5 property overrides.
      */
+    #[Override]
     protected $rootView = 'app';
 
     /**
