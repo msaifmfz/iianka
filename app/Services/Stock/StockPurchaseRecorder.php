@@ -72,6 +72,12 @@ class StockPurchaseRecorder
             ]);
         }
 
+        if ($newQuantity < -self::MAX_MILLI_UNITS) {
+            throw ValidationException::withMessages([
+                'quantity' => "在庫「{$stock->name}」の在庫数が扱える範囲を超えます。",
+            ]);
+        }
+
         if ($purchase === null) {
             $purchase = StockPurchase::query()->create([
                 'stock_id' => $stock->id,

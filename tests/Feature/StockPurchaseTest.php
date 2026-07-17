@@ -37,6 +37,26 @@ test('admins can set the purchased quantity for a term', function (): void {
     expect($stock->refresh()->current_quantity)->toBe('14.000');
 });
 
+test('reducing a purchase cannot push the balance below the ledger range', function (): void {
+    $admin = User::factory()->admin()->create();
+    $stock = Stock::factory()->named('セメント')->quantity('4.000')->create();
+
+    $this->actingAs($admin)->put(route('admin.stocks.purchases.update', $stock), [
+        'term_starts_on' => '2026-06-21',
+        'quantity' => '10',
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    // Simulate a balance already deep in the negative from accumulated usage.
+    $stock->refresh()->forceFill(['current_quantity' => '-999999999.000'])->save();
+
+    $this->actingAs($admin)->put(route('admin.stocks.purchases.update', $stock), [
+        'term_starts_on' => '2026-06-21',
+        'quantity' => '0',
+    ])->assertSessionHasErrors('quantity');
+
+    expect($stock->refresh()->current_quantity)->toBe('-999999999.000');
+});
+
 test('changing a purchase records only the delta in the ledger', function (): void {
     $admin = User::factory()->admin()->create();
     $stock = Stock::factory()->named('セメント')->create();

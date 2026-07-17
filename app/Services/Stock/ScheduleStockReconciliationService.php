@@ -105,6 +105,14 @@ class ScheduleStockReconciliationService
                     'content' => "在庫「{$stock->name}」の使用数が大きすぎます。",
                 ]);
             }
+
+            $projectedBalance = ScheduleContentStockParser::decimalStringToMilliUnits($stock->current_quantity) - ($desired - $applied);
+
+            if ($projectedBalance > self::MAX_MILLI_UNITS || $projectedBalance < -self::MAX_MILLI_UNITS) {
+                throw ValidationException::withMessages([
+                    'content' => "在庫「{$stock->name}」の在庫数が扱える範囲を超えます。",
+                ]);
+            }
         }
 
         $revision = null;

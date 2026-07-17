@@ -231,6 +231,18 @@ test('usage may drive stock negative', function (): void {
     $this->assertDatabaseHas('stocks', ['id' => $desk->id, 'current_quantity' => '-7.000']);
 });
 
+test('usage cannot push the stock balance below the ledger range', function (): void {
+    $editor = User::factory()->editor()->create();
+    $desk = Stock::factory()->named('Desk')->quantity('-999999999.000')->create();
+
+    $this->actingAs($editor)
+        ->post(route('construction-schedules.store'), constructionStockPayload('Desk 1000'))
+        ->assertSessionHasErrors('content');
+
+    expect(ConstructionSchedule::query()->count())->toBe(0);
+    $this->assertDatabaseHas('stocks', ['id' => $desk->id, 'current_quantity' => '-999999999.000']);
+});
+
 test('deleting a schedule reverses applied usage and keeps the audit trail', function (): void {
     $editor = User::factory()->editor()->create();
     $milk = Stock::factory()->named('Milk')->quantity('20.000')->create();
