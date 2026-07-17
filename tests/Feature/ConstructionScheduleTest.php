@@ -1502,6 +1502,34 @@ test('admins can create business schedules with assigned users', function (): vo
     expect(GeneralContractor::query()->where('name', '山田建設')->exists())->toBeTrue();
 });
 
+test('business schedule creation rolls back all writes when a write fails', function (): void {
+    $admin = User::factory()->admin()->create();
+    $worker = User::factory()->create();
+
+    BusinessSchedule::created(function (): void {
+        throw new RuntimeException('boom');
+    });
+
+    $this->actingAs($admin)
+        ->post(route('business-schedules.store'), [
+            'scheduled_on' => BusinessDate::today()->toDateString(),
+            'starts_at' => '10:00',
+            'ends_at' => '11:30',
+            'time_note' => null,
+            'personnel' => '3名',
+            'location' => '本社会議室',
+            'general_contractor' => '山田建設',
+            'person_in_charge' => '佐藤',
+            'content' => '安全協議会',
+            'memo' => null,
+            'assigned_user_ids' => [$worker->id],
+        ])
+        ->assertServerError();
+
+    expect(BusinessSchedule::query()->count())->toBe(0);
+    expect(GeneralContractor::query()->where('name', '山田建設')->exists())->toBeFalse();
+});
+
 test('business schedule times cannot overlap selected users existing schedules', function (): void {
     $admin = User::factory()->admin()->create();
     $worker = User::factory()->create();

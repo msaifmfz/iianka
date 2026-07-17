@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -44,8 +45,13 @@ class CleaningDutyRuleController extends Controller
     public function store(StoreCleaningDutyRuleRequest $request): RedirectResponse
     {
         $validated = $request->validated();
-        $rule = CleaningDutyRule::create($this->ruleAttributes($validated));
-        $rule->assignedUsers()->sync($request->input('assigned_user_ids', []));
+
+        $rule = DB::transaction(function () use ($request, $validated): CleaningDutyRule {
+            $rule = CleaningDutyRule::create($this->ruleAttributes($validated));
+            $rule->assignedUsers()->sync($request->input('assigned_user_ids', []));
+
+            return $rule;
+        });
 
         $this->auditSuccess('cleaning_duty_rules.created', 'A cleaning duty rule was created.', $rule, [
             'assigned_user_ids' => $request->input('assigned_user_ids', []),
@@ -89,8 +95,11 @@ class CleaningDutyRuleController extends Controller
     public function update(UpdateCleaningDutyRuleRequest $request, CleaningDutyRule $cleaningDutyRule): RedirectResponse
     {
         $validated = $request->validated();
-        $cleaningDutyRule->update($this->ruleAttributes($validated));
-        $cleaningDutyRule->assignedUsers()->sync($request->input('assigned_user_ids', []));
+
+        DB::transaction(function () use ($request, $validated, $cleaningDutyRule): void {
+            $cleaningDutyRule->update($this->ruleAttributes($validated));
+            $cleaningDutyRule->assignedUsers()->sync($request->input('assigned_user_ids', []));
+        });
 
         $this->auditSuccess('cleaning_duty_rules.updated', 'A cleaning duty rule was updated.', $cleaningDutyRule, [
             'changed' => array_values(array_diff(array_keys($cleaningDutyRule->getChanges()), ['updated_at'])),

@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -36,8 +37,13 @@ class InternalNoticeController extends Controller
     public function store(StoreInternalNoticeRequest $request): RedirectResponse
     {
         $validated = $request->validated();
-        $notice = InternalNotice::create($this->noticeAttributes($validated));
-        $notice->assignedUsers()->sync($request->input('assigned_user_ids', []));
+
+        $notice = DB::transaction(function () use ($request, $validated): InternalNotice {
+            $notice = InternalNotice::create($this->noticeAttributes($validated));
+            $notice->assignedUsers()->sync($request->input('assigned_user_ids', []));
+
+            return $notice;
+        });
 
         $this->auditSuccess('internal_notices.created', 'An internal notice was created.', $notice, [
             'assigned_user_ids' => $request->input('assigned_user_ids', []),
@@ -90,8 +96,11 @@ class InternalNoticeController extends Controller
     public function update(UpdateInternalNoticeRequest $request, InternalNotice $internalNotice): RedirectResponse
     {
         $validated = $request->validated();
-        $internalNotice->update($this->noticeAttributes($validated));
-        $internalNotice->assignedUsers()->sync($request->input('assigned_user_ids', []));
+
+        DB::transaction(function () use ($request, $validated, $internalNotice): void {
+            $internalNotice->update($this->noticeAttributes($validated));
+            $internalNotice->assignedUsers()->sync($request->input('assigned_user_ids', []));
+        });
 
         $this->auditSuccess('internal_notices.updated', 'An internal notice was updated.', $internalNotice, [
             'changed' => array_values(array_diff(array_keys($internalNotice->getChanges()), ['updated_at'])),

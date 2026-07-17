@@ -14,6 +14,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -59,10 +60,15 @@ class BusinessScheduleController extends Controller
     public function store(StoreBusinessScheduleRequest $request): RedirectResponse
     {
         $validated = $request->validated();
-        $schedule = BusinessSchedule::create($this->scheduleAttributes($validated));
 
-        $schedule->assignedUsers()->sync($request->input('assigned_user_ids', []));
-        $this->rememberGeneralContractor($validated['general_contractor'] ?? null);
+        $schedule = DB::transaction(function () use ($request, $validated): BusinessSchedule {
+            $schedule = BusinessSchedule::create($this->scheduleAttributes($validated));
+
+            $schedule->assignedUsers()->sync($request->input('assigned_user_ids', []));
+            $this->rememberGeneralContractor($validated['general_contractor'] ?? null);
+
+            return $schedule;
+        });
 
         $this->auditSuccess('business_schedules.created', 'A business schedule was created.', $schedule, [
             'assigned_user_ids' => $request->input('assigned_user_ids', []),
@@ -115,9 +121,12 @@ class BusinessScheduleController extends Controller
     public function update(UpdateBusinessScheduleRequest $request, BusinessSchedule $businessSchedule): RedirectResponse
     {
         $validated = $request->validated();
-        $businessSchedule->update($this->scheduleAttributes($validated));
-        $businessSchedule->assignedUsers()->sync($request->input('assigned_user_ids', []));
-        $this->rememberGeneralContractor($validated['general_contractor'] ?? null);
+
+        DB::transaction(function () use ($request, $validated, $businessSchedule): void {
+            $businessSchedule->update($this->scheduleAttributes($validated));
+            $businessSchedule->assignedUsers()->sync($request->input('assigned_user_ids', []));
+            $this->rememberGeneralContractor($validated['general_contractor'] ?? null);
+        });
 
         $this->auditSuccess('business_schedules.updated', 'A business schedule was updated.', $businessSchedule, [
             'changed' => array_values(array_diff(array_keys($businessSchedule->getChanges()), ['updated_at'])),

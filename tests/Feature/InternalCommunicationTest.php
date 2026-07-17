@@ -65,6 +65,53 @@ test('admins can create cleaning duty rules with assigned users', function (): v
     expect($rule->assignedUsers()->whereKey($worker)->exists())->toBeTrue();
 });
 
+test('internal notice creation rolls back all writes when a write fails', function (): void {
+    $admin = User::factory()->admin()->create();
+    $worker = User::factory()->create();
+
+    InternalNotice::created(function (): void {
+        throw new RuntimeException('boom');
+    });
+
+    $this->actingAs($admin)
+        ->post(route('internal-notices.store'), [
+            'scheduled_on' => '2026-04-08',
+            'starts_at' => '09:00',
+            'ends_at' => '10:00',
+            'time_note' => null,
+            'title' => '健康診断',
+            'location' => '本社',
+            'content' => '健康診断を受診してください。',
+            'memo' => null,
+            'assigned_user_ids' => [$worker->id],
+        ])
+        ->assertServerError();
+
+    expect(InternalNotice::query()->count())->toBe(0);
+});
+
+test('cleaning duty rule creation rolls back all writes when a write fails', function (): void {
+    $admin = User::factory()->admin()->create();
+    $worker = User::factory()->create();
+
+    CleaningDutyRule::created(function (): void {
+        throw new RuntimeException('boom');
+    });
+
+    $this->actingAs($admin)
+        ->post(route('cleaning-duty-rules.store'), [
+            'weekday' => 1,
+            'label' => '掃除当番',
+            'location' => '事務所',
+            'notes' => null,
+            'is_active' => true,
+            'assigned_user_ids' => [$worker->id],
+        ])
+        ->assertServerError();
+
+    expect(CleaningDutyRule::query()->count())->toBe(0);
+});
+
 test('admins can update and delete cleaning duty rules', function (): void {
     $admin = User::factory()->admin()->create();
     $worker = User::factory()->create();
