@@ -14,6 +14,7 @@ import {
 import type { ScheduleDetailEvent } from '@/components/schedule-detail-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { parseBusinessDate } from '@/lib/dates';
 import { index as overviewIndex } from '@/routes/schedule-overview';
 import { index as searchIndex } from '@/routes/schedule-search';
 import type { ConstructionUser } from '@/types';
@@ -81,7 +82,8 @@ function formatDate(date: string) {
         month: 'long',
         day: 'numeric',
         weekday: 'short',
-    }).format(new Date(`${date}T00:00:00`));
+        timeZone: 'Asia/Tokyo',
+    }).format(parseBusinessDate(date));
 }
 
 function scheduleKey(schedule: Pick<SearchSchedule, 'type' | 'id'>) {

@@ -339,7 +339,9 @@ export default function AuditLogsIndex({ logs, filters, options }: Props) {
                                             </td>
                                             <td className="px-5 py-4">
                                                 {log.actor
-                                                    ? `${log.actor.name} (${log.actor.login_id})`
+                                                    ? log.actor.login_id
+                                                        ? `${log.actor.name} (${log.actor.login_id})`
+                                                        : log.actor.name
                                                     : shortClassName(
                                                           log.actor_type,
                                                       )}

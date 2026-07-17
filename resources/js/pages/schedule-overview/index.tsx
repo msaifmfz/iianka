@@ -45,7 +45,7 @@ import {
     recentResourceMatches,
     useRecentResource,
 } from '@/hooks/use-recent-resource';
-import { businessDateString } from '@/lib/dates';
+import { businessDateString, parseBusinessDate } from '@/lib/dates';
 import { rememberScheduleOverviewEditReturn } from '@/lib/schedule-overview-edit-return';
 import { index as overviewIndex } from '@/routes/schedule-overview';
 import type { AttendanceLeaveRecord, ConstructionUser } from '@/types';
@@ -153,7 +153,7 @@ const weekdayLabels = ['日', '月', '火', '水', '木', '金', '土'];
 const heatLevels: HeatLevel[] = [1, 2, 4, 5];
 
 function parseDate(date: string) {
-    return new Date(`${date}T00:00:00`);
+    return parseBusinessDate(date);
 }
 
 function formatInputDate(date: Date) {
@@ -164,7 +164,9 @@ function adjacentMonthDate(selectedDate: string, offset: number) {
     const date = parseDate(selectedDate);
 
     return formatInputDate(
-        new Date(date.getFullYear(), date.getMonth() + offset, 1),
+        new Date(
+            Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + offset, 1, 12),
+        ),
     );
 }
 
@@ -172,6 +174,7 @@ function monthTitle(date: string) {
     return new Intl.DateTimeFormat('ja-JP', {
         year: 'numeric',
         month: 'long',
+        timeZone: 'Asia/Tokyo',
     }).format(parseDate(date));
 }
 
@@ -180,6 +183,7 @@ function detailDate(date: string) {
         month: 'long',
         day: 'numeric',
         weekday: 'short',
+        timeZone: 'Asia/Tokyo',
     }).format(parseDate(date));
 }
 
@@ -210,13 +214,13 @@ function calendarCells(
 
         cells.push({
             ...day,
-            label: current.getDate(),
-            weekday: current.getDay(),
+            label: current.getUTCDate(),
+            weekday: current.getUTCDay(),
             isSelected: date === selectedDate,
             isToday: date === todayDate,
-            isCurrentMonth: current.getMonth() === monthStart.getMonth(),
+            isCurrentMonth: current.getUTCMonth() === monthStart.getUTCMonth(),
         });
-        current.setDate(current.getDate() + 1);
+        current.setUTCDate(current.getUTCDate() + 1);
     }
 
     return cells;
@@ -1943,10 +1947,12 @@ export default function ScheduleOverviewIndex({
 
     // When arriving from a search result, scroll the highlighted schedule into
     // view so the red-bordered item is visible without manual scrolling.
+    const highlightKey = highlightedScheduleKey(highlightedSchedule);
+
     useEffect(() => {
         if (
             returnTo === null ||
-            highlightedScheduleKey(highlightedSchedule) === null ||
+            highlightKey === null ||
             typeof window === 'undefined'
         ) {
             return;
@@ -1972,8 +1978,7 @@ export default function ScheduleOverviewIndex({
         return () => {
             window.cancelAnimationFrame(frame);
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [returnTo, highlightKey]);
 
     return (
         <>

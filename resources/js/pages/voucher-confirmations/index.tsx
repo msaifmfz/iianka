@@ -95,7 +95,7 @@ function formatDateTime(dateTime: string | null) {
         hour: '2-digit',
         minute: '2-digit',
         timeZone: 'Asia/Tokyo',
-    }).format(new Date(dateTime.replace(' ', 'T')));
+    }).format(new Date(dateTime));
 }
 
 function adjacentMonthDate(date: string, offset: number) {

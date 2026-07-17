@@ -22,7 +22,7 @@ import {
     recentResourceMatches,
     useRecentResource,
 } from '@/hooks/use-recent-resource';
-import { businessDateString } from '@/lib/dates';
+import { businessDateString, parseBusinessDate } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import type {
     AttendanceRecord,
@@ -83,7 +83,7 @@ function recordKey(userId: number, date: string) {
 
 function dayLabel(day: AttendanceDay) {
     if (day.day === 1) {
-        return `${new Date(`${day.date}T00:00:00`).getMonth() + 1}/${day.day}`;
+        return `${parseBusinessDate(day.date).getUTCMonth() + 1}/${day.day}`;
     }
 
     return day.day.toString();
@@ -93,7 +93,8 @@ function monthLabel(date: string) {
     return new Intl.DateTimeFormat('ja-JP', {
         year: 'numeric',
         month: 'long',
-    }).format(new Date(`${date}T00:00:00`));
+        timeZone: 'Asia/Tokyo',
+    }).format(parseBusinessDate(date));
 }
 
 function dateLabel(date: string) {
@@ -101,7 +102,8 @@ function dateLabel(date: string) {
         year: 'numeric',
         month: 'numeric',
         day: 'numeric',
-    }).format(new Date(`${date}T00:00:00`));
+        timeZone: 'Asia/Tokyo',
+    }).format(parseBusinessDate(date));
 }
 
 function attendancePeriodLabel(days: AttendanceDay[]) {
@@ -120,7 +122,8 @@ function shortDateLabel(date: string) {
         month: 'numeric',
         day: 'numeric',
         weekday: 'short',
-    }).format(new Date(`${date}T00:00:00`));
+        timeZone: 'Asia/Tokyo',
+    }).format(parseBusinessDate(date));
 }
 
 function japaneseWeekdayName(day: AttendanceDay): string {
@@ -128,7 +131,8 @@ function japaneseWeekdayName(day: AttendanceDay): string {
         japaneseWeekdayLabels[day.weekday] ??
         new Intl.DateTimeFormat('ja-JP', {
             weekday: 'long',
-        }).format(new Date(`${day.date}T00:00:00`))
+            timeZone: 'Asia/Tokyo',
+        }).format(parseBusinessDate(day.date))
     );
 }
 

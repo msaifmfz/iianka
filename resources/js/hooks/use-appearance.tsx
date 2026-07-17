@@ -9,7 +9,7 @@ export type UseAppearanceReturn = {
     readonly updateAppearance: (mode: Appearance) => void;
 };
 
-const DEFAULT_APPEARANCE: Appearance = 'light';
+const DEFAULT_APPEARANCE: Appearance & ResolvedAppearance = 'light';
 const listeners = new Set<() => void>();
 let currentAppearance: Appearance = DEFAULT_APPEARANCE;
 
@@ -35,9 +35,24 @@ const getStoredAppearance = (): Appearance => {
         return DEFAULT_APPEARANCE;
     }
 
-    return (
-        (localStorage.getItem('appearance') as Appearance) || DEFAULT_APPEARANCE
-    );
+    try {
+        return (
+            (localStorage.getItem('appearance') as Appearance) ||
+            DEFAULT_APPEARANCE
+        );
+    } catch {
+        return DEFAULT_APPEARANCE;
+    }
+};
+
+const storeAppearance = (mode: Appearance): void => {
+    try {
+        localStorage.setItem('appearance', mode);
+    } catch {
+        // Storage unavailable (e.g. Safari private mode); cookie still set below.
+    }
+
+    setCookie('appearance', mode);
 };
 
 const isDarkMode = (appearance: Appearance): boolean => {
@@ -71,19 +86,18 @@ const mediaQuery = (): MediaQueryList | null => {
     return window.matchMedia('(prefers-color-scheme: dark)');
 };
 
-const handleSystemThemeChange = (): void => applyTheme(currentAppearance);
+const handleSystemThemeChange = (): void => {
+    applyTheme(currentAppearance);
+    notify();
+};
 
 export function initializeTheme(): void {
     if (typeof window === 'undefined') {
         return;
     }
 
-    if (!localStorage.getItem('appearance')) {
-        localStorage.setItem('appearance', DEFAULT_APPEARANCE);
-        setCookie('appearance', DEFAULT_APPEARANCE);
-    }
-
     currentAppearance = getStoredAppearance();
+    storeAppearance(currentAppearance);
     applyTheme(currentAppearance);
 
     // Set up system theme change listener
@@ -97,18 +111,21 @@ export function useAppearance(): UseAppearanceReturn {
         () => DEFAULT_APPEARANCE,
     );
 
-    const resolvedAppearance: ResolvedAppearance = isDarkMode(appearance)
-        ? 'dark'
-        : 'light';
+    /*
+     * Resolved via its own snapshot so an OS theme flip (which changes
+     * isDarkMode() but not currentAppearance) still triggers a re-render.
+     */
+    const resolvedAppearance: ResolvedAppearance = useSyncExternalStore(
+        subscribe,
+        () => (isDarkMode(currentAppearance) ? 'dark' : 'light'),
+        () => DEFAULT_APPEARANCE,
+    );
 
     const updateAppearance = (mode: Appearance): void => {
         currentAppearance = mode;
 
-        // Store in localStorage for client-side persistence...
-        localStorage.setItem('appearance', mode);
-
-        // Store in cookie for SSR...
-        setCookie('appearance', mode);
+        // localStorage for client-side persistence, cookie for SSR...
+        storeAppearance(mode);
 
         applyTheme(mode);
         notify();

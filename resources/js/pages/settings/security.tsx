@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { useTwoFactorAuth } from '@/hooks/use-two-factor-auth';
 import { flashToast } from '@/lib/flash-toast';
+import { destroy as passkeyDestroy } from '@/routes/passkey';
 import { edit } from '@/routes/security';
 import { disable, enable } from '@/routes/two-factor';
 
@@ -255,8 +256,7 @@ export default function Security({
                                         </p>
                                     </div>
                                     <Form
-                                        action={`/user/passkeys/${passkey.id}`}
-                                        method="delete"
+                                        {...passkeyDestroy.form(passkey.id)}
                                         options={{ preserveScroll: true }}
                                         onSuccess={() =>
                                             flashToast(

@@ -978,7 +978,7 @@ class ConstructionScheduleController extends Controller
             'navigation_address' => $schedule->navigation_address,
             'google_maps_url' => $schedule->googleMapsUrl(),
             'voucher_checked' => $schedule->voucher_checked_at !== null,
-            'voucher_checked_at' => $schedule->voucher_checked_at?->toDateTimeString(),
+            'voucher_checked_at' => $schedule->voucher_checked_at?->toJSON(),
             'voucher_checked_by' => $schedule->voucherCheckedBy === null ? null : [
                 'id' => $schedule->voucherCheckedBy->id,
                 'name' => $schedule->voucherCheckedBy->name,

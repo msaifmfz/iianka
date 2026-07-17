@@ -15,3 +15,14 @@ export function businessDateString(date = new Date()) {
 
     return `${values.year}-${values.month}-${values.day}`;
 }
+
+/**
+ * Parses a `YYYY-MM-DD` business date at UTC noon. UTC noon renders as the
+ * same calendar day both through Asia/Tokyo formatters (21:00 JST) and
+ * through getUTC* getters, so calendar math done with the UTC getters and
+ * setters plus businessDateString() round-trips the day regardless of the
+ * browser timezone.
+ */
+export function parseBusinessDate(date: string) {
+    return new Date(`${date}T12:00:00Z`);
+}

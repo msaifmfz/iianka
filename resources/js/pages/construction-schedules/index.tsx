@@ -63,7 +63,7 @@ import {
     recentResourceMatches,
     useRecentResource,
 } from '@/hooks/use-recent-resource';
-import { businessDateString } from '@/lib/dates';
+import { businessDateString, parseBusinessDate } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import type {
     ConstructionSchedule,
@@ -167,7 +167,8 @@ function formatDate(date: string) {
         month: 'long',
         day: 'numeric',
         weekday: 'short',
-    }).format(new Date(`${date}T00:00:00`));
+        timeZone: 'Asia/Tokyo',
+    }).format(parseBusinessDate(date));
 }
 
 function formatInputDate(date: Date) {
@@ -179,10 +180,12 @@ function phoneHref(phone: string) {
 }
 
 function adjacentMonthDate(selectedDate: string, offset: number) {
-    const date = new Date(`${selectedDate}T00:00:00`);
+    const date = parseBusinessDate(selectedDate);
 
     return formatInputDate(
-        new Date(date.getFullYear(), date.getMonth() + offset, 1),
+        new Date(
+            Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + offset, 1, 12),
+        ),
     );
 }
 
@@ -206,21 +209,23 @@ function toggleScheduleType(
 }
 
 function adjacentYearDate(selectedDate: string, offset: number) {
-    const date = new Date(`${selectedDate}T00:00:00`);
+    const date = parseBusinessDate(selectedDate);
 
     return formatInputDate(
-        new Date(date.getFullYear() + offset, date.getMonth(), 1),
+        new Date(
+            Date.UTC(date.getUTCFullYear() + offset, date.getUTCMonth(), 1, 12),
+        ),
     );
 }
 
 function yearDate(selectedDate: string, year: number) {
-    const date = new Date(`${selectedDate}T00:00:00`);
+    const date = parseBusinessDate(selectedDate);
 
-    return formatInputDate(new Date(year, date.getMonth(), 1));
+    return formatInputDate(new Date(Date.UTC(year, date.getUTCMonth(), 1, 12)));
 }
 
 function surroundingYears(selectedDate: string) {
-    const year = new Date(`${selectedDate}T00:00:00`).getFullYear();
+    const year = parseBusinessDate(selectedDate).getUTCFullYear();
 
     return Array.from({ length: 9 }, (_, index) => year - 4 + index);
 }
@@ -240,15 +245,20 @@ type MonthDay = {
 };
 
 function monthDays(selectedDate: string, calendarDays: CalendarDay[]) {
-    const date = new Date(`${selectedDate}T00:00:00`);
-    const first = new Date(date.getFullYear(), date.getMonth(), 1);
-    const last = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+    const date = parseBusinessDate(selectedDate);
+    const first = new Date(
+        Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1, 12),
+    );
+    const last = new Date(
+        Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0, 12),
+    );
     const visibleStart = new Date(first);
     const visibleEnd = new Date(last);
     const counts = new Map(calendarDays.map((day) => [day.date, day]));
+    const today = formatInputDate(new Date());
 
-    visibleStart.setDate(first.getDate() - first.getDay());
-    visibleEnd.setDate(last.getDate() + (6 - last.getDay()));
+    visibleStart.setUTCDate(first.getUTCDate() - first.getUTCDay());
+    visibleEnd.setUTCDate(last.getUTCDate() + (6 - last.getUTCDay()));
 
     const days: MonthDay[] = [];
     const current = new Date(visibleStart);
@@ -258,18 +268,18 @@ function monthDays(selectedDate: string, calendarDays: CalendarDay[]) {
         const count = counts.get(key);
         days.push({
             date: key,
-            label: current.getDate(),
+            label: current.getUTCDate(),
             count: count?.count ?? 0,
             constructionCount: count?.construction_count ?? 0,
             businessCount: count?.business_count ?? 0,
             internalNoticeCount: count?.internal_notice_count ?? 0,
             cleaningDutyCount: count?.cleaning_duty_count ?? 0,
             isSelected: key === selectedDate,
-            isToday: key === formatInputDate(new Date()),
-            isCurrentMonth: current.getMonth() === date.getMonth(),
-            isSunday: current.getDay() === 0,
+            isToday: key === today,
+            isCurrentMonth: current.getUTCMonth() === date.getUTCMonth(),
+            isSunday: current.getUTCDay() === 0,
         });
-        current.setDate(current.getDate() + 1);
+        current.setUTCDate(current.getUTCDate() + 1);
     }
 
     return days;
@@ -1117,12 +1127,13 @@ export default function ConstructionSchedulesIndex({
     const nextYearDate = adjacentYearDate(filters.date, 1);
     const previousDecadeDate = adjacentYearDate(filters.date, -10);
     const nextDecadeDate = adjacentYearDate(filters.date, 10);
-    const selectedYear = new Date(`${filters.date}T00:00:00`).getFullYear();
+    const selectedYear = parseBusinessDate(filters.date).getUTCFullYear();
     const yearOptions = surroundingYears(filters.date);
     const monthTitle = new Intl.DateTimeFormat('ja-JP', {
         year: 'numeric',
         month: 'long',
-    }).format(new Date(`${filters.date}T00:00:00`));
+        timeZone: 'Asia/Tokyo',
+    }).format(parseBusinessDate(filters.date));
     const hasSelectedUserFilter =
         canViewAllContent && filters.user_ids.length > 0;
     const filteredMySchedules = sortSchedulesByPriority(
@@ -1629,63 +1640,26 @@ export default function ConstructionSchedulesIndex({
                                                     {day.count}
                                                 </span>
                                             )}
-                                            {[
-                                                day.constructionCount > 0 && (
-                                                    <span
-                                                        key="construction"
-                                                        className="size-1.5 rounded-full bg-orange-500"
-                                                    />
-                                                ),
-                                                day.businessCount > 0 && (
-                                                    <span
-                                                        key="business"
-                                                        className="size-1.5 rounded-full bg-violet-500"
-                                                    />
-                                                ),
-                                                day.internalNoticeCount > 0 && (
-                                                    <span
-                                                        key="internal_notice"
-                                                        className="size-1.5 rounded-full bg-sky-500"
-                                                    />
-                                                ),
-                                                day.cleaningDutyCount > 0 && (
-                                                    <span
-                                                        key="cleaning_duty"
-                                                        className="size-1.5 rounded-full bg-emerald-500"
-                                                    />
-                                                ),
-                                            ].filter(Boolean).length > 0 && (
+                                            {(day.constructionCount > 0 ||
+                                                day.businessCount > 0 ||
+                                                day.internalNoticeCount > 0 ||
+                                                day.cleaningDutyCount > 0) && (
                                                 <span className="absolute bottom-1 left-1/2 flex -translate-x-1/2 gap-0.5">
-                                                    {[
-                                                        day.constructionCount >
-                                                            0 && (
-                                                            <span
-                                                                key="construction"
-                                                                className="size-1.5 rounded-full bg-orange-500"
-                                                            />
-                                                        ),
-                                                        day.businessCount >
-                                                            0 && (
-                                                            <span
-                                                                key="business"
-                                                                className="size-1.5 rounded-full bg-violet-500"
-                                                            />
-                                                        ),
-                                                        day.internalNoticeCount >
-                                                            0 && (
-                                                            <span
-                                                                key="internal_notice"
-                                                                className="size-1.5 rounded-full bg-sky-500"
-                                                            />
-                                                        ),
-                                                        day.cleaningDutyCount >
-                                                            0 && (
-                                                            <span
-                                                                key="cleaning_duty"
-                                                                className="size-1.5 rounded-full bg-emerald-500"
-                                                            />
-                                                        ),
-                                                    ]}
+                                                    {day.constructionCount >
+                                                        0 && (
+                                                        <span className="size-1.5 rounded-full bg-orange-500" />
+                                                    )}
+                                                    {day.businessCount > 0 && (
+                                                        <span className="size-1.5 rounded-full bg-violet-500" />
+                                                    )}
+                                                    {day.internalNoticeCount >
+                                                        0 && (
+                                                        <span className="size-1.5 rounded-full bg-sky-500" />
+                                                    )}
+                                                    {day.cleaningDutyCount >
+                                                        0 && (
+                                                        <span className="size-1.5 rounded-full bg-emerald-500" />
+                                                    )}
                                                 </span>
                                             )}
                                         </Link>

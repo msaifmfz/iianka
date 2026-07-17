@@ -315,7 +315,7 @@ export default function AdminUsersIndex({ users, filters }: Props) {
                                     label={role.label}
                                     value={role.value}
                                     active={filters.role === role.value}
-                                    search={filters.search}
+                                    search={search}
                                 />
                             ))}
                         </div>

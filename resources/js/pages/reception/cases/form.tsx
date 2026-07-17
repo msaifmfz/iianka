@@ -100,7 +100,9 @@ export default function ReceptionCaseForm({
     const pendingCreateRef = useRef<Promise<number | null> | null>(null);
 
     const payload = useMemo(() => JSON.stringify(http.data), [http.data]);
-    const canSubmit = isReadyToSubmit(http.data, draftId);
+    // Block submission while an autosave request is in flight so the final
+    // POST can never race a pending draft PATCH on the server.
+    const canSubmit = isReadyToSubmit(http.data, draftId) && !http.processing;
 
     useEffect(() => {
         draftIdRef.current = draftId;
