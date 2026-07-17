@@ -28,6 +28,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 class ConstructionScheduleController extends Controller
 {
@@ -47,7 +48,7 @@ class ConstructionScheduleController extends Controller
             ? $request->query('range')
             : 'today';
         $types = $this->selectedScheduleTypes($request);
-        $date = Carbon::parse($request->query('date', BusinessDate::today()->toDateString()));
+        $date = $this->selectedDate($request);
         [$startsOn, $endsOn] = $this->rangeBounds($range, $date);
 
         /** @var Collection<int, ConstructionSchedule> $constructionSchedules */
@@ -435,6 +436,21 @@ class ConstructionScheduleController extends Controller
     /**
      * @return Collection<int, string>
      */
+    private function selectedDate(Request $request): Carbon
+    {
+        $requestedDate = $request->query('date');
+
+        if (! is_string($requestedDate) || $requestedDate === '') {
+            return BusinessDate::today();
+        }
+
+        try {
+            return Carbon::parse($requestedDate)->startOfDay();
+        } catch (Throwable) {
+            return BusinessDate::today();
+        }
+    }
+
     private function selectedScheduleTypes(Request $request): Collection
     {
         $type = $request->query('type');

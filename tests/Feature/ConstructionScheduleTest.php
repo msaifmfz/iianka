@@ -226,6 +226,29 @@ test('non admin navigation across calendar dates never gains manage access', fun
     }
 });
 
+test('malformed date filters fall back to today instead of failing', function (): void {
+    $user = User::factory()->create();
+    $schedule = ConstructionSchedule::factory()
+        ->scheduledToday()
+        ->create(['location' => '今日の現場']);
+    $schedule->assignedUsers()->attach($user);
+
+    $this->actingAs($user)
+        ->get(route('construction-schedules.index', [
+            'range' => 'today',
+            'date' => 'not-a-date',
+        ]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->component('construction-schedules/index')
+            ->where('filters.date', BusinessDate::today()->toDateString())
+            ->has('mySchedules', 1, fn (Assert $page): Assert => $page
+                ->where('location', '今日の現場')
+                ->etc()
+            )
+        );
+});
+
 test('users can browse schedules in the requested month', function (): void {
     $user = User::factory()->create();
     $currentMonthSchedule = ConstructionSchedule::factory()
