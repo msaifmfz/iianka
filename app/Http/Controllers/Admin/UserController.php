@@ -26,7 +26,7 @@ class UserController extends Controller
             : 'all';
 
         $users = User::query()
-            ->select(['id', 'name', 'login_id', 'email', 'email_verified_at', 'two_factor_confirmed_at', 'role', 'is_admin', 'is_hidden_from_workers', 'created_at', 'updated_at'])
+            ->select(['id', 'name', 'login_id', 'email', 'email_verified_at', 'two_factor_confirmed_at', 'role', 'is_hidden_from_workers', 'created_at', 'updated_at'])
             ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search): void {
                 $query->where('name', 'like', "%{$search}%")
                     ->orWhere('login_id', 'like', "%{$search}%")
@@ -78,10 +78,8 @@ class UserController extends Controller
                 'email' => $validated['email'] ?: null,
                 'password' => $validated['password'],
             ]);
-            $role = UserRole::from($validated['role']);
             $user->forceFill([
-                'role' => $role,
-                'is_admin' => $role === UserRole::Admin,
+                'role' => UserRole::from($validated['role']),
                 'is_hidden_from_workers' => $validated['is_hidden_from_workers'],
             ])->save();
 
@@ -123,7 +121,6 @@ class UserController extends Controller
             'login_id' => $validated['login_id'],
             'email' => $validated['email'] ?: null,
             'role' => $role,
-            'is_admin' => $role === UserRole::Admin,
             'is_hidden_from_workers' => $validated['is_hidden_from_workers'],
         ];
 
@@ -177,7 +174,6 @@ class UserController extends Controller
             'two_factor_confirmed_at' => $user->two_factor_confirmed_at?->toISOString(),
             'role' => $user->role->value,
             'role_label' => $user->role->label(),
-            'is_admin' => $user->is_admin,
             'is_hidden_from_workers' => $user->is_hidden_from_workers,
             'created_at' => $user->created_at?->toISOString(),
             'updated_at' => $user->updated_at?->toISOString(),

@@ -28,7 +28,6 @@ class DatabaseSeeder extends Seeder
             'password' => 'password',
             'email_verified_at' => now(),
             'role' => UserRole::Viewer,
-            'is_admin' => false,
         ])->save();
 
         $admin = User::query()->firstOrNew(['email' => 'admin@example.com']);
@@ -38,7 +37,6 @@ class DatabaseSeeder extends Seeder
             'password' => 'password',
             'email_verified_at' => now(),
             'role' => UserRole::Admin,
-            'is_admin' => true,
         ])->save();
 
         $dates = [

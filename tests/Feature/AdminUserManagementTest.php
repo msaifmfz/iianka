@@ -106,7 +106,6 @@ test('admins can update user roles', function (): void {
 
     expect($member->name)->toBe('Promoted Member')
         ->and($member->role)->toBe(UserRole::Admin)
-        ->and($member->is_admin)->toBeTrue()
         ->and($member->is_hidden_from_workers)->toBeTrue();
 });
 
@@ -125,8 +124,7 @@ test('admins cannot remove their own admin role', function (): void {
         ])
         ->assertSessionHasErrors('role');
 
-    expect($admin->refresh()->role)->toBe(UserRole::Admin)
-        ->and($admin->is_admin)->toBeTrue();
+    expect($admin->refresh()->role)->toBe(UserRole::Admin);
 });
 
 test('admins cannot assign duplicate login ids', function (): void {

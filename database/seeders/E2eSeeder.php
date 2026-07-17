@@ -31,7 +31,6 @@ class E2eSeeder extends Seeder
             'email_verified_at' => now(),
             'password' => 'password',
             'role' => UserRole::Viewer,
-            'is_admin' => false,
             'is_hidden_from_workers' => false,
         ])->save();
 
@@ -43,7 +42,6 @@ class E2eSeeder extends Seeder
             'email_verified_at' => now(),
             'password' => 'password',
             'role' => UserRole::Editor,
-            'is_admin' => false,
             'is_hidden_from_workers' => false,
         ])->save();
 
@@ -55,7 +53,6 @@ class E2eSeeder extends Seeder
             'email_verified_at' => now(),
             'password' => 'password',
             'role' => UserRole::Admin,
-            'is_admin' => true,
             'is_hidden_from_workers' => true,
         ])->save();
 
@@ -67,7 +64,6 @@ class E2eSeeder extends Seeder
             'email_verified_at' => now(),
             'password' => 'password',
             'role' => UserRole::Viewer,
-            'is_admin' => false,
             'is_hidden_from_workers' => false,
         ])->save();
 

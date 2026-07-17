@@ -64,7 +64,6 @@ class CreateAdminUser extends Command
             'password' => $data['password'],
             'email_verified_at' => now(),
             'role' => UserRole::Admin,
-            'is_admin' => true,
         ])->save();
 
         app(AuditLogger::class)->record(

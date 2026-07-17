@@ -42,7 +42,6 @@ class User extends Authenticatable implements PasskeyUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'role' => UserRole::class,
-            'is_admin' => 'boolean',
             'is_hidden_from_workers' => 'boolean',
             'two_factor_confirmed_at' => 'datetime',
         ];

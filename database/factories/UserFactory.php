@@ -57,7 +57,6 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes): array => [
             'role' => UserRole::Admin,
-            'is_admin' => true,
         ]);
     }
 
@@ -68,7 +67,6 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes): array => [
             'role' => UserRole::Editor,
-            'is_admin' => false,
         ]);
     }
 

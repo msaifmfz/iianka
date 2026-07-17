@@ -20,7 +20,6 @@ test('it creates an admin user with a nullable email address', function (): void
         ->and($user->name)->toBe('Admin User')
         ->and($user->email)->toBeNull()
         ->and($user->role)->toBe(UserRole::Admin)
-        ->and($user->is_admin)->toBeTrue()
         ->and($user->email_verified_at)->not->toBeNull()
         ->and(Hash::check('password', $user->password))->toBeTrue();
 });
