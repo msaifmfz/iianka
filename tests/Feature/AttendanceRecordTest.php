@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\AttendanceRecord;
+use App\Models\ConstructionSchedule;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -234,34 +235,85 @@ test('viewers cannot edit attendance records', function (): void {
 });
 
 test('schedule forms include leave records as warnings without blocking assignment', function (): void {
-    $admin = User::factory()->admin()->create();
-    $worker = User::factory()->create(['name' => '休み担当']);
+    Carbon::setTestNow(Carbon::parse('2026-05-01 09:00:00', 'Asia/Tokyo'));
 
-    AttendanceRecord::factory()->leave()->create([
-        'user_id' => $worker->id,
-        'work_date' => '2026-05-04',
-        'note' => '有給',
-    ]);
+    try {
+        $admin = User::factory()->admin()->create();
+        $worker = User::factory()->create(['name' => '休み担当']);
 
-    $this->actingAs($admin)
-        ->get(route('construction-schedules.create'))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page): Assert => $page
-            ->component('construction-schedules/form')
-            ->has('attendanceLeaveRecords', 1)
-            ->where('attendanceLeaveRecords.0.user_id', $worker->id)
-            ->where('attendanceLeaveRecords.0.user_name', '休み担当')
-        );
+        AttendanceRecord::factory()->leave()->create([
+            'user_id' => $worker->id,
+            'work_date' => '2026-05-04',
+            'note' => '有給',
+        ]);
 
-    $this->actingAs($admin)
-        ->post(route('construction-schedules.store'), [
-            'scheduled_on' => '2026-05-04',
-            'status' => 'scheduled',
-            'location' => '休みでも登録できる現場',
-            'assigned_user_ids' => [$worker->id],
-        ])
-        ->assertRedirect(route('construction-schedules.index', [
-            'range' => 'today',
-            'date' => '2026-05-04',
-        ]));
+        $this->actingAs($admin)
+            ->get(route('construction-schedules.create'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page): Assert => $page
+                ->component('construction-schedules/form')
+                ->has('attendanceLeaveRecords', 1)
+                ->where('attendanceLeaveRecords.0.user_id', $worker->id)
+                ->where('attendanceLeaveRecords.0.user_name', '休み担当')
+            );
+
+        $this->actingAs($admin)
+            ->post(route('construction-schedules.store'), [
+                'scheduled_on' => '2026-05-04',
+                'status' => 'scheduled',
+                'location' => '休みでも登録できる現場',
+                'assigned_user_ids' => [$worker->id],
+            ])
+            ->assertRedirect(route('construction-schedules.index', [
+                'range' => 'today',
+                'date' => '2026-05-04',
+            ]));
+    } finally {
+        Carbon::setTestNow();
+    }
+});
+
+test('schedule form availability and leave data are bounded to the surrounding window', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-05-01 09:00:00', 'Asia/Tokyo'));
+
+    try {
+        $admin = User::factory()->admin()->create();
+        $worker = User::factory()->create(['name' => '窓内担当']);
+
+        AttendanceRecord::factory()->leave()->create([
+            'user_id' => $worker->id,
+            'work_date' => '2026-05-10',
+        ]);
+        AttendanceRecord::factory()->leave()->create([
+            'user_id' => $worker->id,
+            'work_date' => '2026-02-10',
+        ]);
+
+        $inWindow = ConstructionSchedule::factory()->create([
+            'scheduled_on' => '2026-05-10',
+            'starts_at' => '09:00',
+            'ends_at' => '10:00',
+        ]);
+        $inWindow->assignedUsers()->sync([$worker->id]);
+
+        $outOfWindow = ConstructionSchedule::factory()->create([
+            'scheduled_on' => '2026-02-10',
+            'starts_at' => '09:00',
+            'ends_at' => '10:00',
+        ]);
+        $outOfWindow->assignedUsers()->sync([$worker->id]);
+
+        $this->actingAs($admin)
+            ->get(route('construction-schedules.create'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page): Assert => $page
+                ->component('construction-schedules/form')
+                ->has('attendanceLeaveRecords', 1)
+                ->where('attendanceLeaveRecords.0.work_date', '2026-05-10')
+                ->has('scheduleAvailability', 1)
+                ->where('scheduleAvailability.0.id', $inWindow->id)
+            );
+    } finally {
+        Carbon::setTestNow();
+    }
 });

@@ -22,6 +22,16 @@ use Illuminate\Support\Collection;
 class ScheduleFormOptionsService
 {
     /**
+     * How far the availability/leave form data reaches around today. Forms
+     * only warn about conflicts on the selected date, so anything outside
+     * this window would never be shown anyway — bounding keeps the payload
+     * from growing with the full history.
+     */
+    private const int WINDOW_MONTHS_BACK = 1;
+
+    private const int WINDOW_MONTHS_AHEAD = 18;
+
+    /**
      * Visible-worker options for form pickers; already-selected hidden users
      * stay listed so editing an existing record doesn't drop them.
      *
@@ -48,7 +58,13 @@ class ScheduleFormOptionsService
         return AttendanceRecord::query()
             ->with('user:id,name,email')
             ->where('status', AttendanceRecord::STATUS_LEAVE)
-            ->when($workDate instanceof Carbon, fn ($query) => $query->whereDate('work_date', $workDate->toDateString()))
+            ->when(
+                $workDate instanceof Carbon,
+                fn ($query) => $query->whereDate('work_date', $workDate->toDateString()),
+                fn ($query) => $query
+                    ->whereDate('work_date', '>=', $this->windowStart()->toDateString())
+                    ->whereDate('work_date', '<=', $this->windowEnd()->toDateString()),
+            )
             ->whereIn('user_id', $userIds)
             ->orderBy('work_date')
             ->get()
@@ -76,6 +92,8 @@ class ScheduleFormOptionsService
         $constructionSchedules = ConstructionSchedule::query()
             ->with('assignedUsers:id,name,email,is_hidden_from_workers')
             ->when($ignoredSchedule instanceof ConstructionSchedule, fn ($query) => $query->whereKeyNot($ignoredSchedule->id))
+            ->whereDate('scheduled_on', '>=', $this->windowStart()->toDateString())
+            ->whereDate('scheduled_on', '<=', $this->windowEnd()->toDateString())
             ->whereNotNull('starts_at')
             ->whereNotNull('ends_at')
             ->whereHas('assignedUsers')
@@ -96,6 +114,8 @@ class ScheduleFormOptionsService
         $businessSchedules = BusinessSchedule::query()
             ->with('assignedUsers:id,name,email,is_hidden_from_workers')
             ->when($ignoredSchedule instanceof BusinessSchedule, fn ($query) => $query->whereKeyNot($ignoredSchedule->id))
+            ->whereDate('scheduled_on', '>=', $this->windowStart()->toDateString())
+            ->whereDate('scheduled_on', '<=', $this->windowEnd()->toDateString())
             ->whereNotNull('starts_at')
             ->whereNotNull('ends_at')
             ->whereHas('assignedUsers')
@@ -115,6 +135,8 @@ class ScheduleFormOptionsService
 
         $internalNotices = InternalNotice::query()
             ->with('assignedUsers:id,name,email,is_hidden_from_workers')
+            ->whereDate('scheduled_on', '>=', $this->windowStart()->toDateString())
+            ->whereDate('scheduled_on', '<=', $this->windowEnd()->toDateString())
             ->whereNotNull('starts_at')
             ->whereNotNull('ends_at')
             ->whereHas('assignedUsers')
@@ -170,6 +192,16 @@ class ScheduleFormOptionsService
             ->unique()
             ->sort()
             ->values();
+    }
+
+    private function windowStart(): Carbon
+    {
+        return BusinessDate::today()->subMonthsNoOverflow(self::WINDOW_MONTHS_BACK);
+    }
+
+    private function windowEnd(): Carbon
+    {
+        return BusinessDate::today()->addMonthsNoOverflow(self::WINDOW_MONTHS_AHEAD);
     }
 
     public function rememberGeneralContractor(?string $generalContractor): void
