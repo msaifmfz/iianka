@@ -6,12 +6,10 @@ use App\Http\Controllers\Concerns\HandlesScheduleReturnTo;
 use App\Http\Requests\StoreConstructionScheduleRequest;
 use App\Http\Requests\UpdateConstructionScheduleNumberRequest;
 use App\Http\Requests\UpdateConstructionScheduleRequest;
-use App\Models\AttendanceRecord;
 use App\Models\BusinessSchedule;
 use App\Models\CleaningDutyRule;
 use App\Models\ConstructionSchedule;
 use App\Models\ConstructionSubcontractor;
-use App\Models\GeneralContractor;
 use App\Models\InternalNotice;
 use App\Models\ScheduleStockBalance;
 use App\Models\SiteGuideFile;
@@ -20,6 +18,7 @@ use App\Models\StockAlias;
 use App\Models\User;
 use App\ScheduleStockSourceType;
 use App\Services\BusinessDate;
+use App\Services\ScheduleFormOptionsService;
 use App\Services\Stock\ScheduleStockReconciliationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -34,6 +33,8 @@ use Throwable;
 class ConstructionScheduleController extends Controller
 {
     use HandlesScheduleReturnTo;
+
+    public function __construct(private readonly ScheduleFormOptionsService $scheduleFormOptions) {}
 
     /**
      * @var array<int, string>
@@ -223,7 +224,7 @@ class ConstructionScheduleController extends Controller
             $this->syncSubcontractors($schedule, $validated);
             $schedule->selectedGuideFiles()->sync($request->input('site_guide_file_ids', []));
             $this->storeGuideFiles($schedule, $request->file('guide_files', []), $validated['guide_file_names'] ?? []);
-            $this->rememberGeneralContractor($validated['general_contractor'] ?? null);
+            $this->scheduleFormOptions->rememberGeneralContractor($validated['general_contractor'] ?? null);
 
             return $schedule;
         });
@@ -319,7 +320,7 @@ class ConstructionScheduleController extends Controller
             $this->syncSubcontractors($constructionSchedule, $validated);
             $constructionSchedule->selectedGuideFiles()->sync($request->input('site_guide_file_ids', []));
             $this->storeGuideFiles($constructionSchedule, $request->file('guide_files', []), $validated['guide_file_names'] ?? []);
-            $this->rememberGeneralContractor($validated['general_contractor'] ?? null);
+            $this->scheduleFormOptions->rememberGeneralContractor($validated['general_contractor'] ?? null);
         });
 
         $this->auditSuccess('construction_schedules.updated', 'A construction schedule was updated.', $constructionSchedule, [
@@ -613,13 +614,7 @@ class ConstructionScheduleController extends Controller
             ? $ignoredSchedule->subcontractors->pluck('id')
             : collect();
 
-        $users = User::query()
-            ->where(fn ($query) => $query
-                ->visibleToWorkers()
-                ->when($selectedUserIds->isNotEmpty(), fn ($query) => $query->orWhereIn('id', $selectedUserIds))
-            )
-            ->orderBy('name')
-            ->get(['id', 'name', 'email']);
+        $users = $this->scheduleFormOptions->userOptions($selectedUserIds);
 
         return [
             'users' => $users,
@@ -635,9 +630,9 @@ class ConstructionScheduleController extends Controller
                 ->orderBy('name')
                 ->get()
                 ->pipe(fn (Collection $files): Collection => $this->guideFilePayload($files)),
-            'generalContractorOptions' => $this->generalContractorOptions(),
-            'scheduleAvailability' => $this->scheduleAvailability($ignoredSchedule, $users->pluck('id')),
-            'attendanceLeaveRecords' => $this->attendanceLeaveRecords($users->pluck('id')),
+            'generalContractorOptions' => $this->scheduleFormOptions->generalContractorOptions(),
+            'scheduleAvailability' => $this->scheduleFormOptions->scheduleAvailability($users->pluck('id'), $ignoredSchedule),
+            'attendanceLeaveRecords' => $this->scheduleFormOptions->attendanceLeaveRecords($users->pluck('id')),
             'stockOptions' => $this->stockOptions(),
         ];
     }
@@ -661,143 +656,6 @@ class ConstructionScheduleController extends Controller
                 'allows_fractional_quantity' => $stock->allows_fractional_quantity,
             ])
             ->values();
-    }
-
-    /**
-     * @param  Collection<int, int>  $userIds
-     * @return Collection<int, array<string, mixed>>
-     */
-    private function attendanceLeaveRecords(Collection $userIds): Collection
-    {
-        return AttendanceRecord::query()
-            ->with('user:id,name,email')
-            ->where('status', AttendanceRecord::STATUS_LEAVE)
-            ->whereIn('user_id', $userIds)
-            ->orderBy('work_date')
-            ->get()
-            ->map(fn (AttendanceRecord $record): array => [
-                'id' => $record->id,
-                'user_id' => $record->user_id,
-                'user_name' => $record->user->name,
-                'work_date' => $record->work_date->toDateString(),
-                'note' => $record->note,
-            ])
-            ->values();
-    }
-
-    /**
-     * @param  Collection<int, int>  $userIds
-     * @return Collection<int, array<string, mixed>>
-     */
-    private function scheduleAvailability(?ConstructionSchedule $ignoredSchedule, Collection $userIds): Collection
-    {
-        $constructionSchedules = ConstructionSchedule::query()
-            ->with('assignedUsers:id,name,email,is_hidden_from_workers')
-            ->when($ignoredSchedule instanceof ConstructionSchedule, fn ($query) => $query->whereKeyNot($ignoredSchedule->id))
-            ->whereNotNull('starts_at')
-            ->whereNotNull('ends_at')
-            ->whereHas('assignedUsers')
-            ->get()
-            ->toBase()
-            ->map(fn (ConstructionSchedule $schedule): array => [
-                'id' => $schedule->id,
-                'type' => 'construction',
-                'title' => $schedule->location,
-                'scheduled_on' => $schedule->scheduled_on->toDateString(),
-                'starts_at' => $schedule->starts_at,
-                'ends_at' => $schedule->ends_at,
-                'time' => $schedule->formattedTime(),
-                'user_ids' => $schedule->assignedUsers->whereIn('id', $userIds)->pluck('id')->values(),
-                'user_names' => $schedule->assignedUsers->whereIn('id', $userIds)->pluck('name')->values(),
-            ]);
-
-        $businessSchedules = BusinessSchedule::query()
-            ->with('assignedUsers:id,name,email,is_hidden_from_workers')
-            ->whereNotNull('starts_at')
-            ->whereNotNull('ends_at')
-            ->whereHas('assignedUsers')
-            ->get()
-            ->toBase()
-            ->map(fn (BusinessSchedule $schedule): array => [
-                'id' => $schedule->id,
-                'type' => 'business',
-                'title' => $schedule->location,
-                'scheduled_on' => $schedule->scheduled_on->toDateString(),
-                'starts_at' => $schedule->starts_at,
-                'ends_at' => $schedule->ends_at,
-                'time' => $schedule->formattedTime(),
-                'user_ids' => $schedule->assignedUsers->whereIn('id', $userIds)->pluck('id')->values(),
-                'user_names' => $schedule->assignedUsers->whereIn('id', $userIds)->pluck('name')->values(),
-            ]);
-
-        $internalNotices = InternalNotice::query()
-            ->with('assignedUsers:id,name,email,is_hidden_from_workers')
-            ->whereNotNull('starts_at')
-            ->whereNotNull('ends_at')
-            ->whereHas('assignedUsers')
-            ->get()
-            ->toBase()
-            ->map(fn (InternalNotice $notice): array => [
-                'id' => $notice->id,
-                'type' => 'internal_notice',
-                'title' => $notice->title,
-                'scheduled_on' => $notice->scheduled_on->toDateString(),
-                'starts_at' => $notice->starts_at,
-                'ends_at' => $notice->ends_at,
-                'time' => $notice->formattedTime(),
-                'user_ids' => $notice->assignedUsers->whereIn('id', $userIds)->pluck('id')->values(),
-                'user_names' => $notice->assignedUsers->whereIn('id', $userIds)->pluck('name')->values(),
-            ]);
-
-        return $constructionSchedules
-            ->merge($businessSchedules)
-            ->merge($internalNotices)
-            ->filter(fn (array $schedule): bool => $schedule['user_ids']->isNotEmpty())
-            ->sortBy([
-                ['scheduled_on', 'asc'],
-                ['starts_at', 'asc'],
-                ['title', 'asc'],
-            ])
-            ->values();
-    }
-
-    /**
-     * @return Collection<int, string>
-     */
-    private function generalContractorOptions(): Collection
-    {
-        return GeneralContractor::query()
-            ->orderBy('name')
-            ->pluck('name')
-            ->merge(
-                ConstructionSchedule::query()
-                    ->whereNotNull('general_contractor')
-                    ->where('general_contractor', '!=', '')
-                    ->distinct()
-                    ->pluck('general_contractor')
-            )
-            ->merge(
-                BusinessSchedule::query()
-                    ->whereNotNull('general_contractor')
-                    ->where('general_contractor', '!=', '')
-                    ->distinct()
-                    ->pluck('general_contractor')
-            )
-            ->filter()
-            ->unique()
-            ->sort()
-            ->values();
-    }
-
-    private function rememberGeneralContractor(?string $generalContractor): void
-    {
-        if ($generalContractor === null || $generalContractor === '') {
-            return;
-        }
-
-        GeneralContractor::query()->firstOrCreate([
-            'name' => $generalContractor,
-        ]);
     }
 
     /**
@@ -967,7 +825,7 @@ class ConstructionScheduleController extends Controller
                 'email' => $schedule->voucherCheckedBy->email,
             ],
             'voucher_note' => $schedule->voucher_note,
-            'assigned_users' => $this->userPayload($schedule->assignedUsers),
+            'assigned_users' => $this->scheduleFormOptions->userPayload($schedule->assignedUsers),
             'subcontractors' => $this->subcontractorPayload($schedule->subcontractors),
             'guide_files' => $this->guideFilePayload($schedule->allGuideFiles()),
             'selected_site_guide_file_ids' => $schedule->selectedGuideFiles->pluck('id')->values(),
@@ -995,7 +853,7 @@ class ConstructionScheduleController extends Controller
             'person_in_charge' => $schedule->person_in_charge,
             'content' => $schedule->content,
             'memo' => $schedule->memo,
-            'assigned_users' => $this->userPayload($schedule->assignedUsers),
+            'assigned_users' => $this->scheduleFormOptions->userPayload($schedule->assignedUsers),
         ])->values();
     }
 
@@ -1017,7 +875,7 @@ class ConstructionScheduleController extends Controller
             'location' => $notice->location,
             'content' => $notice->content,
             'memo' => $notice->memo,
-            'assigned_users' => $this->userPayload($notice->assignedUsers),
+            'assigned_users' => $this->scheduleFormOptions->userPayload($notice->assignedUsers),
         ])->values();
     }
 
@@ -1042,23 +900,8 @@ class ConstructionScheduleController extends Controller
             'rule_id' => $occurrence['rule']->id,
             'weekday' => $occurrence['rule']->weekday,
             'weekday_label' => $occurrence['rule']->weekdayLabel(),
-            'assigned_users' => $this->userPayload($occurrence['assigned_users']),
+            'assigned_users' => $this->scheduleFormOptions->userPayload($occurrence['assigned_users']),
         ])->values();
-    }
-
-    /**
-     * @param  Collection<int, User>  $users
-     * @return Collection<int, array{id: int, name: string, email: string|null}>
-     */
-    private function userPayload(Collection $users): Collection
-    {
-        return $users
-            ->map(fn (User $user): array => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-            ])
-            ->values();
     }
 
     /**

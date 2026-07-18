@@ -6,6 +6,7 @@ use App\Http\Requests\SearchSchedulesRequest;
 use App\Models\BusinessSchedule;
 use App\Models\ConstructionSchedule;
 use App\Models\User;
+use App\Services\ScheduleFormOptionsService;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -16,6 +17,8 @@ use Inertia\Response;
 class ScheduleSearchController extends Controller
 {
     private const int PER_PAGE = 20;
+
+    public function __construct(private readonly ScheduleFormOptionsService $scheduleFormOptions) {}
 
     public function __invoke(SearchSchedulesRequest $request): Response
     {
@@ -165,24 +168,9 @@ class ScheduleSearchController extends Controller
             'general_contractor' => $schedule->general_contractor,
             'content' => $schedule->content,
             'carry_out_note' => $schedule instanceof ConstructionSchedule ? $schedule->carry_out_note : null,
-            'assigned_users' => $this->userPayload(
+            'assigned_users' => $this->scheduleFormOptions->userPayload(
                 $schedule->assignedUsers->whereIn('id', $visibleUserIds)->values()
             ),
         ];
-    }
-
-    /**
-     * @param  Collection<int, User>  $users
-     * @return Collection<int, array{id: int, name: string, email: string|null}>
-     */
-    private function userPayload(Collection $users): Collection
-    {
-        return $users
-            ->map(fn (User $user): array => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-            ])
-            ->values();
     }
 }

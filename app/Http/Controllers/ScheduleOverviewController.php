@@ -3,12 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\HandlesScheduleReturnTo;
-use App\Models\AttendanceRecord;
 use App\Models\BusinessSchedule;
 use App\Models\ConstructionSchedule;
 use App\Models\InternalNotice;
 use App\Models\User;
 use App\Services\BusinessDate;
+use App\Services\ScheduleFormOptionsService;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -20,6 +20,8 @@ use Throwable;
 class ScheduleOverviewController extends Controller
 {
     use HandlesScheduleReturnTo;
+
+    public function __construct(private readonly ScheduleFormOptionsService $scheduleFormOptions) {}
 
     public function __invoke(Request $request): Response
     {
@@ -264,33 +266,10 @@ class ScheduleOverviewController extends Controller
         $visibleUserIds = $users->pluck('id');
 
         return [
-            'users' => $this->userPayload($users),
+            'users' => $this->scheduleFormOptions->userPayload($users),
             'events' => $this->selectedDayEvents($date, $visibleUserIds),
-            'attendanceLeaveRecords' => $this->attendanceLeaveRecords($date, $visibleUserIds),
+            'attendanceLeaveRecords' => $this->scheduleFormOptions->attendanceLeaveRecords($visibleUserIds, $date),
         ];
-    }
-
-    /**
-     * @param  Collection<int, int>  $visibleUserIds
-     * @return Collection<int, array{id: int, user_id: int, user_name: string, work_date: string, note: string|null}>
-     */
-    private function attendanceLeaveRecords(Carbon $date, Collection $visibleUserIds): Collection
-    {
-        return AttendanceRecord::query()
-            ->with('user:id,name,email')
-            ->where('status', AttendanceRecord::STATUS_LEAVE)
-            ->whereDate('work_date', $date->toDateString())
-            ->whereIn('user_id', $visibleUserIds)
-            ->orderBy('work_date')
-            ->get()
-            ->map(fn (AttendanceRecord $record): array => [
-                'id' => $record->id,
-                'user_id' => $record->user_id,
-                'user_name' => $record->user->name,
-                'work_date' => $record->work_date->toDateString(),
-                'note' => $record->note,
-            ])
-            ->values();
     }
 
     /**
@@ -326,7 +305,7 @@ class ScheduleOverviewController extends Controller
                 'starts_at' => $schedule->starts_at,
                 'ends_at' => $schedule->ends_at,
                 'time_note' => $schedule->time_note,
-                'assigned_users' => $this->userPayload($schedule->assignedUsers->whereIn('id', $visibleUserIds)->values()),
+                'assigned_users' => $this->scheduleFormOptions->userPayload($schedule->assignedUsers->whereIn('id', $visibleUserIds)->values()),
             ]);
 
         $businessSchedules = BusinessSchedule::query()
@@ -354,7 +333,7 @@ class ScheduleOverviewController extends Controller
                 'starts_at' => $schedule->starts_at,
                 'ends_at' => $schedule->ends_at,
                 'time_note' => $schedule->time_note,
-                'assigned_users' => $this->userPayload($schedule->assignedUsers->whereIn('id', $visibleUserIds)->values()),
+                'assigned_users' => $this->scheduleFormOptions->userPayload($schedule->assignedUsers->whereIn('id', $visibleUserIds)->values()),
             ]);
 
         $internalNotices = InternalNotice::query()
@@ -382,7 +361,7 @@ class ScheduleOverviewController extends Controller
                 'starts_at' => $notice->starts_at,
                 'ends_at' => $notice->ends_at,
                 'time_note' => $notice->time_note,
-                'assigned_users' => $this->userPayload($notice->assignedUsers->whereIn('id', $visibleUserIds)->values()),
+                'assigned_users' => $this->scheduleFormOptions->userPayload($notice->assignedUsers->whereIn('id', $visibleUserIds)->values()),
             ]);
 
         return $constructionSchedules
@@ -394,21 +373,6 @@ class ScheduleOverviewController extends Controller
                 $event['ends_at'] ?? '99:99:99',
                 $event['title'],
             ))
-            ->values();
-    }
-
-    /**
-     * @param  Collection<int, User>  $users
-     * @return Collection<int, array{id: int, name: string, email: string|null}>
-     */
-    private function userPayload(Collection $users): Collection
-    {
-        return $users
-            ->map(fn (User $user): array => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-            ])
             ->values();
     }
 }

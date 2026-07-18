@@ -6,12 +6,9 @@ use App\Http\Controllers\Concerns\HandlesScheduleReturnTo;
 use App\Http\Requests\StoreBusinessScheduleRequest;
 use App\Http\Requests\UpdateBusinessScheduleNumberRequest;
 use App\Http\Requests\UpdateBusinessScheduleRequest;
-use App\Models\AttendanceRecord;
 use App\Models\BusinessSchedule;
-use App\Models\ConstructionSchedule;
-use App\Models\GeneralContractor;
-use App\Models\InternalNotice;
 use App\Models\User;
+use App\Services\ScheduleFormOptionsService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -22,6 +19,8 @@ use Inertia\Response;
 class BusinessScheduleController extends Controller
 {
     use HandlesScheduleReturnTo;
+
+    public function __construct(private readonly ScheduleFormOptionsService $scheduleFormOptions) {}
 
     /**
      * @var list<string>
@@ -68,7 +67,7 @@ class BusinessScheduleController extends Controller
             $schedule = BusinessSchedule::create($this->scheduleAttributes($validated));
 
             $schedule->assignedUsers()->sync($request->input('assigned_user_ids', []));
-            $this->rememberGeneralContractor($validated['general_contractor'] ?? null);
+            $this->scheduleFormOptions->rememberGeneralContractor($validated['general_contractor'] ?? null);
 
             return $schedule;
         });
@@ -128,7 +127,7 @@ class BusinessScheduleController extends Controller
         DB::transaction(function () use ($request, $validated, $businessSchedule): void {
             $businessSchedule->update($this->scheduleAttributes($validated));
             $businessSchedule->assignedUsers()->sync($request->input('assigned_user_ids', []));
-            $this->rememberGeneralContractor($validated['general_contractor'] ?? null);
+            $this->scheduleFormOptions->rememberGeneralContractor($validated['general_contractor'] ?? null);
         });
 
         $this->auditSuccess('business_schedules.updated', 'A business schedule was updated.', $businessSchedule, [
@@ -220,158 +219,15 @@ class BusinessScheduleController extends Controller
             ? $ignoredSchedule->assignedUsers->pluck('id')
             : collect();
 
-        $users = User::query()
-            ->where(fn ($query) => $query
-                ->visibleToWorkers()
-                ->when($selectedUserIds->isNotEmpty(), fn ($query) => $query->orWhereIn('id', $selectedUserIds))
-            )
-            ->orderBy('name')
-            ->get(['id', 'name', 'email']);
+        $users = $this->scheduleFormOptions->userOptions($selectedUserIds);
 
         return [
             'users' => $users,
-            'generalContractorOptions' => $this->generalContractorOptions(),
+            'generalContractorOptions' => $this->scheduleFormOptions->generalContractorOptions(),
             'contentOptions' => $this->contentOptions(),
-            'scheduleAvailability' => $this->scheduleAvailability($ignoredSchedule, $users->pluck('id')),
-            'attendanceLeaveRecords' => $this->attendanceLeaveRecords($users->pluck('id')),
+            'scheduleAvailability' => $this->scheduleFormOptions->scheduleAvailability($users->pluck('id'), $ignoredSchedule),
+            'attendanceLeaveRecords' => $this->scheduleFormOptions->attendanceLeaveRecords($users->pluck('id')),
         ];
-    }
-
-    /**
-     * @param  Collection<int, int>  $userIds
-     * @return Collection<int, array<string, mixed>>
-     */
-    private function attendanceLeaveRecords(Collection $userIds): Collection
-    {
-        return AttendanceRecord::query()
-            ->with('user:id,name,email')
-            ->where('status', AttendanceRecord::STATUS_LEAVE)
-            ->whereIn('user_id', $userIds)
-            ->orderBy('work_date')
-            ->get()
-            ->map(fn (AttendanceRecord $record): array => [
-                'id' => $record->id,
-                'user_id' => $record->user_id,
-                'user_name' => $record->user->name,
-                'work_date' => $record->work_date->toDateString(),
-                'note' => $record->note,
-            ])
-            ->values();
-    }
-
-    /**
-     * @param  Collection<int, int>  $userIds
-     * @return Collection<int, array<string, mixed>>
-     */
-    private function scheduleAvailability(?BusinessSchedule $ignoredSchedule, Collection $userIds): Collection
-    {
-        $constructionSchedules = ConstructionSchedule::query()
-            ->with('assignedUsers:id,name,email,is_hidden_from_workers')
-            ->whereNotNull('starts_at')
-            ->whereNotNull('ends_at')
-            ->whereHas('assignedUsers')
-            ->get()
-            ->toBase()
-            ->map(fn (ConstructionSchedule $schedule): array => [
-                'id' => $schedule->id,
-                'type' => 'construction',
-                'title' => $schedule->location,
-                'scheduled_on' => $schedule->scheduled_on->toDateString(),
-                'starts_at' => $schedule->starts_at,
-                'ends_at' => $schedule->ends_at,
-                'time' => $schedule->formattedTime(),
-                'user_ids' => $schedule->assignedUsers->whereIn('id', $userIds)->pluck('id')->values(),
-                'user_names' => $schedule->assignedUsers->whereIn('id', $userIds)->pluck('name')->values(),
-            ]);
-
-        $businessSchedules = BusinessSchedule::query()
-            ->with('assignedUsers:id,name,email,is_hidden_from_workers')
-            ->when($ignoredSchedule instanceof BusinessSchedule, fn ($query) => $query->whereKeyNot($ignoredSchedule->id))
-            ->whereNotNull('starts_at')
-            ->whereNotNull('ends_at')
-            ->whereHas('assignedUsers')
-            ->get()
-            ->toBase()
-            ->map(fn (BusinessSchedule $schedule): array => [
-                'id' => $schedule->id,
-                'type' => 'business',
-                'title' => $schedule->location,
-                'scheduled_on' => $schedule->scheduled_on->toDateString(),
-                'starts_at' => $schedule->starts_at,
-                'ends_at' => $schedule->ends_at,
-                'time' => $schedule->formattedTime(),
-                'user_ids' => $schedule->assignedUsers->whereIn('id', $userIds)->pluck('id')->values(),
-                'user_names' => $schedule->assignedUsers->whereIn('id', $userIds)->pluck('name')->values(),
-            ]);
-
-        $internalNotices = InternalNotice::query()
-            ->with('assignedUsers:id,name,email,is_hidden_from_workers')
-            ->whereNotNull('starts_at')
-            ->whereNotNull('ends_at')
-            ->whereHas('assignedUsers')
-            ->get()
-            ->toBase()
-            ->map(fn (InternalNotice $notice): array => [
-                'id' => $notice->id,
-                'type' => 'internal_notice',
-                'title' => $notice->title,
-                'scheduled_on' => $notice->scheduled_on->toDateString(),
-                'starts_at' => $notice->starts_at,
-                'ends_at' => $notice->ends_at,
-                'time' => $notice->formattedTime(),
-                'user_ids' => $notice->assignedUsers->whereIn('id', $userIds)->pluck('id')->values(),
-                'user_names' => $notice->assignedUsers->whereIn('id', $userIds)->pluck('name')->values(),
-            ]);
-
-        return $constructionSchedules
-            ->merge($businessSchedules)
-            ->merge($internalNotices)
-            ->filter(fn (array $schedule): bool => $schedule['user_ids']->isNotEmpty())
-            ->sortBy([
-                ['scheduled_on', 'asc'],
-                ['starts_at', 'asc'],
-                ['title', 'asc'],
-            ])
-            ->values();
-    }
-
-    /**
-     * @return Collection<int, string>
-     */
-    private function generalContractorOptions(): Collection
-    {
-        return GeneralContractor::query()
-            ->orderBy('name')
-            ->pluck('name')
-            ->merge(
-                ConstructionSchedule::query()
-                    ->whereNotNull('general_contractor')
-                    ->where('general_contractor', '!=', '')
-                    ->distinct()
-                    ->pluck('general_contractor')
-            )
-            ->merge(
-                BusinessSchedule::query()
-                    ->whereNotNull('general_contractor')
-                    ->where('general_contractor', '!=', '')
-                    ->distinct()
-                    ->pluck('general_contractor')
-            )
-            ->filter()
-            ->unique()
-            ->sort()
-            ->values();
-    }
-
-    private function rememberGeneralContractor(?string $generalContractor): void
-    {
-        if ($generalContractor === null || $generalContractor === '') {
-            return;
-        }
-
-        GeneralContractor::query()->firstOrCreate([
-            'name' => $generalContractor,
-        ]);
     }
 
     /**
