@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Application\Reception\ReceptionCaseWorkflow;
 use App\Http\Controllers\Concerns\FlashesReceptionCaseToasts;
 use App\Http\Requests\HandoverReceptionCaseRequest;
 use App\Models\ReceptionCase;
-use App\Services\ReceptionCaseWorkflow;
 use Illuminate\Http\RedirectResponse;
 
 class ReceptionCaseHandoverController extends Controller

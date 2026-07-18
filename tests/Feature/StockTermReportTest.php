@@ -1,10 +1,10 @@
 <?php
 
+use App\Domain\Stock\Enums\StockTransactionType;
 use App\Models\ConstructionSchedule;
 use App\Models\Stock;
 use App\Models\StockPurchase;
 use App\Models\User;
-use App\StockTransactionType;
 use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
 

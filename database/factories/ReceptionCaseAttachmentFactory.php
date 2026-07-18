@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Domain\Reception\Enums\ReceptionCaseAttachmentKind;
+use App\Domain\Reception\Enums\ReceptionCaseAttachmentSource;
 use App\Models\ReceptionCase;
 use App\Models\ReceptionCaseAttachment;
 use App\Models\User;
-use App\ReceptionCaseAttachmentKind;
-use App\ReceptionCaseAttachmentSource;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**

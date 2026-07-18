@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Services;
+namespace App\Http\Presenters\Reception;
 
+use App\Domain\Reception\Enums\ReceptionCaseActivityType;
 use App\Models\ReceptionCase;
 use App\Models\ReceptionCaseActivity;
 use App\Models\ReceptionCaseAttachment;
@@ -63,7 +64,7 @@ class ReceptionCasePresenter
             'activities' => $case->relationLoaded('activities')
                 ? $case->activities
                     ->sortBy('id')
-                    ->reject(fn (ReceptionCaseActivity $activity): bool => $activity->type === ReceptionCaseActivity::TYPE_CREATED_DRAFT)
+                    ->reject(fn (ReceptionCaseActivity $activity): bool => $activity->type === ReceptionCaseActivityType::CreatedDraft->value)
                     ->map(fn (ReceptionCaseActivity $activity): array => $this->activity($activity))
                     ->values()
                     ->all()
@@ -131,7 +132,7 @@ class ReceptionCasePresenter
     public function activity(ReceptionCaseActivity $activity): array
     {
         $statusChanged = $activity->from_status !== $activity->to_status;
-        $assignedUserChanged = $activity->type === ReceptionCaseActivity::TYPE_ASSIGNED
+        $assignedUserChanged = $activity->type === ReceptionCaseActivityType::Assigned->value
             && $activity->from_assigned_user_id !== $activity->to_assigned_user_id;
 
         return [
@@ -199,7 +200,7 @@ class ReceptionCasePresenter
         }
 
         $hasHandover = $case->activities
-            ->contains(fn (ReceptionCaseActivity $activity): bool => $activity->type === ReceptionCaseActivity::TYPE_HANDOVER_REQUESTED);
+            ->contains(fn (ReceptionCaseActivity $activity): bool => $activity->type === ReceptionCaseActivityType::HandoverRequested->value);
 
         if (! $hasHandover) {
             return [];
@@ -208,7 +209,7 @@ class ReceptionCasePresenter
         $chain = [];
 
         foreach ($case->activities->sortBy('id') as $activity) {
-            if ($activity->type !== ReceptionCaseActivity::TYPE_ASSIGNED) {
+            if ($activity->type !== ReceptionCaseActivityType::Assigned->value) {
                 continue;
             }
             if ($activity->from_assigned_user_id === null) {

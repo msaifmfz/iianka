@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Domain\Stock\Parsing\StockNameNormalizer;
 use App\Models\Stock;
-use App\Services\Stock\StockNameNormalizer;
 use Illuminate\Database\Seeder;
 
 class StockSeeder extends Seeder

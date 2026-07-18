@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Concerns;
 
+use App\Domain\Reception\Enums\ReceptionCaseActivityType;
 use App\Models\ReceptionCase;
-use App\Models\ReceptionCaseActivity;
 use App\Models\User;
 
 trait RecordsReceptionCaseChanges
@@ -26,7 +26,7 @@ trait RecordsReceptionCaseChanges
             return;
         }
 
-        $receptionCase->recordActivity($user, ReceptionCaseActivity::TYPE_UPDATED, [
+        $receptionCase->recordActivity($user, ReceptionCaseActivityType::Updated, [
             'from_status' => $receptionCase->status->value,
             'to_status' => $receptionCase->status->value,
         ]);

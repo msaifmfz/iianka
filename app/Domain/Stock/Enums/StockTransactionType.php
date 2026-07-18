@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App;
+namespace App\Domain\Stock\Enums;
 
 enum StockTransactionType: string
 {

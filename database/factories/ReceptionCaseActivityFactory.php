@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Domain\Reception\Enums\ReceptionCaseActivityType;
 use App\Models\ReceptionCase;
 use App\Models\ReceptionCaseActivity;
 use App\Models\User;
@@ -24,7 +25,7 @@ class ReceptionCaseActivityFactory extends Factory
         return [
             'reception_case_id' => ReceptionCase::factory(),
             'user_id' => User::factory(),
-            'type' => ReceptionCaseActivity::TYPE_UPDATED,
+            'type' => ReceptionCaseActivityType::Updated->value,
             'memo' => fake()->optional()->sentence(),
             'from_status' => null,
             'to_status' => null,

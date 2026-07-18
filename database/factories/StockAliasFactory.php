@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Domain\Stock\Parsing\StockNameNormalizer;
 use App\Models\Stock;
 use App\Models\StockAlias;
-use App\Services\Stock\StockNameNormalizer;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**

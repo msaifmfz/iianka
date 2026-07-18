@@ -2,6 +2,11 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Application\Stock\Queries\StockTermReportService;
+use App\Application\Stock\StockPurchaseRecorder;
+use App\Domain\Stock\Parsing\StockNameNormalizer;
+use App\Domain\Stock\ValueObjects\StockQuantity;
+use App\Domain\Stock\ValueObjects\StockTerm;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreStockRequest;
 use App\Http\Requests\Admin\UpdateStockRequest;
@@ -10,11 +15,6 @@ use App\Models\ScheduleStockMention;
 use App\Models\Stock;
 use App\Models\StockAlias;
 use App\Services\BusinessDate;
-use App\Services\Stock\ScheduleContentStockParser;
-use App\Services\Stock\StockNameNormalizer;
-use App\Services\Stock\StockPurchaseRecorder;
-use App\Services\Stock\StockTerm;
-use App\Services\Stock\StockTermReportService;
 use Exception;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -77,7 +77,7 @@ class StockController extends Controller
             $initialQuantity = $validated['initial_quantity'] ?? null;
 
             if (is_string($initialQuantity)
-                && ScheduleContentStockParser::decimalStringToMilliUnits($initialQuantity) > 0) {
+                && StockQuantity::fromDecimal($initialQuantity)->isPositive()) {
                 $recorder->record($stock->id, StockTerm::current(), $initialQuantity, $request->user(), '初期在庫');
             }
 

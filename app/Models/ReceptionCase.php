@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\ReceptionCasePriority;
-use App\ReceptionCaseStatus;
+use App\Domain\Reception\Enums\ReceptionCaseActivityType;
+use App\Domain\Reception\Enums\ReceptionCasePriority;
+use App\Domain\Reception\Enums\ReceptionCaseStatus;
 use Carbon\CarbonImmutable;
 use Database\Factories\ReceptionCaseFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -21,6 +22,7 @@ use Override;
 /**
  * @property int $id
  * @property int|null $assigned_user_id
+ * @property ReceptionCaseStatus $status
  * @property CarbonImmutable|null $last_activity_at
  * @property-read Collection<int, ReceptionCaseSeenState> $seenStates
  */
@@ -221,14 +223,24 @@ class ReceptionCase extends Model
             && $seenState->seen_at->greaterThanOrEqualTo($this->last_activity_at);
     }
 
+    public function canTransitionTo(ReceptionCaseStatus $nextStatus): bool
+    {
+        if (! $this->status->canTransitionTo($nextStatus)) {
+            return false;
+        }
+
+        return $nextStatus !== ReceptionCaseStatus::InProgress
+            || $this->assigned_user_id !== null;
+    }
+
     /**
      * @param  array<string, mixed>  $attributes
      */
-    public function recordActivity(User $user, string $type, array $attributes = [], bool $bumpsActivity = true): ReceptionCaseActivity
+    public function recordActivity(User $user, ReceptionCaseActivityType $type, array $attributes = [], bool $bumpsActivity = true): ReceptionCaseActivity
     {
         $activity = $this->activities()->create([
             'user_id' => $user->id,
-            'type' => $type,
+            'type' => $type->value,
             ...$attributes,
         ]);
 

@@ -1,11 +1,11 @@
 <?php
 
+use App\Domain\Reception\Enums\ReceptionCaseActivityType;
+use App\Domain\Reception\Enums\ReceptionCaseAttachmentSource;
 use App\Models\AuditLog;
 use App\Models\ReceptionCase;
-use App\Models\ReceptionCaseActivity;
 use App\Models\ReceptionCaseAttachment;
 use App\Models\User;
-use App\ReceptionCaseAttachmentSource;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -35,7 +35,7 @@ test('reception draft owners can upload attachments', function (): void {
 
     expect($attachment->reception_case_id)->toBe($case->id)
         ->and($attachment->uploaded_by_user_id)->toBe($user->id)
-        ->and($case->activities()->where('type', ReceptionCaseActivity::TYPE_ATTACHMENT_ADDED)->exists())->toBeFalse();
+        ->and($case->activities()->where('type', ReceptionCaseActivityType::AttachmentAdded->value)->exists())->toBeFalse();
 });
 
 test('draft attachments stay private to the draft owner', function (): void {
@@ -244,14 +244,14 @@ test('active case attachment changes record activity', function (): void {
 
     $attachment = ReceptionCaseAttachment::query()->findOrFail($response->json('attachment.id'));
 
-    expect($case->refresh()->activities()->where('type', ReceptionCaseActivity::TYPE_ATTACHMENT_ADDED)->exists())->toBeTrue()
+    expect($case->refresh()->activities()->where('type', ReceptionCaseActivityType::AttachmentAdded->value)->exists())->toBeTrue()
         ->and($case->last_activity_at)->not->toBeNull();
 
     $this->delete(route('reception.attachments.destroy', $attachment))
         ->assertOk()
         ->assertJsonPath('deleted_id', $attachment->id);
 
-    expect($case->refresh()->activities()->where('type', ReceptionCaseActivity::TYPE_ATTACHMENT_DELETED)->exists())->toBeTrue();
+    expect($case->refresh()->activities()->where('type', ReceptionCaseActivityType::AttachmentDeleted->value)->exists())->toBeTrue();
     Storage::disk('local')->assertMissing($attachment->path);
 });
 

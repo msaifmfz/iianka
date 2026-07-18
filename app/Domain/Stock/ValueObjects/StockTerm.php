@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Stock;
+namespace App\Domain\Stock\ValueObjects;
 
 use App\Services\BusinessDate;
 use Illuminate\Support\Carbon;

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Concerns;
 
+use App\Application\Reception\ReceptionCaseWorkflow;
 use App\Models\ReceptionCase;
-use App\Services\ReceptionCaseWorkflow;
 use Illuminate\Http\RedirectResponse;
 
 /**

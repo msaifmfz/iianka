@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Services\Stock\StockNameNormalizer;
+use App\Domain\Stock\Parsing\StockNameNormalizer;
 
 test('normalizes stock names deterministically', function (string $input, string $expected): void {
     expect(new StockNameNormalizer()->normalize($input))->toBe($expected);

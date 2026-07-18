@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\Services;
+namespace App\Application\Reception;
 
 use App\Models\ReceptionCase;
 use App\Models\ReceptionCaseSequence;
+use App\Services\BusinessDate;
 use Illuminate\Support\Facades\DB;
 
 class ReceptionCaseNumberGenerator

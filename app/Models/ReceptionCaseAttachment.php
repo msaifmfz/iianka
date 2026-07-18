@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\ReceptionCaseAttachmentKind;
-use App\ReceptionCaseAttachmentPreviewMode;
-use App\ReceptionCaseAttachmentSource;
+use App\Domain\Reception\Enums\ReceptionCaseAttachmentKind;
+use App\Domain\Reception\Enums\ReceptionCaseAttachmentPreviewMode;
+use App\Domain\Reception\Enums\ReceptionCaseAttachmentSource;
 use Database\Factories\ReceptionCaseAttachmentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;

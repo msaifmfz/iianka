@@ -25,24 +25,6 @@ class ReceptionCaseActivity extends Model
     /** @use HasFactory<ReceptionCaseActivityFactory> */
     use HasFactory;
 
-    public const TYPE_CREATED_DRAFT = 'created_draft';
-
-    public const TYPE_SUBMITTED = 'submitted';
-
-    public const TYPE_UPDATED = 'updated';
-
-    public const TYPE_ASSIGNED = 'assigned';
-
-    public const TYPE_STARTED = 'started';
-
-    public const TYPE_HANDOVER_REQUESTED = 'handover_requested';
-
-    public const TYPE_COMPLETED = 'completed';
-
-    public const TYPE_ATTACHMENT_ADDED = 'attachment_added';
-
-    public const TYPE_ATTACHMENT_DELETED = 'attachment_deleted';
-
     /**
      * @return BelongsTo<ReceptionCase, $this>
      */

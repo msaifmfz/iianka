@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Stock;
+namespace App\Domain\Stock\Parsing;
 
-use App\StockMentionStatus;
+use App\Domain\Stock\Enums\StockMentionStatus;
+use App\Domain\Stock\ValueObjects\StockQuantity;
 use Normalizer;
 
 /**
@@ -33,13 +34,6 @@ final class ScheduleContentStockParser
      * composes with the preceding kana when normalized together with it.
      */
     private const array VOICED_SOUND_MARKS = ["\u{FF9E}", "\u{FF9F}", "\u{3099}", "\u{309A}"];
-
-    /**
-     * decimal(12,3) fits at most 9 integer digits.
-     */
-    private const int MAX_INTEGER_DIGITS = 9;
-
-    private const int DECIMAL_SCALE = 3;
 
     /**
      * @param  list<StockCatalogEntry>  $entries
@@ -104,7 +98,7 @@ final class ScheduleContentStockParser
 
             $reserved[] = [$numberToken['start'], $numberToken['end']];
 
-            [$status, $quantity, $milliUnits] = $this->evaluateQuantity($numberToken['raw'], $entry);
+            [$status, $quantity] = $this->evaluateQuantity($numberToken['raw'], $entry);
 
             if ($status === StockMentionStatus::Recognized && ! $entry->isActive) {
                 $status = StockMentionStatus::InactiveStock;
@@ -118,7 +112,6 @@ final class ScheduleContentStockParser
                 stockNameSnapshot: $entry->stockName,
                 matchedText: mb_substr($content, $startOffset, $endOffset - $startOffset),
                 quantity: $quantity,
-                quantityMilliUnits: $milliUnits,
                 startOffset: $startOffset,
                 endOffset: $endOffset,
                 quantityStartOffset: $offsetStarts[$numberToken['start']],
@@ -340,55 +333,24 @@ final class ScheduleContentStockParser
     }
 
     /**
-     * @return array{0: StockMentionStatus, 1: string|null, 2: int|null}
+     * @return array{0: StockMentionStatus, 1: StockQuantity|null}
      */
     private function evaluateQuantity(string $raw, StockCatalogEntry $entry): array
     {
-        $isNegative = str_starts_with($raw, '-');
-        $unsigned = $isNegative ? substr($raw, 1) : $raw;
-        $parts = explode('.', $unsigned);
-        $integerPart = $parts[0];
-        $fractionPart = $parts[1] ?? '';
+        $quantity = StockQuantity::tryFromDecimal($raw);
 
-        if (
-            strlen(ltrim($integerPart, '0')) > self::MAX_INTEGER_DIGITS
-            || strlen($fractionPart) > self::DECIMAL_SCALE
-        ) {
-            return [StockMentionStatus::InvalidQuantity, null, null];
+        if (! $quantity instanceof StockQuantity) {
+            return [StockMentionStatus::InvalidQuantity, null];
         }
 
-        $milliUnits = ((int) $integerPart) * 1000 + (int) str_pad($fractionPart, self::DECIMAL_SCALE, '0');
-        $quantity = self::milliUnitsToDecimalString($isNegative ? -$milliUnits : $milliUnits);
-
-        if ($isNegative || $milliUnits === 0) {
-            return [StockMentionStatus::InvalidQuantity, $quantity, null];
+        if (! $quantity->isPositive()) {
+            return [StockMentionStatus::InvalidQuantity, $quantity];
         }
 
-        if (! $entry->allowsFractionalQuantity && $milliUnits % 1000 !== 0) {
-            return [StockMentionStatus::InvalidQuantity, $quantity, null];
+        if (! $entry->allowsFractionalQuantity && ! $quantity->isWhole()) {
+            return [StockMentionStatus::InvalidQuantity, $quantity];
         }
 
-        return [StockMentionStatus::Recognized, $quantity, $milliUnits];
-    }
-
-    public static function milliUnitsToDecimalString(int $milliUnits): string
-    {
-        $absolute = abs($milliUnits);
-
-        return ($milliUnits < 0 ? '-' : '')
-            .intdiv($absolute, 1000)
-            .'.'
-            .str_pad((string) ($absolute % 1000), 3, '0', STR_PAD_LEFT);
-    }
-
-    public static function decimalStringToMilliUnits(string $decimal): int
-    {
-        $isNegative = str_starts_with($decimal, '-');
-        $unsigned = ltrim($decimal, '-');
-        $parts = explode('.', $unsigned);
-        $fraction = substr(str_pad($parts[1] ?? '', 3, '0'), 0, 3);
-        $milliUnits = ((int) $parts[0]) * 1000 + (int) $fraction;
-
-        return $isNegative ? -$milliUnits : $milliUnits;
+        return [StockMentionStatus::Recognized, $quantity];
     }
 }

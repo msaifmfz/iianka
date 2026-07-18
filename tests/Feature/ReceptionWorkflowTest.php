@@ -1,5 +1,10 @@
 <?php
 
+use App\Application\Reception\ReceptionCaseNumberGenerator;
+use App\Application\Reception\ReceptionCaseWorkflow;
+use App\Domain\Reception\Enums\ReceptionCaseActivityType;
+use App\Domain\Reception\Enums\ReceptionCasePriority;
+use App\Domain\Reception\Enums\ReceptionCaseStatus;
 use App\Models\AuditLog;
 use App\Models\ReceptionCase;
 use App\Models\ReceptionCaseActivity;
@@ -8,11 +13,7 @@ use App\Models\ReceptionCaseSeenState;
 use App\Models\ReceptionCaseSequence;
 use App\Models\ReceptionDocumentType;
 use App\Models\User;
-use App\ReceptionCasePriority;
-use App\ReceptionCaseStatus;
 use App\Services\BusinessDate;
-use App\Services\ReceptionCaseNumberGenerator;
-use App\Services\ReceptionCaseWorkflow;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -258,7 +259,7 @@ test('deadline changes after reception are regular updates', function (): void {
     expect($case->refresh()->due_on?->toDateString())->toBe($newDueOn)
         ->and(ReceptionCaseActivity::query()
             ->where('reception_case_id', $case->id)
-            ->where('type', ReceptionCaseActivity::TYPE_UPDATED)
+            ->where('type', ReceptionCaseActivityType::Updated->value)
             ->exists())->toBeTrue();
 
     $this->get(route('reception.cases.show', $case))
@@ -338,7 +339,7 @@ test('activity history hides draft creation entries', function (): void {
     $case = ReceptionCase::query()->findOrFail($draftId);
 
     expect($case->activities()
-        ->where('type', ReceptionCaseActivity::TYPE_CREATED_DRAFT)
+        ->where('type', ReceptionCaseActivityType::CreatedDraft->value)
         ->exists())->toBeTrue();
 
     $this->post(route('reception.cases.submit', $case), receptionPayload($documentType))
@@ -350,8 +351,8 @@ test('activity history hides draft creation entries', function (): void {
             ->where('caseData.activities', function ($activities): bool {
                 $activityTypes = collect($activities)->pluck('type');
 
-                return $activityTypes->contains(ReceptionCaseActivity::TYPE_SUBMITTED)
-                    && ! $activityTypes->contains(ReceptionCaseActivity::TYPE_CREATED_DRAFT);
+                return $activityTypes->contains(ReceptionCaseActivityType::Submitted->value)
+                    && ! $activityTypes->contains(ReceptionCaseActivityType::CreatedDraft->value);
             })
         );
 });
@@ -376,7 +377,7 @@ test('workflow managers assign explicitly before starting work', function (): vo
     expect($case->refresh()->status)->toBe(ReceptionCaseStatus::InProgress);
 
     $startedActivity = $case->activities()
-        ->where('type', ReceptionCaseActivity::TYPE_STARTED)
+        ->where('type', ReceptionCaseActivityType::Started->value)
         ->firstOrFail();
 
     expect($startedActivity->from_assigned_user_id)->toBeNull()
@@ -385,12 +386,12 @@ test('workflow managers assign explicitly before starting work', function (): vo
     $this->get(route('reception.cases.show', $case))
         ->assertOk()
         ->assertInertia(fn (Assert $page): Assert => $page
-            ->where('caseData.activities.0.type', ReceptionCaseActivity::TYPE_ASSIGNED)
+            ->where('caseData.activities.0.type', ReceptionCaseActivityType::Assigned->value)
             ->where('caseData.activities.0.from_status', null)
             ->where('caseData.activities.0.to_status', null)
             ->where('caseData.activities.0.from_assigned_user', null)
             ->where('caseData.activities.0.to_assigned_user.id', $assignee->id)
-            ->where('caseData.activities.1.type', ReceptionCaseActivity::TYPE_STARTED)
+            ->where('caseData.activities.1.type', ReceptionCaseActivityType::Started->value)
             ->where('caseData.activities.1.from_status', ReceptionCaseStatus::Received->value)
             ->where('caseData.activities.1.to_status', ReceptionCaseStatus::InProgress->value)
             ->where('caseData.activities.1.from_assigned_user', null)
@@ -639,7 +640,7 @@ test('case priority quick update uses priority authorization and records activit
     ])->assertRedirect();
 
     expect($case->refresh()->priority)->toBe(ReceptionCasePriority::Middle)
-        ->and($case->activities()->where('type', ReceptionCaseActivity::TYPE_UPDATED)->exists())->toBeTrue();
+        ->and($case->activities()->where('type', ReceptionCaseActivityType::Updated->value)->exists())->toBeTrue();
 
     $this->actingAs($admin)
         ->patch(route('reception.cases.priority.update', $case), [
@@ -917,9 +918,9 @@ test('activity history only exposes changed status or assignee values', function
         ->assertInertia(fn (Assert $page): Assert => $page
             ->where('caseData.activities', function ($activities) use ($assignee): bool {
                 $activitiesByType = collect($activities)->keyBy('type');
-                $assigned = $activitiesByType->get(ReceptionCaseActivity::TYPE_ASSIGNED);
-                $started = $activitiesByType->get(ReceptionCaseActivity::TYPE_STARTED);
-                $handover = $activitiesByType->get(ReceptionCaseActivity::TYPE_HANDOVER_REQUESTED);
+                $assigned = $activitiesByType->get(ReceptionCaseActivityType::Assigned->value);
+                $started = $activitiesByType->get(ReceptionCaseActivityType::Started->value);
+                $handover = $activitiesByType->get(ReceptionCaseActivityType::HandoverRequested->value);
 
                 return $assigned['from_status'] === null
                     && $assigned['to_status'] === null
@@ -949,7 +950,7 @@ test('assignees can complete tasks and completed cases move to archive', functio
         ->assertRedirect(route('reception.archive.index'));
 
     $completedActivity = $case->activities()
-        ->where('type', ReceptionCaseActivity::TYPE_COMPLETED)
+        ->where('type', ReceptionCaseActivityType::Completed->value)
         ->firstOrFail();
 
     expect($case->refresh()->status)->toBe(ReceptionCaseStatus::Completed)
@@ -1160,7 +1161,7 @@ test('the workflow service ignores a repeated transition after a lost race', fun
     expect($first)->toBeTrue()
         ->and($second)->toBeTrue()
         ->and($case->refresh()->status)->toBe(ReceptionCaseStatus::InProgress)
-        ->and($case->activities()->where('type', ReceptionCaseActivity::TYPE_STARTED)->count())->toBe(1);
+        ->and($case->activities()->where('type', ReceptionCaseActivityType::Started->value)->count())->toBe(1);
 });
 
 test('the workflow service reports a blocked transition instead of applying it', function (): void {
@@ -1176,7 +1177,20 @@ test('the workflow service reports a blocked transition instead of applying it',
 
     expect($applied)->toBeFalse()
         ->and($case->refresh()->status)->toBe(ReceptionCaseStatus::Completed)
-        ->and($case->activities()->where('type', ReceptionCaseActivity::TYPE_STARTED)->exists())->toBeFalse();
+        ->and($case->activities()->where('type', ReceptionCaseActivityType::Started->value)->exists())->toBeFalse();
+});
+
+test('the workflow service cannot start an unassigned case', function (): void {
+    $manager = User::factory()->editor()->create();
+    $case = ReceptionCase::factory()->received()->create([
+        'assigned_user_id' => null,
+    ]);
+
+    $applied = app(ReceptionCaseWorkflow::class)->start($case, $manager, null);
+
+    expect($applied)->toBeFalse()
+        ->and($case->refresh()->status)->toBe(ReceptionCaseStatus::Received)
+        ->and($case->activities()->where('type', ReceptionCaseActivityType::Started->value)->exists())->toBeFalse();
 });
 
 test('the workflow service refuses to assign a case that is no longer active', function (): void {
@@ -1193,7 +1207,7 @@ test('the workflow service refuses to assign a case that is no longer active', f
 
     expect($applied)->toBeFalse()
         ->and($case->refresh()->assigned_user_id)->toBe($assignee->id)
-        ->and($case->activities()->where('type', ReceptionCaseActivity::TYPE_ASSIGNED)->exists())->toBeFalse();
+        ->and($case->activities()->where('type', ReceptionCaseActivityType::Assigned->value)->exists())->toBeFalse();
 });
 
 test('deleting a draft records an audit entry after the row is gone', function (): void {

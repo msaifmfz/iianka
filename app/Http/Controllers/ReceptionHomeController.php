@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Domain\Reception\Enums\ReceptionCaseStatus;
+use App\Http\Presenters\Reception\ReceptionCasePresenter;
 use App\Models\ReceptionCase;
-use App\ReceptionCaseStatus;
 use App\Services\BusinessDate;
-use App\Services\ReceptionCasePresenter;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;

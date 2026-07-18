@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Stock;
+namespace App\Domain\Stock\Parsing;
 
-use App\StockIdentificationMethod;
+use App\Domain\Stock\Enums\StockIdentificationMethod;
 
 /**
  * One matchable catalog text (a stock's current name or one of its aliases).

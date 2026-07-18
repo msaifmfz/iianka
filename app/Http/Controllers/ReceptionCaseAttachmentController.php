@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Domain\Reception\Enums\ReceptionCaseActivityType;
+use App\Domain\Reception\Enums\ReceptionCaseAttachmentPreviewMode;
+use App\Domain\Reception\Enums\ReceptionCaseAttachmentSource;
+use App\Domain\Reception\Enums\ReceptionCaseStatus;
+use App\Http\Presenters\Reception\ReceptionCasePresenter;
 use App\Http\Requests\StoreReceptionCaseAttachmentRequest;
 use App\Models\ReceptionCase;
-use App\Models\ReceptionCaseActivity;
 use App\Models\ReceptionCaseAttachment;
-use App\ReceptionCaseAttachmentPreviewMode;
-use App\ReceptionCaseAttachmentSource;
-use App\ReceptionCaseStatus;
-use App\Services\ReceptionCasePresenter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -64,7 +64,7 @@ class ReceptionCaseAttachmentController extends Controller
                 $this->recordAttachmentActivity(
                     $receptionCase,
                     $request,
-                    ReceptionCaseActivity::TYPE_ATTACHMENT_ADDED,
+                    ReceptionCaseActivityType::AttachmentAdded,
                     "添付資料を追加: {$attachment->name}",
                 );
 
@@ -128,7 +128,7 @@ class ReceptionCaseAttachmentController extends Controller
             $this->recordAttachmentActivity(
                 $case,
                 $request,
-                ReceptionCaseActivity::TYPE_ATTACHMENT_DELETED,
+                ReceptionCaseActivityType::AttachmentDeleted,
                 "添付資料を削除: {$name}",
             );
 
@@ -147,7 +147,7 @@ class ReceptionCaseAttachmentController extends Controller
         ]);
     }
 
-    private function recordAttachmentActivity(ReceptionCase $case, Request $request, string $type, string $memo): void
+    private function recordAttachmentActivity(ReceptionCase $case, Request $request, ReceptionCaseActivityType $type, string $memo): void
     {
         if ($case->status === ReceptionCaseStatus::Draft) {
             return;

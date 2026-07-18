@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Concerns;
 
+use App\Domain\Stock\Parsing\StockNameNormalizer;
+use App\Domain\Stock\ValueObjects\StockQuantity;
 use App\Models\Stock;
 use App\Models\StockAlias;
-use App\Services\Stock\ScheduleContentStockParser;
-use App\Services\Stock\StockNameNormalizer;
 use Closure;
 use Illuminate\Validation\Validator;
 
@@ -28,7 +28,7 @@ trait StockCatalogValidationRules
             function (string $attribute, mixed $value, Closure $fail) use ($allowsFractionalQuantity): void {
                 if (! $allowsFractionalQuantity
                     && is_string($value)
-                    && ScheduleContentStockParser::decimalStringToMilliUnits($value) % 1000 !== 0) {
+                    && StockQuantity::tryFromDecimal($value)?->isWhole() === false) {
                     $fail('この在庫は整数のみ入力できます。');
                 }
             },

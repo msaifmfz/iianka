@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-use App\Services\Stock\ParsedStockMention;
-use App\Services\Stock\ScheduleContentStockParser;
-use App\Services\Stock\StockCatalogEntry;
-use App\Services\Stock\StockNameNormalizer;
-use App\StockIdentificationMethod;
-use App\StockMentionStatus;
+use App\Domain\Stock\Enums\StockIdentificationMethod;
+use App\Domain\Stock\Enums\StockMentionStatus;
+use App\Domain\Stock\Parsing\ParsedStockMention;
+use App\Domain\Stock\Parsing\ScheduleContentStockParser;
+use App\Domain\Stock\Parsing\StockCatalogEntry;
+use App\Domain\Stock\Parsing\StockNameNormalizer;
 
 /**
  * @param  array{method?: StockIdentificationMethod, active?: bool, fractional?: bool, stockName?: string}  $options
@@ -47,7 +47,7 @@ test('recognizes supported quantity separators', function (string $content): voi
     expect($result->mentions)->toHaveCount(1)
         ->and($result->mentions[0]->stockId)->toBe(15)
         ->and($result->mentions[0]->status)->toBe(StockMentionStatus::Recognized)
-        ->and($result->mentions[0]->quantity)->toBe('2.000');
+        ->and($result->mentions[0]->quantity?->toDecimalString())->toBe('2.000');
 })->with([
     'plain space' => ['Milk 2'],
     'colon' => ['Milk: 2'],
@@ -65,7 +65,7 @@ test('recognizes japanese names with and without spacing', function (string $con
 
     expect($result->mentions)->toHaveCount(1)
         ->and($result->mentions[0]->stockId)->toBe(50)
-        ->and($result->mentions[0]->quantity)->toBe('2.000');
+        ->and($result->mentions[0]->quantity?->toDecimalString())->toBe('2.000');
 })->with([
     'no separator' => ['牛乳2'],
     'space separator' => ['牛乳 2'],
@@ -79,7 +79,7 @@ test('recognizes aliases and reports the alias identification method', function 
         ->and($result->mentions[0]->stockId)->toBe(50)
         ->and($result->mentions[0]->stockNameSnapshot)->toBe('牛乳')
         ->and($result->mentions[0]->identificationMethod)->toBe(StockIdentificationMethod::Alias)
-        ->and($result->mentions[0]->quantity)->toBe('3.000');
+        ->and($result->mentions[0]->quantity?->toDecimalString())->toBe('3.000');
 });
 
 test('does not match inside larger words', function (string $content): void {
@@ -96,7 +96,7 @@ test('matches the longest catalog name first', function (): void {
 
     expect($result->mentions)->toHaveCount(1)
         ->and($result->mentions[0]->stockId)->toBe(16)
-        ->and($result->mentions[0]->quantity)->toBe('2.000');
+        ->and($result->mentions[0]->quantity?->toDecimalString())->toBe('2.000');
 });
 
 test('matches japanese compound names over their prefixes', function (): void {
@@ -111,7 +111,7 @@ test('handles catalog names that contain digits', function (): void {
 
     expect($result->mentions)->toHaveCount(1)
         ->and($result->mentions[0]->stockId)->toBe(17)
-        ->and($result->mentions[0]->quantity)->toBe('3.000');
+        ->and($result->mentions[0]->quantity?->toDecimalString())->toBe('3.000');
 });
 
 test('rejects a quantity glued to a following word', function (): void {
@@ -165,8 +165,7 @@ test('flags invalid quantities without aggregating them', function (string $cont
 
     expect($result->mentions)->toHaveCount(1)
         ->and($result->mentions[0]->status)->toBe(StockMentionStatus::InvalidQuantity)
-        ->and($result->mentions[0]->quantity)->toBe($expectedQuantity)
-        ->and($result->mentions[0]->quantityMilliUnits)->toBeNull()
+        ->and($result->mentions[0]->quantity?->toDecimalString())->toBe($expectedQuantity)
         ->and($result->aggregateUsageMilliUnits())->toBe([]);
 })->with([
     'zero' => ['Milk 0', '0.000'],
@@ -181,7 +180,7 @@ test('accepts fractional quantities when the stock allows them', function (): vo
 
     expect($result->mentions)->toHaveCount(1)
         ->and($result->mentions[0]->status)->toBe(StockMentionStatus::Recognized)
-        ->and($result->mentions[0]->quantity)->toBe('1.500')
+        ->and($result->mentions[0]->quantity?->toDecimalString())->toBe('1.500')
         ->and($result->aggregateUsageMilliUnits())->toBe([60 => 1500]);
 });
 
@@ -221,7 +220,7 @@ test('maps offsets through full-width characters back to the original text', fun
         ->and($result->mentions[0]->matchedText)->toBe('ＭＩＬＫ')
         ->and($result->mentions[0]->startOffset)->toBe(0)
         ->and($result->mentions[0]->endOffset)->toBe(4)
-        ->and($result->mentions[0]->quantity)->toBe('2.000');
+        ->and($result->mentions[0]->quantity?->toDecimalString())->toBe('2.000');
 });
 
 test('composes halfwidth katakana with voiced sound marks', function (string $content): void {
@@ -232,7 +231,7 @@ test('composes halfwidth katakana with voiced sound marks', function (string $co
         ->and($result->mentions[0]->matchedText)->toBe(mb_substr($content, 0, 3))
         ->and($result->mentions[0]->startOffset)->toBe(0)
         ->and($result->mentions[0]->endOffset)->toBe(3)
-        ->and($result->mentions[0]->quantity)->toBe('2.000');
+        ->and($result->mentions[0]->quantity?->toDecimalString())->toBe('2.000');
 })->with([
     'halfwidth katakana' => ['ｶﾞｽ 2'],
     'combining voiced mark' => ["カ\u{3099}ス 2"],
@@ -247,7 +246,7 @@ test('maps the end offset through a composed pair at the end of a match', functi
         ->and($result->mentions[0]->endOffset)->toBe(4)
         ->and($result->mentions[0]->quantityStartOffset)->toBe(5)
         ->and($result->mentions[0]->quantityEndOffset)->toBe(6)
-        ->and($result->mentions[0]->quantity)->toBe('3.000');
+        ->and($result->mentions[0]->quantity?->toDecimalString())->toBe('3.000');
 });
 
 test('recognizes mentions on both sides of mixed content', function (): void {
@@ -255,17 +254,6 @@ test('recognizes mentions on both sides of mixed content', function (): void {
     $result = new ScheduleContentStockParser()->parse($content, defaultCatalog());
 
     expect($result->aggregateUsageMilliUnits())->toBe([50 => 2000, 42 => 10000]);
-});
-
-test('converts between decimal strings and milli-units', function (): void {
-    expect(ScheduleContentStockParser::milliUnitsToDecimalString(2000))->toBe('2.000')
-        ->and(ScheduleContentStockParser::milliUnitsToDecimalString(-7500))->toBe('-7.500')
-        ->and(ScheduleContentStockParser::milliUnitsToDecimalString(0))->toBe('0.000')
-        ->and(ScheduleContentStockParser::milliUnitsToDecimalString(1))->toBe('0.001')
-        ->and(ScheduleContentStockParser::decimalStringToMilliUnits('2.000'))->toBe(2000)
-        ->and(ScheduleContentStockParser::decimalStringToMilliUnits('-7.500'))->toBe(-7500)
-        ->and(ScheduleContentStockParser::decimalStringToMilliUnits('18'))->toBe(18000)
-        ->and(ScheduleContentStockParser::decimalStringToMilliUnits('0.001'))->toBe(1);
 });
 
 test('returns no mentions for empty content or an empty catalog', function (): void {

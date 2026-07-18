@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Concerns;
 
+use App\Domain\Reception\Enums\ReceptionCasePriority;
 use App\Models\ReceptionDocumentType;
-use App\ReceptionCasePriority;
 use Illuminate\Validation\Rule;
 
 trait ValidatesReceptionCaseFields

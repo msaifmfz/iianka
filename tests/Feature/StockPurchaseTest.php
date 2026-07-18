@@ -210,3 +210,20 @@ test('inactive stocks reject purchase increases but allow decreases', function (
 
     expect($stock->refresh()->current_quantity)->toBe('5.000');
 });
+
+test('stock ledger entries cannot be updated or deleted', function (): void {
+    $admin = User::factory()->admin()->create();
+    $stock = Stock::factory()->create();
+
+    $this->actingAs($admin)->put(route('admin.stocks.purchases.update', $stock), [
+        'term_starts_on' => '2026-06-21',
+        'quantity' => '10',
+    ])->assertRedirect();
+
+    $transaction = StockTransaction::query()->sole();
+
+    expect(fn () => $transaction->update(['description' => 'rewritten']))
+        ->toThrow(LogicException::class, StockTransaction::IMMUTABLE_MESSAGE)
+        ->and(fn () => $transaction->delete())
+        ->toThrow(LogicException::class, StockTransaction::IMMUTABLE_MESSAGE);
+});

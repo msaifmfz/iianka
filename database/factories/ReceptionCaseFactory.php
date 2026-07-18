@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Domain\Reception\Enums\ReceptionCasePriority;
+use App\Domain\Reception\Enums\ReceptionCaseStatus;
 use App\Models\ReceptionCase;
 use App\Models\ReceptionDocumentType;
 use App\Models\User;
-use App\ReceptionCasePriority;
-use App\ReceptionCaseStatus;
 use App\Services\BusinessDate;
 use Illuminate\Database\Eloquent\Factories\Factory;
 

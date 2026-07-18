@@ -2,13 +2,14 @@
 
 declare(strict_types=1);
 
-namespace App\Services;
+namespace App\Application\Reception;
 
+use App\Domain\Reception\Enums\ReceptionCaseActivityType;
+use App\Domain\Reception\Enums\ReceptionCaseStatus;
 use App\Models\AuditLog;
 use App\Models\ReceptionCase;
-use App\Models\ReceptionCaseActivity;
 use App\Models\User;
-use App\ReceptionCaseStatus;
+use App\Services\AuditLogger;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -38,7 +39,7 @@ class ReceptionCaseWorkflow
             $case,
             $actor,
             ReceptionCaseStatus::Received,
-            ReceptionCaseActivity::TYPE_SUBMITTED,
+            ReceptionCaseActivityType::Submitted,
             'reception_cases.submitted',
             'A reception case was submitted.',
             attributes: $attributes,
@@ -51,7 +52,7 @@ class ReceptionCaseWorkflow
             $case,
             $actor,
             ReceptionCaseStatus::InProgress,
-            ReceptionCaseActivity::TYPE_STARTED,
+            ReceptionCaseActivityType::Started,
             'reception_cases.started',
             'A reception case was started.',
             memo: $memo,
@@ -65,7 +66,7 @@ class ReceptionCaseWorkflow
             $case,
             $actor,
             ReceptionCaseStatus::Handover,
-            ReceptionCaseActivity::TYPE_HANDOVER_REQUESTED,
+            ReceptionCaseActivityType::HandoverRequested,
             'reception_cases.handover_requested',
             'A reception case handover was requested.',
             memo: $memo,
@@ -80,7 +81,7 @@ class ReceptionCaseWorkflow
             $case,
             $actor,
             ReceptionCaseStatus::Completed,
-            ReceptionCaseActivity::TYPE_COMPLETED,
+            ReceptionCaseActivityType::Completed,
             'reception_cases.completed',
             'A reception case was completed.',
             attributes: [
@@ -111,7 +112,7 @@ class ReceptionCaseWorkflow
 
             $locked->forceFill(['assigned_user_id' => $toAssignedUserId])->save();
 
-            $locked->recordActivity($actor, ReceptionCaseActivity::TYPE_ASSIGNED, [
+            $locked->recordActivity($actor, ReceptionCaseActivityType::Assigned, [
                 'memo' => $memo,
                 'from_status' => $locked->status->value,
                 'to_status' => $locked->status->value,
@@ -142,7 +143,7 @@ class ReceptionCaseWorkflow
         ReceptionCase $case,
         User $actor,
         ReceptionCaseStatus $to,
-        string $activityType,
+        ReceptionCaseActivityType $activityType,
         string $auditEvent,
         string $auditDescription,
         ?string $memo = null,
@@ -161,7 +162,7 @@ class ReceptionCaseWorkflow
 
             // Lost a concurrent race: the case moved to a state that can't reach
             // the target. Report failure so the caller can flag it honestly.
-            if (! $locked->status->canTransitionTo($to)) {
+            if (! $locked->canTransitionTo($to)) {
                 return false;
             }
 

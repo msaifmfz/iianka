@@ -2,19 +2,23 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Stock;
+namespace App\Application\Stock;
 
+use App\Domain\Stock\Enums\ScheduleStockSourceType;
+use App\Domain\Stock\Enums\StockExtractionStatus;
+use App\Domain\Stock\Enums\StockIdentificationMethod;
+use App\Domain\Stock\Enums\StockTransactionType;
+use App\Domain\Stock\Parsing\ScheduleContentStockParser;
+use App\Domain\Stock\Parsing\StockCatalogEntry;
+use App\Domain\Stock\ValueObjects\StockQuantity;
 use App\Models\ConstructionSchedule;
 use App\Models\ScheduleContentRevision;
 use App\Models\ScheduleStockBalance;
 use App\Models\Stock;
 use App\Models\StockAlias;
 use App\Models\User;
-use App\ScheduleStockSourceType;
-use App\StockExtractionStatus;
-use App\StockIdentificationMethod;
-use App\StockTransactionType;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -22,16 +26,11 @@ use Illuminate\Validation\ValidationException;
  * usage already applied for that schedule, recording immutable ledger
  * transactions for every inventory change.
  *
- * Both public methods MUST be called inside a database transaction. Stock
- * rows are always locked in ascending id order to avoid deadlocks.
+ * Each public operation owns its transaction. Stock rows are always locked in
+ * ascending id order to avoid deadlocks.
  */
 class ScheduleStockReconciliationService
 {
-    /**
-     * decimal(12,3) upper bound, in milli-units.
-     */
-    private const int MAX_MILLI_UNITS = 999_999_999_999;
-
     public function __construct(
         private readonly ScheduleContentStockParser $parser,
     ) {}
@@ -43,6 +42,13 @@ class ScheduleStockReconciliationService
      * @throws ValidationException
      */
     public function reconcile(ConstructionSchedule $schedule, ?User $actor, ?int $expectedContentVersion = null): void
+    {
+        DB::transaction(function () use ($schedule, $actor, $expectedContentVersion): void {
+            $this->reconcileWithinTransaction($schedule, $actor, $expectedContentVersion);
+        });
+    }
+
+    private function reconcileWithinTransaction(ConstructionSchedule $schedule, ?User $actor, ?int $expectedContentVersion): void
     {
         $sourceType = ScheduleStockSourceType::ConstructionSchedule;
 
@@ -73,7 +79,7 @@ class ScheduleStockReconciliationService
 
         $appliedTotals = $balances
             ->toBase()
-            ->map(fn (ScheduleStockBalance $balance): int => ScheduleContentStockParser::decimalStringToMilliUnits($balance->applied_quantity))
+            ->map(fn (ScheduleStockBalance $balance): int => StockQuantity::fromDecimal($balance->applied_quantity)->milliUnits())
             ->all();
 
         $stockIds = array_values(array_unique([...array_keys($desiredTotals), ...array_keys($appliedTotals)]));
@@ -100,15 +106,15 @@ class ScheduleStockReconciliationService
                 ]);
             }
 
-            if ($desired > self::MAX_MILLI_UNITS) {
+            if ($desired > StockQuantity::MAX_MILLI_UNITS) {
                 throw ValidationException::withMessages([
                     'content' => "在庫「{$stock->name}」の使用数が大きすぎます。",
                 ]);
             }
 
-            $projectedBalance = ScheduleContentStockParser::decimalStringToMilliUnits($stock->current_quantity) - ($desired - $applied);
+            $projectedBalance = StockQuantity::fromDecimal($stock->current_quantity)->milliUnits() - ($desired - $applied);
 
-            if ($projectedBalance > self::MAX_MILLI_UNITS || $projectedBalance < -self::MAX_MILLI_UNITS) {
+            if ($projectedBalance > StockQuantity::MAX_MILLI_UNITS || $projectedBalance < -StockQuantity::MAX_MILLI_UNITS) {
                 throw ValidationException::withMessages([
                     'content' => "在庫「{$stock->name}」の在庫数が扱える範囲を超えます。",
                 ]);
@@ -134,7 +140,7 @@ class ScheduleStockReconciliationService
                     'stock_id' => $mention->stockId,
                     'stock_name_snapshot' => $mention->stockNameSnapshot,
                     'matched_text' => $mention->matchedText,
-                    'quantity' => $mention->quantity,
+                    'quantity' => $mention->quantity?->toDecimalString(),
                     'start_offset' => $mention->startOffset,
                     'end_offset' => $mention->endOffset,
                     'quantity_start_offset' => $mention->quantityStartOffset,
@@ -155,12 +161,12 @@ class ScheduleStockReconciliationService
             }
 
             $stock = $stocks[$stockId];
-            $newQuantity = ScheduleContentStockParser::decimalStringToMilliUnits($stock->current_quantity) - $usageDelta;
+            $newQuantity = StockQuantity::fromDecimal($stock->current_quantity)->milliUnits() - $usageDelta;
 
             $stock->transactions()->create([
                 'transaction_type' => $usageDelta > 0 ? StockTransactionType::ScheduleStockOut : StockTransactionType::ScheduleReversal,
-                'quantity_delta' => ScheduleContentStockParser::milliUnitsToDecimalString(-$usageDelta),
-                'balance_after' => ScheduleContentStockParser::milliUnitsToDecimalString($newQuantity),
+                'quantity_delta' => StockQuantity::fromMilliUnits(-$usageDelta)->toDecimalString(),
+                'balance_after' => StockQuantity::fromMilliUnits($newQuantity)->toDecimalString(),
                 'source_type' => $sourceType,
                 'source_id' => $locked->id,
                 'source_revision_id' => $revision?->id,
@@ -169,7 +175,7 @@ class ScheduleStockReconciliationService
             ]);
 
             $stock->forceFill([
-                'current_quantity' => ScheduleContentStockParser::milliUnitsToDecimalString($newQuantity),
+                'current_quantity' => StockQuantity::fromMilliUnits($newQuantity)->toDecimalString(),
             ])->save();
         }
 
@@ -189,7 +195,7 @@ class ScheduleStockReconciliationService
                     'stock_id' => $stockId,
                 ],
                 [
-                    'applied_quantity' => ScheduleContentStockParser::milliUnitsToDecimalString($desired),
+                    'applied_quantity' => StockQuantity::fromMilliUnits($desired)->toDecimalString(),
                     'latest_revision_id' => $revision?->id,
                 ],
             );
@@ -212,6 +218,13 @@ class ScheduleStockReconciliationService
      */
     public function releaseFor(ConstructionSchedule $schedule, ?User $actor): void
     {
+        DB::transaction(function () use ($schedule, $actor): void {
+            $this->releaseWithinTransaction($schedule, $actor);
+        });
+    }
+
+    private function releaseWithinTransaction(ConstructionSchedule $schedule, ?User $actor): void
+    {
         $sourceType = ScheduleStockSourceType::ConstructionSchedule;
 
         $balances = ScheduleStockBalance::query()
@@ -228,16 +241,22 @@ class ScheduleStockReconciliationService
         $stocks = $this->lockStocks($balances->pluck('stock_id')->all());
 
         foreach ($balances as $balance) {
-            $applied = ScheduleContentStockParser::decimalStringToMilliUnits($balance->applied_quantity);
+            $applied = StockQuantity::fromDecimal($balance->applied_quantity)->milliUnits();
 
             if ($applied !== 0) {
                 $stock = $stocks[$balance->stock_id];
-                $newQuantity = ScheduleContentStockParser::decimalStringToMilliUnits($stock->current_quantity) + $applied;
+                $newQuantity = StockQuantity::fromDecimal($stock->current_quantity)->milliUnits() + $applied;
+
+                if ($newQuantity > StockQuantity::MAX_MILLI_UNITS || $newQuantity < -StockQuantity::MAX_MILLI_UNITS) {
+                    throw ValidationException::withMessages([
+                        'content' => "在庫「{$stock->name}」の在庫数が扱える範囲を超えます。",
+                    ]);
+                }
 
                 $stock->transactions()->create([
                     'transaction_type' => StockTransactionType::ScheduleReversal,
-                    'quantity_delta' => ScheduleContentStockParser::milliUnitsToDecimalString($applied),
-                    'balance_after' => ScheduleContentStockParser::milliUnitsToDecimalString($newQuantity),
+                    'quantity_delta' => StockQuantity::fromMilliUnits($applied)->toDecimalString(),
+                    'balance_after' => StockQuantity::fromMilliUnits($newQuantity)->toDecimalString(),
                     'source_type' => $sourceType,
                     'source_id' => $schedule->id,
                     'source_revision_id' => $balance->latest_revision_id,
@@ -247,7 +266,7 @@ class ScheduleStockReconciliationService
                 ]);
 
                 $stock->forceFill([
-                    'current_quantity' => ScheduleContentStockParser::milliUnitsToDecimalString($newQuantity),
+                    'current_quantity' => StockQuantity::fromMilliUnits($newQuantity)->toDecimalString(),
                 ])->save();
             }
 

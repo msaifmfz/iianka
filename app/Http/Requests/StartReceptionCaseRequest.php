@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Domain\Reception\Enums\ReceptionCaseStatus;
 use App\Http\Requests\Concerns\ProvidesReceptionFieldLabels;
 use App\Models\ReceptionCase;
-use App\ReceptionCaseStatus;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
@@ -44,7 +44,7 @@ class StartReceptionCaseRequest extends FormRequest
                     $validator->errors()->add('assigned_user_id', '担当者を設定してください。');
                 }
 
-                if (! $this->reception_case->status->canTransitionTo(ReceptionCaseStatus::InProgress)) {
+                if (! $this->reception_case->canTransitionTo(ReceptionCaseStatus::InProgress)) {
                     $validator->errors()->add('status', 'この受付は対応開始できません。');
                 }
             },

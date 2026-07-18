@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\ScheduleStockSourceType;
-use App\StockTransactionType;
+use App\Domain\Stock\Enums\ScheduleStockSourceType;
+use App\Domain\Stock\Enums\StockTransactionType;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use LogicException;
 use Override;
 
 /**
@@ -45,6 +46,8 @@ use Override;
 ])]
 class StockTransaction extends Model
 {
+    public const string IMMUTABLE_MESSAGE = 'Stock ledger transactions are immutable; record a correction instead.';
+
     /**
      * @return array<string, string>
      */
@@ -58,6 +61,13 @@ class StockTransaction extends Model
             'source_type' => ScheduleStockSourceType::class,
             'source_id' => 'integer',
         ];
+    }
+
+    #[Override]
+    protected static function booted(): void
+    {
+        self::updating(fn () => throw new LogicException(self::IMMUTABLE_MESSAGE));
+        self::deleting(fn () => throw new LogicException(self::IMMUTABLE_MESSAGE));
     }
 
     /**

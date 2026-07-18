@@ -2,13 +2,16 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Stock;
+namespace App\Application\Stock;
 
+use App\Domain\Stock\Enums\ScheduleStockSourceType;
+use App\Domain\Stock\Enums\StockTransactionType;
+use App\Domain\Stock\ValueObjects\StockQuantity;
+use App\Domain\Stock\ValueObjects\StockTerm;
 use App\Models\Stock;
 use App\Models\StockPurchase;
 use App\Models\User;
-use App\ScheduleStockSourceType;
-use App\StockTransactionType;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -16,17 +19,11 @@ use Illuminate\Validation\ValidationException;
  * purchased quantity for a stock and term, mirrors the delta as an immutable
  * ledger transaction, and keeps stocks.current_quantity in sync.
  *
- * MUST be called inside a database transaction. The stock row is locked
- * before the purchase row, matching the lock order used by
- * ScheduleStockReconciliationService.
+ * Each write owns its transaction. The stock row is locked before the
+ * purchase row, matching the lock order used by stock reconciliation.
  */
 class StockPurchaseRecorder
 {
-    /**
-     * decimal(12,3) upper bound, in milli-units.
-     */
-    private const int MAX_MILLI_UNITS = 999_999_999_999;
-
     /**
      * Set the purchased quantity for a stock in a term. No-op when the value
      * is unchanged.
@@ -35,15 +32,30 @@ class StockPurchaseRecorder
      */
     public function record(int $stockId, StockTerm $term, string $quantity, ?User $actor, ?string $description = null): void
     {
+        DB::transaction(function () use ($stockId, $term, $quantity, $actor, $description): void {
+            $this->recordWithinTransaction($stockId, $term, $quantity, $actor, $description);
+        });
+    }
+
+    private function recordWithinTransaction(int $stockId, StockTerm $term, string $quantity, ?User $actor, ?string $description): void
+    {
         $stock = Stock::query()->lockForUpdate()->findOrFail($stockId);
 
-        $desired = ScheduleContentStockParser::decimalStringToMilliUnits($quantity);
+        $desiredQuantity = StockQuantity::tryFromDecimal($quantity);
 
-        if ($desired < 0 || $desired > self::MAX_MILLI_UNITS) {
+        if (! $desiredQuantity instanceof StockQuantity || $desiredQuantity->isNegative()) {
             throw ValidationException::withMessages([
                 'quantity' => "在庫「{$stock->name}」の仕入数が範囲外です。",
             ]);
         }
+
+        if (! $stock->allows_fractional_quantity && ! $desiredQuantity->isWhole()) {
+            throw ValidationException::withMessages([
+                'quantity' => "在庫「{$stock->name}」は整数のみ入力できます。",
+            ]);
+        }
+
+        $desired = $desiredQuantity->milliUnits();
 
         $purchase = StockPurchase::query()
             ->where('stock_id', $stock->id)
@@ -51,7 +63,7 @@ class StockPurchaseRecorder
             ->lockForUpdate()
             ->first();
 
-        $applied = $purchase === null ? 0 : ScheduleContentStockParser::decimalStringToMilliUnits($purchase->quantity);
+        $applied = $purchase === null ? 0 : StockQuantity::fromDecimal($purchase->quantity)->milliUnits();
         $delta = $desired - $applied;
 
         if ($delta === 0) {
@@ -64,15 +76,15 @@ class StockPurchaseRecorder
             ]);
         }
 
-        $newQuantity = ScheduleContentStockParser::decimalStringToMilliUnits($stock->current_quantity) + $delta;
+        $newQuantity = StockQuantity::fromDecimal($stock->current_quantity)->milliUnits() + $delta;
 
-        if ($newQuantity > self::MAX_MILLI_UNITS) {
+        if ($newQuantity > StockQuantity::MAX_MILLI_UNITS) {
             throw ValidationException::withMessages([
                 'quantity' => "在庫「{$stock->name}」の在庫数が大きすぎます。",
             ]);
         }
 
-        if ($newQuantity < -self::MAX_MILLI_UNITS) {
+        if ($newQuantity < -StockQuantity::MAX_MILLI_UNITS) {
             throw ValidationException::withMessages([
                 'quantity' => "在庫「{$stock->name}」の在庫数が扱える範囲を超えます。",
             ]);
@@ -82,18 +94,18 @@ class StockPurchaseRecorder
             $purchase = StockPurchase::query()->create([
                 'stock_id' => $stock->id,
                 'term_starts_on' => $term->startsOn()->toDateString(),
-                'quantity' => ScheduleContentStockParser::milliUnitsToDecimalString($desired),
+                'quantity' => $desiredQuantity->toDecimalString(),
             ]);
         } else {
             $purchase->update([
-                'quantity' => ScheduleContentStockParser::milliUnitsToDecimalString($desired),
+                'quantity' => $desiredQuantity->toDecimalString(),
             ]);
         }
 
         $stock->transactions()->create([
             'transaction_type' => $delta > 0 ? StockTransactionType::StockIn : StockTransactionType::Correction,
-            'quantity_delta' => ScheduleContentStockParser::milliUnitsToDecimalString($delta),
-            'balance_after' => ScheduleContentStockParser::milliUnitsToDecimalString($newQuantity),
+            'quantity_delta' => StockQuantity::fromMilliUnits($delta)->toDecimalString(),
+            'balance_after' => StockQuantity::fromMilliUnits($newQuantity)->toDecimalString(),
             'source_type' => ScheduleStockSourceType::StockPurchase,
             'source_id' => $purchase->id,
             'stock_name_snapshot' => $stock->name,
@@ -102,7 +114,7 @@ class StockPurchaseRecorder
         ]);
 
         $stock->forceFill([
-            'current_quantity' => ScheduleContentStockParser::milliUnitsToDecimalString($newQuantity),
+            'current_quantity' => StockQuantity::fromMilliUnits($newQuantity)->toDecimalString(),
         ])->save();
     }
 }

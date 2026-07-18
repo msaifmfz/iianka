@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Domain\Reception\Enums\ReceptionCaseStatus;
 use App\Models\BusinessSchedule;
 use App\Models\ConstructionSchedule;
 use App\Models\ReceptionCase;
 use App\Models\ReceptionDocumentType;
 use App\Models\Stock;
 use App\Models\User;
-use App\ReceptionCaseStatus;
 use App\UserRole;
 use Illuminate\Database\Seeder;
 

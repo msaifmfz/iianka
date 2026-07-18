@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Domain\Reception\Enums\ReceptionCaseStatus;
 use App\Models\ReceptionCase;
 use App\Models\User;
-use App\ReceptionCaseStatus;
 
 class ReceptionCasePolicy
 {

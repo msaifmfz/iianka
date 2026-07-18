@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Domain\Stock\Enums\StockExtractionStatus;
 use App\Models\ConstructionSchedule;
 use App\Models\ScheduleContentRevision;
 use App\Models\ScheduleStockBalance;
@@ -11,7 +12,6 @@ use App\Models\StockAlias;
 use App\Models\StockTransaction;
 use App\Models\User;
 use App\Services\BusinessDate;
-use App\StockExtractionStatus;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 

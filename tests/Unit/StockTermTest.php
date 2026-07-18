@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Services\Stock\StockTerm;
+use App\Domain\Stock\ValueObjects\StockTerm;
 use Illuminate\Support\Carbon;
 
 test('containing assigns days 1-20 to the previous month term', function (string $date, string $expectedStart): void {

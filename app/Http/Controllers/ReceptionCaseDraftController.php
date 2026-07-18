@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Application\Reception\ReceptionCaseNumberGenerator;
+use App\Domain\Reception\Enums\ReceptionCaseActivityType;
+use App\Domain\Reception\Enums\ReceptionCaseStatus;
 use App\Http\Requests\StoreReceptionDraftRequest;
 use App\Http\Requests\UpdateReceptionDraftRequest;
 use App\Models\ReceptionCase;
-use App\Models\ReceptionCaseActivity;
-use App\ReceptionCaseStatus;
-use App\Services\ReceptionCaseNumberGenerator;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -53,7 +53,7 @@ class ReceptionCaseDraftController extends Controller
             ...$request->receptionCaseAttributes(),
         ]);
 
-        $case->recordActivity($request->user(), ReceptionCaseActivity::TYPE_CREATED_DRAFT, bumpsActivity: false);
+        $case->recordActivity($request->user(), ReceptionCaseActivityType::CreatedDraft, bumpsActivity: false);
 
         $this->auditSuccess('reception_cases.created', 'A reception draft was created.', $case);
 

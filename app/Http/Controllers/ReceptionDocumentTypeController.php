@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Presenters\Reception\ReceptionCasePresenter;
 use App\Http\Requests\StoreReceptionDocumentTypeRequest;
 use App\Http\Requests\UpdateReceptionDocumentTypeRequest;
 use App\Models\ReceptionDocumentType;
-use App\Services\ReceptionCasePresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;

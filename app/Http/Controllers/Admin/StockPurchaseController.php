@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Application\Stock\StockPurchaseRecorder;
+use App\Domain\Stock\ValueObjects\StockTerm;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateStockPurchaseRequest;
 use App\Models\Stock;
-use App\Services\Stock\StockPurchaseRecorder;
-use App\Services\Stock\StockTerm;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\DB;
 
 class StockPurchaseController extends Controller
 {
@@ -17,9 +16,7 @@ class StockPurchaseController extends Controller
         $validated = $request->validated();
         $term = StockTerm::fromMonth($validated['term_starts_on']);
 
-        DB::transaction(function () use ($validated, $term, $stock, $recorder, $request): void {
-            $recorder->record($stock->id, $term, $validated['quantity'], $request->user());
-        });
+        $recorder->record($stock->id, $term, $validated['quantity'], $request->user());
 
         $this->auditSuccess('admin.stocks.purchase_updated', 'An admin updated a stock purchase quantity.', $stock, [
             'term_starts_on' => $term->startsOn()->toDateString(),

@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\StockExtractionStatus;
+use App\Domain\Stock\Enums\StockExtractionStatus;
 use Database\Factories\ConstructionScheduleFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;

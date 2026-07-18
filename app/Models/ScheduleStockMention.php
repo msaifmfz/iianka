@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\ScheduleStockSourceType;
-use App\StockIdentificationMethod;
-use App\StockMentionStatus;
+use App\Domain\Stock\Enums\ScheduleStockSourceType;
+use App\Domain\Stock\Enums\StockIdentificationMethod;
+use App\Domain\Stock\Enums\StockMentionStatus;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;

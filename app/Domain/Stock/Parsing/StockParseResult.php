@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Stock;
+namespace App\Domain\Stock\Parsing;
 
-use App\StockMentionStatus;
+use App\Domain\Stock\Enums\StockMentionStatus;
 
 final readonly class StockParseResult
 {
@@ -32,7 +32,7 @@ final readonly class StockParseResult
         $totals = [];
 
         foreach ($this->mentions as $mention) {
-            if ($mention->quantityMilliUnits === null) {
+            if ($mention->quantity === null) {
                 continue;
             }
 
@@ -40,7 +40,7 @@ final readonly class StockParseResult
                 continue;
             }
 
-            $totals[$mention->stockId] = ($totals[$mention->stockId] ?? 0) + $mention->quantityMilliUnits;
+            $totals[$mention->stockId] = ($totals[$mention->stockId] ?? 0) + $mention->quantity->milliUnits();
         }
 
         return $totals;

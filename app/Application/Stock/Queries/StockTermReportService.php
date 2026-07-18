@@ -2,15 +2,17 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Stock;
+namespace App\Application\Stock\Queries;
 
+use App\Domain\Stock\Enums\ScheduleStockSourceType;
+use App\Domain\Stock\Enums\StockTransactionType;
+use App\Domain\Stock\ValueObjects\StockQuantity;
+use App\Domain\Stock\ValueObjects\StockTerm;
 use App\Models\ScheduleStockBalance;
 use App\Models\Stock;
 use App\Models\StockPurchase;
 use App\Models\StockTransaction;
-use App\ScheduleStockSourceType;
 use App\Services\BusinessDate;
-use App\StockTransactionType;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
@@ -146,15 +148,15 @@ class StockTermReportService
             'sku' => $stock->sku,
             'is_active' => $stock->is_active,
             'allows_fractional_quantity' => $stock->allows_fractional_quantity,
-            'carry_over' => ScheduleContentStockParser::milliUnitsToDecimalString($carryOver),
-            'purchased' => ScheduleContentStockParser::milliUnitsToDecimalString($purchased),
+            'carry_over' => StockQuantity::fromMilliUnits($carryOver)->toDecimalString(),
+            'purchased' => StockQuantity::fromMilliUnits($purchased)->toDecimalString(),
             'used' => array_map(
-                ScheduleContentStockParser::milliUnitsToDecimalString(...),
+                fn (int $quantity): string => StockQuantity::fromMilliUnits($quantity)->toDecimalString(),
                 $usedMilliUnits,
             ),
-            'used_total' => ScheduleContentStockParser::milliUnitsToDecimalString(array_sum($usedMilliUnits)),
-            'adjustments' => ScheduleContentStockParser::milliUnitsToDecimalString($adjustments),
-            'total' => ScheduleContentStockParser::milliUnitsToDecimalString($total),
+            'used_total' => StockQuantity::fromMilliUnits(array_sum($usedMilliUnits))->toDecimalString(),
+            'adjustments' => StockQuantity::fromMilliUnits($adjustments)->toDecimalString(),
+            'total' => StockQuantity::fromMilliUnits($total)->toDecimalString(),
         ];
     }
 

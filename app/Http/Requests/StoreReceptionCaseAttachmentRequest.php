@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Domain\Reception\Enums\ReceptionCaseAttachmentKind;
+use App\Domain\Reception\Enums\ReceptionCaseAttachmentSource;
 use App\Http\Requests\Concerns\NormalizesRequestInput;
 use App\Models\ReceptionCase;
 use App\Models\ReceptionCaseAttachment;
-use App\ReceptionCaseAttachmentKind;
-use App\ReceptionCaseAttachmentSource;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\UploadedFile;
