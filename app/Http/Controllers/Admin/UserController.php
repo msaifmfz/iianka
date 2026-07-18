@@ -10,6 +10,7 @@ use App\UserRole;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -17,7 +18,7 @@ class UserController extends Controller
 {
     public function index(Request $request): Response
     {
-        abort_unless($request->user()?->canManageUsers() === true, 403);
+        Gate::authorize('manage-users');
 
         $search = $request->string('search')->trim()->toString();
         $role = $request->query('role');
@@ -60,7 +61,7 @@ class UserController extends Controller
 
     public function create(Request $request): Response
     {
-        abort_unless($request->user()?->canManageUsers() === true, 403);
+        Gate::authorize('manage-users');
 
         return Inertia::render('admin/users/form', [
             'managedUser' => null,
@@ -104,7 +105,7 @@ class UserController extends Controller
 
     public function edit(Request $request, User $user): Response
     {
-        abort_unless($request->user()?->canManageUsers() === true, 403);
+        Gate::authorize('manage-users');
 
         return Inertia::render('admin/users/form', [
             'managedUser' => $this->userPayload($user, $request->user()),
@@ -147,7 +148,7 @@ class UserController extends Controller
 
     public function destroy(Request $request, User $user): RedirectResponse
     {
-        abort_unless($request->user()?->canManageUsers() === true, 403);
+        Gate::authorize('manage-users');
         abort_if($request->user()->is($user), 422, '自分自身は削除できません。');
 
         $this->auditSuccess('admin.users.deleted', 'An admin deleted a user account.', $user);

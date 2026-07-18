@@ -17,6 +17,7 @@ use Illuminate\Auth\Events\Verified;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Fortify\Events\RecoveryCodeReplaced;
@@ -47,9 +48,24 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        $this->configureAbilities();
         $this->configureAuditEvents();
 
         Passkey::observe(PasskeyObserver::class);
+    }
+
+    /**
+     * Role-derived abilities, named after the shared Inertia permissions
+     * payload (HandleInertiaRequests). Controllers authorize against these
+     * instead of repeating inline role checks.
+     */
+    private function configureAbilities(): void
+    {
+        Gate::define('manage-content', fn (User $user): bool => $user->canManageContent());
+        Gate::define('view-all-content', fn (User $user): bool => $user->canViewAllContent());
+        Gate::define('manage-users', fn (User $user): bool => $user->canManageUsers());
+        Gate::define('manage-stocks', fn (User $user): bool => $user->isAdmin());
+        Gate::define('view-audit-logs', fn (User $user): bool => $user->canViewAuditLogs());
     }
 
     /**

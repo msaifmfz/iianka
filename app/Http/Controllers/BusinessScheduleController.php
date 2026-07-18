@@ -13,6 +13,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -49,7 +50,7 @@ class BusinessScheduleController extends Controller
 
     public function create(Request $request): Response
     {
-        abort_unless($request->user()?->canManageContent() === true, 403);
+        Gate::authorize('manage-content');
 
         return Inertia::render('business-schedules/form', [
             'schedule' => null,
@@ -109,7 +110,7 @@ class BusinessScheduleController extends Controller
 
     public function edit(Request $request, BusinessSchedule $businessSchedule): Response
     {
-        abort_unless($request->user()?->canManageContent() === true, 403);
+        Gate::authorize('manage-content');
 
         $businessSchedule->load('assignedUsers:id,name,email');
 
@@ -175,7 +176,7 @@ class BusinessScheduleController extends Controller
 
     public function destroy(Request $request, BusinessSchedule $businessSchedule): RedirectResponse
     {
-        abort_unless($request->user()?->canManageContent() === true, 403);
+        Gate::authorize('manage-content');
 
         $this->auditSuccess('business_schedules.deleted', 'A business schedule was deleted.', $businessSchedule);
 

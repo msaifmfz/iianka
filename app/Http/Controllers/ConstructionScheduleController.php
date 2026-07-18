@@ -26,6 +26,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 use Throwable;
@@ -202,7 +203,7 @@ class ConstructionScheduleController extends Controller
 
     public function create(Request $request): Response
     {
-        abort_unless($request->user()?->canManageContent() === true, 403);
+        Gate::authorize('manage-content');
 
         return Inertia::render('construction-schedules/form', [
             'schedule' => null,
@@ -291,7 +292,7 @@ class ConstructionScheduleController extends Controller
 
     public function edit(Request $request, ConstructionSchedule $constructionSchedule): Response
     {
-        abort_unless($request->user()?->canManageContent() === true, 403);
+        Gate::authorize('manage-content');
 
         $constructionSchedule->load(['assignedUsers:id,name,email,is_hidden_from_workers', 'subcontractors:id,name,phone', 'voucherCheckedBy:id,name,email,is_hidden_from_workers', 'selectedGuideFiles']);
 
@@ -372,7 +373,7 @@ class ConstructionScheduleController extends Controller
 
     public function destroy(Request $request, ConstructionSchedule $constructionSchedule, ScheduleStockReconciliationService $stockReconciliation): RedirectResponse
     {
-        abort_unless($request->user()?->canManageContent() === true, 403);
+        Gate::authorize('manage-content');
 
         $this->auditSuccess('construction_schedules.deleted', 'A construction schedule was deleted.', $constructionSchedule);
 

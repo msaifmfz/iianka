@@ -11,6 +11,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -20,7 +21,7 @@ class CleaningDutyRuleController extends Controller
 
     public function index(Request $request): Response
     {
-        abort_unless($request->user()?->canViewAllContent() === true, 403);
+        Gate::authorize('view-all-content');
 
         $rules = CleaningDutyRule::query()
             ->with('assignedUsers:id,name,email')
@@ -37,7 +38,7 @@ class CleaningDutyRuleController extends Controller
 
     public function create(Request $request): Response
     {
-        abort_unless($request->user()?->canManageContent() === true, 403);
+        Gate::authorize('manage-content');
 
         return Inertia::render('cleaning-duty-rules/form', [
             'rule' => null,
@@ -85,7 +86,7 @@ class CleaningDutyRuleController extends Controller
 
     public function edit(Request $request, CleaningDutyRule $cleaningDutyRule): Response
     {
-        abort_unless($request->user()?->canManageContent() === true, 403);
+        Gate::authorize('manage-content');
 
         $cleaningDutyRule->load('assignedUsers:id,name,email');
 
@@ -122,7 +123,7 @@ class CleaningDutyRuleController extends Controller
 
     public function destroy(Request $request, CleaningDutyRule $cleaningDutyRule): RedirectResponse
     {
-        abort_unless($request->user()?->canManageContent() === true, 403);
+        Gate::authorize('manage-content');
 
         $this->auditSuccess('cleaning_duty_rules.deleted', 'A cleaning duty rule was deleted.', $cleaningDutyRule);
 

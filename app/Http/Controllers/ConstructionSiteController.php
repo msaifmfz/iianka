@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -29,7 +30,7 @@ class ConstructionSiteController extends Controller
 
     public function create(Request $request): Response
     {
-        abort_unless($request->user()?->canManageContent() === true, 403);
+        Gate::authorize('manage-content');
 
         return Inertia::render('construction-sites/form', [
             'guideFile' => null,
@@ -76,7 +77,7 @@ class ConstructionSiteController extends Controller
 
     public function edit(Request $request, SiteGuideFile $siteGuideFile): Response
     {
-        abort_unless($request->user()?->canManageContent() === true, 403);
+        Gate::authorize('manage-content');
 
         return Inertia::render('construction-sites/form', [
             'guideFile' => $this->guideFilePayload(collect([$siteGuideFile]))->first(),
@@ -128,7 +129,7 @@ class ConstructionSiteController extends Controller
 
     public function destroy(Request $request, SiteGuideFile $siteGuideFile): RedirectResponse
     {
-        abort_unless($request->user()?->canManageContent() === true, 403);
+        Gate::authorize('manage-content');
 
         $this->auditSuccess('site_guide_files.deleted', 'A site guide file was deleted.', $siteGuideFile);
 

@@ -15,6 +15,7 @@ use App\Models\SiteGuideFile;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 use Throwable;
@@ -107,7 +108,7 @@ class AuditLogController extends Controller
 
     public function index(Request $request): Response
     {
-        abort_unless($request->user()?->canViewAuditLogs() === true, 403);
+        Gate::authorize('view-audit-logs');
 
         $filters = [
             'search' => $request->string('search')->trim()->toString(),

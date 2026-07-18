@@ -6,6 +6,7 @@ use App\Http\Requests\UpdateConstructionSubcontractorRequest;
 use App\Models\ConstructionSubcontractor;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class ConstructionSubcontractorController extends Controller
 {
@@ -27,7 +28,7 @@ class ConstructionSubcontractorController extends Controller
 
     public function destroy(Request $request, ConstructionSubcontractor $constructionSubcontractor): RedirectResponse
     {
-        abort_unless($request->user()?->canManageContent() === true, 403);
+        Gate::authorize('manage-content');
 
         $this->auditSuccess('construction_subcontractors.deleted', 'A construction subcontractor was deleted.', $constructionSubcontractor);
 

@@ -19,6 +19,7 @@ use Exception;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -26,7 +27,7 @@ class StockController extends Controller
 {
     public function index(Request $request, StockTermReportService $reportService): Response
     {
-        abort_unless($request->user()?->isAdmin() === true, 403);
+        Gate::authorize('manage-stocks');
 
         $term = $this->resolveTerm($request->query('month'));
 
@@ -44,7 +45,7 @@ class StockController extends Controller
 
     public function create(Request $request): Response
     {
-        abort_unless($request->user()?->isAdmin() === true, 403);
+        Gate::authorize('manage-stocks');
 
         return Inertia::render('admin/stocks/form', [
             'managedStock' => null,
@@ -102,7 +103,7 @@ class StockController extends Controller
 
     public function edit(Request $request, Stock $stock): Response
     {
-        abort_unless($request->user()?->isAdmin() === true, 403);
+        Gate::authorize('manage-stocks');
 
         return Inertia::render('admin/stocks/form', [
             'managedStock' => $this->stockPayload($stock),
@@ -170,7 +171,7 @@ class StockController extends Controller
 
     public function destroy(Request $request, Stock $stock): RedirectResponse
     {
-        abort_unless($request->user()?->isAdmin() === true, 403);
+        Gate::authorize('manage-stocks');
         abort_if($this->hasHistory($stock), 422, '履歴のある在庫は削除できません。代わりに無効化してください。');
 
         $this->auditSuccess('admin.stocks.deleted', 'An admin deleted a stock item.', $stock, [

@@ -11,6 +11,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -27,7 +28,7 @@ class InternalNoticeController extends Controller
 
     public function create(Request $request): Response
     {
-        abort_unless($request->user()?->canManageContent() === true, 403);
+        Gate::authorize('manage-content');
 
         return Inertia::render('internal-notices/form', [
             'notice' => null,
@@ -85,7 +86,7 @@ class InternalNoticeController extends Controller
 
     public function edit(Request $request, InternalNotice $internalNotice): Response
     {
-        abort_unless($request->user()?->canManageContent() === true, 403);
+        Gate::authorize('manage-content');
 
         $internalNotice->load('assignedUsers:id,name,email');
 
@@ -128,7 +129,7 @@ class InternalNoticeController extends Controller
 
     public function destroy(Request $request, InternalNotice $internalNotice): RedirectResponse
     {
-        abort_unless($request->user()?->canManageContent() === true, 403);
+        Gate::authorize('manage-content');
 
         $this->auditSuccess('internal_notices.deleted', 'An internal notice was deleted.', $internalNotice);
 

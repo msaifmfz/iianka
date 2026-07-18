@@ -11,6 +11,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 use Throwable;
@@ -92,7 +93,7 @@ class AttendanceRecordController extends Controller
 
     public function destroy(Request $request, AttendanceRecord $attendanceRecord): RedirectResponse
     {
-        abort_unless($request->user()?->canManageContent() === true, 403);
+        Gate::authorize('manage-content');
 
         $this->auditSuccess('attendance_records.deleted', 'An attendance record was deleted.', $attendanceRecord, [
             'user_id' => $attendanceRecord->user_id,
