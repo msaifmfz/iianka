@@ -19,12 +19,6 @@ parameters:
 			path: app/Http/Controllers/BusinessScheduleController.php
 
 		-
-			message: '#^Method App\\Http\\Controllers\\BusinessScheduleController\:\:attendanceLeaveRecords\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, user_id\: int\<0, max\>, user_name\: string, work_date\: string, note\: string\|null\}\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/BusinessScheduleController.php
-
-		-
 			message: '#^Method App\\Http\\Controllers\\BusinessScheduleController\:\:schedulePayload\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, type\: string, scheduled_on\: string, schedule_number\: int\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, \.\.\.\}\>\.$#'
 			identifier: return.type
 			count: 1
@@ -79,12 +73,6 @@ parameters:
 			path: app/Http/Controllers/ConstructionScheduleController.php
 
 		-
-			message: '#^Method App\\Http\\Controllers\\ConstructionScheduleController\:\:attendanceLeaveRecords\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, user_id\: int\<0, max\>, user_name\: string, work_date\: string, note\: string\|null\}\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/ConstructionScheduleController.php
-
-		-
 			message: '#^Method App\\Http\\Controllers\\ConstructionScheduleController\:\:businessSchedulePayload\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, type\: string, scheduled_on\: string, schedule_number\: int\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, \.\.\.\}\>\.$#'
 			identifier: return.type
 			count: 1
@@ -115,20 +103,14 @@ parameters:
 			path: app/Http/Controllers/ConstructionScheduleController.php
 
 		-
-			message: '#^Method App\\Http\\Controllers\\ConstructionScheduleController\:\:scheduleAvailability\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, type\: string, title\: string, scheduled_on\: string, starts_at\: string\|null, ends_at\: string\|null, time\: string, user_ids\: Illuminate\\Support\\Collection\<int, mixed\>, \.\.\.\}\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/ConstructionScheduleController.php
-
-		-
 			message: '#^Method App\\Http\\Controllers\\ConstructionScheduleController\:\:schedulePayload\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, type\: string, scheduled_on\: string, schedule_number\: int\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, \.\.\.\}\>\.$#'
 			identifier: return.type
 			count: 1
 			path: app/Http/Controllers/ConstructionScheduleController.php
 
 		-
-			message: '#^Method App\\Http\\Controllers\\ConstructionScheduleController\:\:userPayload\(\) should return Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\.$#'
-			identifier: return.type
+			message: '#^Method App\\Http\\Controllers\\ConstructionScheduleController\:\:selectedScheduleTypes\(\) return type with generic class Illuminate\\Support\\Collection does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
 			count: 1
 			path: app/Http/Controllers/ConstructionScheduleController.php
 
@@ -199,6 +181,12 @@ parameters:
 			path: app/Http/Controllers/ConstructionSiteController.php
 
 		-
+			message: '#^Strict comparison using \!\=\= between string and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Http/Controllers/ConstructionSiteController.php
+
+		-
 			message: '#^Anonymous function should return array\{id\: int, type\: ''internal_notice'', scheduled_on\: string, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, title\: string, \.\.\.\} but returns array\{id\: int, type\: ''internal_notice'', scheduled_on\: string, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, title\: string, \.\.\.\}\.$#'
 			identifier: return.type
 			count: 1
@@ -235,12 +223,6 @@ parameters:
 			path: app/Http/Controllers/ScheduleOverviewController.php
 
 		-
-			message: '#^Method App\\Http\\Controllers\\ScheduleOverviewController\:\:attendanceLeaveRecords\(\) should return Illuminate\\Support\\Collection\<int, array\{id\: int, user_id\: int, user_name\: string, work_date\: string, note\: string\|null\}\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, user_id\: int\<0, max\>, user_name\: string, work_date\: string, note\: string\|null\}\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/ScheduleOverviewController.php
-
-		-
 			message: '#^Method App\\Http\\Controllers\\ScheduleOverviewController\:\:selectedDayEvents\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, type\: string, schedule_number\: int\|null, title\: string, location\: string\|null, content\: string\|null, carry_out_note\?\: string\|null, time\: string, \.\.\.\}\>\.$#'
 			identifier: return.type
 			count: 1
@@ -248,12 +230,6 @@ parameters:
 
 		-
 			message: '#^Method App\\Http\\Controllers\\ScheduleOverviewController\:\:selectedDayTimeline\(\) should return array\{users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>, events\: Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>, attendanceLeaveRecords\: Illuminate\\Support\\Collection\<int, array\{id\: int, user_id\: int, user_name\: string, work_date\: string, note\: string\|null\}\>\} but returns array\{users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>, events\: Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>, attendanceLeaveRecords\: Illuminate\\Support\\Collection\<int, array\{id\: int, user_id\: int, user_name\: string, work_date\: string, note\: string\|null\}\>\}\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/ScheduleOverviewController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\ScheduleOverviewController\:\:userPayload\(\) should return Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\.$#'
 			identifier: return.type
 			count: 1
 			path: app/Http/Controllers/ScheduleOverviewController.php
@@ -293,12 +269,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: app/Http/Controllers/ScheduleOverviewController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\ScheduleSearchController\:\:userPayload\(\) should return Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/ScheduleSearchController.php
 
 		-
 			message: '#^Method App\\Http\\Controllers\\Settings\\SecurityController\:\:passkeys\(\) should return Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, created_at\: string\|null\}\> but returns Illuminate\\Support\\Collection\<int, array\{id\: mixed, name\: string, created_at\: string\|null\}\>\.$#'
@@ -401,3 +371,21 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: app/Providers/AppServiceProvider.php
+
+		-
+			message: '#^Method App\\Services\\ScheduleFormOptionsService\:\:attendanceLeaveRecords\(\) should return Illuminate\\Support\\Collection\<int, array\{id\: int, user_id\: int, user_name\: string, work_date\: string, note\: string\|null\}\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, user_id\: int, user_name\: string, work_date\: string, note\: string\|null\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/ScheduleFormOptionsService.php
+
+		-
+			message: '#^Method App\\Services\\ScheduleFormOptionsService\:\:scheduleAvailability\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, type\: string, title\: string, scheduled_on\: string, starts_at\: string\|null, ends_at\: string\|null, time\: string, user_ids\: Illuminate\\Support\\Collection\<int, mixed\>, \.\.\.\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/ScheduleFormOptionsService.php
+
+		-
+			message: '#^Method App\\Services\\ScheduleFormOptionsService\:\:userPayload\(\) should return Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/ScheduleFormOptionsService.php

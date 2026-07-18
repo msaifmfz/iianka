@@ -404,9 +404,6 @@ class ConstructionScheduleController extends Controller
             ->values();
     }
 
-    /**
-     * @return Collection<int, string>
-     */
     private function selectedDate(Request $request): Carbon
     {
         $requestedDate = $request->query('date');

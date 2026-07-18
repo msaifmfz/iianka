@@ -10,6 +10,7 @@ use App\Models\ConstructionSchedule;
 use App\Models\GeneralContractor;
 use App\Models\InternalNotice;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -41,9 +42,9 @@ class ScheduleFormOptionsService
     public function userOptions(Collection $selectedUserIds): EloquentCollection
     {
         return User::query()
-            ->where(fn ($query) => $query
+            ->where(fn (Builder $query) => $query
                 ->visibleToWorkers()
-                ->when($selectedUserIds->isNotEmpty(), fn ($query) => $query->orWhereIn('id', $selectedUserIds))
+                ->when($selectedUserIds->isNotEmpty(), fn (Builder $query) => $query->orWhereIn('id', $selectedUserIds))
             )
             ->orderBy('name')
             ->get(['id', 'name', 'email']);

@@ -117,6 +117,7 @@ class ScheduleCalendarService
             return collect();
         }
 
+        /** @var Collection<int, array{scheduled_on: string, rule: CleaningDutyRule, assigned_users: Collection<int, User>}> $occurrences */
         $occurrences = collect();
         $current = $startsOn->copy()->startOfDay();
 
@@ -142,6 +143,7 @@ class ScheduleCalendarService
      */
     public function previousScheduleDate(Carbon $date, Collection $types): ?string
     {
+        /** @var Collection<int, string|null> $dates */
         $dates = collect();
 
         if ($types->contains('construction')) {
@@ -176,6 +178,7 @@ class ScheduleCalendarService
      */
     public function nextScheduleDate(Carbon $date, Collection $types): ?string
     {
+        /** @var Collection<int, string|null> $dates */
         $dates = collect();
 
         if ($types->contains('construction')) {
