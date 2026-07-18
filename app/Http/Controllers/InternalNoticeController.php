@@ -127,7 +127,7 @@ class InternalNoticeController extends Controller
             ->route('internal-notices.show', $internalNotice);
     }
 
-    public function destroy(Request $request, InternalNotice $internalNotice): RedirectResponse
+    public function destroy(InternalNotice $internalNotice): RedirectResponse
     {
         Gate::authorize('manage-content');
 

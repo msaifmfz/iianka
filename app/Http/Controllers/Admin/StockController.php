@@ -43,7 +43,7 @@ class StockController extends Controller
         ]);
     }
 
-    public function create(Request $request): Response
+    public function create(): Response
     {
         Gate::authorize('manage-stocks');
 
@@ -101,7 +101,7 @@ class StockController extends Controller
             ->route('admin.stocks.index');
     }
 
-    public function edit(Request $request, Stock $stock): Response
+    public function edit(Stock $stock): Response
     {
         Gate::authorize('manage-stocks');
 
@@ -169,7 +169,7 @@ class StockController extends Controller
             ->route('admin.stocks.index');
     }
 
-    public function destroy(Request $request, Stock $stock): RedirectResponse
+    public function destroy(Stock $stock): RedirectResponse
     {
         Gate::authorize('manage-stocks');
         abort_if($this->hasHistory($stock), 422, '履歴のある在庫は削除できません。代わりに無効化してください。');

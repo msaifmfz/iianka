@@ -80,7 +80,7 @@
             "@analyse:phpstan"
         ],
         "analyse:psalm": [
-            "psalm --no-progress"
+            "psalm --no-progress --no-cache"
         ],
         "analyse:phpstan": [
             "phpstan analyse --no-progress --memory-limit=1G"

@@ -174,7 +174,7 @@ class BusinessScheduleController extends Controller
         return back();
     }
 
-    public function destroy(Request $request, BusinessSchedule $businessSchedule): RedirectResponse
+    public function destroy(BusinessSchedule $businessSchedule): RedirectResponse
     {
         Gate::authorize('manage-content');
 

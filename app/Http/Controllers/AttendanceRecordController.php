@@ -91,7 +91,7 @@ class AttendanceRecordController extends Controller
         return back();
     }
 
-    public function destroy(Request $request, AttendanceRecord $attendanceRecord): RedirectResponse
+    public function destroy(AttendanceRecord $attendanceRecord): RedirectResponse
     {
         Gate::authorize('manage-content');
 

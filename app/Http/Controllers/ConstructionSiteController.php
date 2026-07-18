@@ -28,7 +28,7 @@ class ConstructionSiteController extends Controller
         ]);
     }
 
-    public function create(Request $request): Response
+    public function create(): Response
     {
         Gate::authorize('manage-content');
 
@@ -75,7 +75,7 @@ class ConstructionSiteController extends Controller
         ]);
     }
 
-    public function edit(Request $request, SiteGuideFile $siteGuideFile): Response
+    public function edit(SiteGuideFile $siteGuideFile): Response
     {
         Gate::authorize('manage-content');
 
@@ -127,7 +127,7 @@ class ConstructionSiteController extends Controller
             ->route('construction-sites.show', $siteGuideFile);
     }
 
-    public function destroy(Request $request, SiteGuideFile $siteGuideFile): RedirectResponse
+    public function destroy(SiteGuideFile $siteGuideFile): RedirectResponse
     {
         Gate::authorize('manage-content');
 

@@ -59,7 +59,7 @@ class UserController extends Controller
         ]);
     }
 
-    public function create(Request $request): Response
+    public function create(): Response
     {
         Gate::authorize('manage-users');
 

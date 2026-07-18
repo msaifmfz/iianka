@@ -36,7 +36,7 @@ class CleaningDutyRuleController extends Controller
         ]);
     }
 
-    public function create(Request $request): Response
+    public function create(): Response
     {
         Gate::authorize('manage-content');
 
@@ -84,7 +84,7 @@ class CleaningDutyRuleController extends Controller
         ]);
     }
 
-    public function edit(Request $request, CleaningDutyRule $cleaningDutyRule): Response
+    public function edit(CleaningDutyRule $cleaningDutyRule): Response
     {
         Gate::authorize('manage-content');
 
@@ -121,7 +121,7 @@ class CleaningDutyRuleController extends Controller
             ->route('cleaning-duty-rules.index');
     }
 
-    public function destroy(Request $request, CleaningDutyRule $cleaningDutyRule): RedirectResponse
+    public function destroy(CleaningDutyRule $cleaningDutyRule): RedirectResponse
     {
         Gate::authorize('manage-content');
 
