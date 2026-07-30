@@ -27,10 +27,25 @@ function stockListbox(page: Page): Locator {
     return page.getByRole('listbox', { name: '在庫を選択' });
 }
 
+function stockMention(editor: Locator): Locator {
+    return editor.locator('.stock-mention').filter({ hasText: stockName });
+}
+
+async function backgroundColor(locator: Locator): Promise<string> {
+    return locator.evaluate(
+        (element) => getComputedStyle(element).backgroundColor,
+    );
+}
+
+function expectVisibleBackground(color: string): void {
+    expect(color).not.toBe('transparent');
+    expect(color).not.toBe('rgba(0, 0, 0, 0)');
+}
+
 test.describe('schedule content stock picker', () => {
-    test('slash right after text opens the picker and inserts a spaced mention', async ({
+    test('slash right after text inserts a highlighted mention on create and edit', async ({
         page,
-    }) => {
+    }, testInfo) => {
         await login(page, editorLoginId);
         const editor = await openContentEditor(page);
 
@@ -46,6 +61,41 @@ test.describe('schedule content stock picker', () => {
         // The space before the mention keeps it recognizable by the
         // backend parser's word-boundary rules.
         await expect(editor).toContainText(`作業 ${stockName}`);
+
+        const createMention = stockMention(editor);
+        await expect(createMention).toHaveText(stockName);
+        expectVisibleBackground(await backgroundColor(createMention));
+
+        await editor.pressSequentially('1');
+
+        const location = `E2E stock highlight ${testInfo.project.name}`;
+        await page.getByLabel('現場名').fill(location);
+        await page.getByRole('button', { name: '工事予定を作成' }).click();
+        await page
+            .getByRole('link', {
+                name: `${location}の予定詳細を見る`,
+            })
+            .click();
+        await page.getByRole('link', { name: '編集' }).first().click();
+
+        const editEditor = page.locator(
+            '[aria-labelledby="schedule-content-label"]',
+        );
+        const editMention = stockMention(editEditor);
+
+        await expect(editMention).toHaveText(stockName);
+
+        const lightBackground = await backgroundColor(editMention);
+        expectVisibleBackground(lightBackground);
+
+        await page.evaluate(() => {
+            document.documentElement.classList.add('dark');
+        });
+
+        await expect
+            .poll(() => backgroundColor(editMention))
+            .not.toBe(lightBackground);
+        expectVisibleBackground(await backgroundColor(editMention));
     });
 
     test('slashes in a URL scheme do not open the picker', async ({ page }) => {

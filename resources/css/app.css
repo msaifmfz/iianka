@@ -60,6 +60,7 @@
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
     --color-stock-mention: var(--stock-mention);
+    --color-stock-mention-background: var(--stock-mention-background);
 }
 
 :root {
@@ -97,6 +98,7 @@
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.87 0 0);
     --stock-mention: oklch(0.45 0.18 262);
+    --stock-mention-background: oklch(0.92 0.05 262);
 }
 
 .dark {
@@ -133,6 +135,7 @@
     --sidebar-border: oklch(0.269 0 0);
     --sidebar-ring: oklch(0.439 0 0);
     --stock-mention: oklch(0.72 0.15 262);
+    --stock-mention-background: oklch(0.28 0.07 262);
 }
 
 @layer base {
@@ -146,11 +149,15 @@
 }
 
 @layer components {
-    /* Recognized stock names inside the schedule content editor. Weight and
-       underline keep the cue visible without relying on color alone. */
+    /* Recognized stock names inside the schedule content editor. */
     .stock-mention {
+        -webkit-box-decoration-break: clone;
+        background-color: var(--color-stock-mention-background);
+        border-radius: 0.25rem;
+        box-decoration-break: clone;
         color: var(--color-stock-mention);
         font-weight: 600;
+        padding-inline: 0.125rem;
         text-decoration: underline dotted;
         text-underline-offset: 3px;
     }
