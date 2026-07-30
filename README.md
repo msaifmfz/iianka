@@ -15,6 +15,12 @@ Construction & business schedules · schedule overview and search · attendance 
 cleaning duty rules · internal notices · voucher confirmations · reception workflow ·
 stock management · admin.
 
+## Documentation
+
+Start with [`docs/README.md`](docs/README.md) for the maintained architecture map, domain guide,
+database ERD, security model, development workflow, operations runbook, and LLM-oriented guide.
+Any changes should be updated back in to that documents under docs folder.
+
 ## Local setup
 
 Install [Devbox](https://www.jetify.com/docs/devbox/installing-devbox/) and direnv once on a new Mac:
@@ -75,4 +81,5 @@ git tag vX.Y.0 vX.Y.0-rc.1^{commit} && git push origin vX.Y.0   # -> production,
 ## Deployment
 
 AlmaLinux 10 + nginx + Redis + SQLite, with always-running queue workers and scheduler.
-Setup: `SERVER_SETUP.md`. Database backup/restore: `agentic_code_docs/database-backup-runbook.md`.
+Setup: [`SERVER_SETUP.md`](SERVER_SETUP.md). Current deploy, backup, and restore procedures:
+[`docs/operations.md`](docs/operations.md).
