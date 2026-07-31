@@ -36,6 +36,57 @@ Only final releases are listed; `-rc.N` pre-releases fold into their final versi
 - Fix stale selectedDate docblock + typed closures; reconcile analyzer baselines (net -120 psalm, -12 phpstan lines)
 - Documentation
 - Make stock text more obvious
+- Changelog
+
+### Fixed
+
+- Generate wayfinder types in lint CI before type-aware eslint
+- CI workflows scan setting error
+- Frontend bug batch - theme sync, TZ-safe dates, search state, misc
+- Malformed ?date= on schedule index 500s -> fallback to today
+- Wrap multi-write store/update in DB::transaction (business/notice/cleaning-duty)
+- Site guide files orphaned on disk after delete/replace
+- Business schedule form leaked hidden users (picker/availability/leave records)
+- Guard stock balance against decimal(12,3) overflow in both directions
+- Malformed ?month= on attendance index 500s -> fallback to current period
+- Admin user store could commit half-created user without role/flags
+- Guide file download 500s when disk file missing -> 404, no success audit
+- Reception transition audit rows written inside the transaction -> after commit
+- Bound schedule availability/leave data loaded on form render (-1mo/+18mo)
+- Static analysis
+- Update patch and fix for update
+
+## [0.4.0](https://github.com/msaifmfz/iianka/compare/v0.3.0...v0.4.0) - 2026-07-31
+
+### Added
+
+- SAST tooling - larastan, typed eslint, lefthook hooks, enforced CI
+- SAST follow-ups - phpstan on tests/, casts() inference, baseline ratchet
+- Stock management - catalog, term purchases, schedule-driven usage
+- Slash stock picker triggers mid-word, no leading space needed
+- Changelog mechanism with git-cliff + release-tag CI guard
+
+### Changed
+
+- Remove dead code, consolidate shared frontend utils
+- Shared UI primitives - pagination, confirm dialogs, type descriptors
+- Dedupe schedule forms (~85% copy-paste between construction/business)
+- Extract SubcontractorPicker + SiteGuideFilePicker from construction form (1765->610 lines)
+- Extract calendar sidebar + scroll/floating-action hooks from construction index (1930->1138 lines)
+- Extract timeline lib + useSlotDragSelection from schedule-overview (2281->1697 lines)
+- Schedule-search sessionStorage layer to lib, overview shares return key
+- Add reproducible devbox environment
+- Rector run
+- Schedule index expands cleaning-duty occurrences once, not twice
+- Retire is_admin; role enum is the single source of truth
+- Drop unused users.is_admin column
+- Shared return-to/initial-form-values controller concern
+- Extract ScheduleFormOptionsService from schedule controllers
+- Extract schedule calendar building from ConstructionScheduleController
+- Route role checks through shared gates (manage-content etc.)
+- Fix stale selectedDate docblock + typed closures; reconcile analyzer baselines (net -120 psalm, -12 phpstan lines)
+- Documentation
+- Make stock text more obvious
 
 ### Fixed
 
