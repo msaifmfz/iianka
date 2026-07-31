@@ -114,6 +114,16 @@ class User extends Authenticatable implements PasskeyUser
     }
 
     /**
+     * Normalize email addresses for case-insensitive password resets.
+     */
+    protected function setEmailAttribute(?string $value): void
+    {
+        $this->attributes['email'] = filled($value)
+            ? Str::lower(trim($value))
+            : null;
+    }
+
+    /**
      * @return BelongsToMany<ConstructionSchedule, $this>
      */
     public function constructionSchedules(): BelongsToMany

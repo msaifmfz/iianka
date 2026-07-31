@@ -139,12 +139,6 @@ parameters:
 			path: app/Http/Controllers/ConstructionScheduleController.php
 
 		-
-			message: '#^Parameter \#4 \$cleaningDutyOccurrences of method App\\Http\\Controllers\\ConstructionScheduleController\:\:combinedSchedulePayload\(\) expects Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>, Illuminate\\Support\\Collection\<int, array\{scheduled_on\: string, rule\: App\\Models\\CleaningDutyRule, assigned_users\: Illuminate\\Support\\Collection\<int, App\\Models\\User\>\}\> given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/ConstructionScheduleController.php
-
-		-
 			message: '#^Unable to resolve the template type TKey in call to function collect$#'
 			identifier: argument.templateType
 			count: 2
