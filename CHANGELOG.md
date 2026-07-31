@@ -5,11 +5,21 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Only final releases are listed; `-rc.N` pre-releases fold into their final version.
 
+## [0.4.2](https://github.com/msaifmfz/iianka/compare/v0.4.1...v0.4.2) - 2026-07-31
+
+### Added
+
+- Stock ordering and capturing hardening
+
 ## [0.4.1](https://github.com/msaifmfz/iianka/compare/v0.4.0...v0.4.1) - 2026-07-31
 
 ### Changed
 
 - Changelog
+
+### Added
+
+- Stock ordering and capturing hardening
 
 ### Fixed
 
