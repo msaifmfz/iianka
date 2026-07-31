@@ -20,11 +20,13 @@ use Override;
  * @property int $stock_id
  * @property Carbon $term_starts_on
  * @property string $quantity
+ * @property string|null $memo
  */
 #[Fillable([
     'stock_id',
     'term_starts_on',
     'quantity',
+    'memo',
 ])]
 class StockPurchase extends Model
 {

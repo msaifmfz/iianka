@@ -27,7 +27,7 @@ function freezeStockReportTime(string $datetime = '2026-07-15 10:00:00'): void
     Carbon::setTestNow(Carbon::parse($datetime, 'Asia/Tokyo'));
 }
 
-test('the report aggregates carry-over, purchases, bucket usage, and totals across both terms', function (): void {
+test('the report aggregates the selected and next terms in display order', function (): void {
     freezeStockReportTime();
 
     $admin = User::factory()->admin()->create();
@@ -68,11 +68,76 @@ test('the report aggregates carry-over, purchases, bucket usage, and totals acro
             ->where('terms.0.rows.0.used_total', '6.000')
             ->where('terms.0.rows.0.adjustments', '0.000')
             ->where('terms.0.rows.0.total', '7.000')
+            ->where('terms.0.previous_term_label', '2026年5月度')
             ->where('terms.1.label', '2026年7月度')
+            ->where('terms.1.range_label', '7/21〜8/20')
             ->where('terms.1.rows.0.carry_over', '7.000')
             ->where('terms.1.rows.0.purchased', '3.000')
             ->where('terms.1.rows.0.used', ['4.000', '0.000', '0.000'])
             ->where('terms.1.rows.0.total', '6.000')
+            ->where('terms.1.previous_term_label', '2026年6月度')
+        );
+});
+
+test('the selected and next terms expose their own memo and previous term context', function (): void {
+    freezeStockReportTime();
+
+    $admin = User::factory()->admin()->create();
+    $stock = Stock::factory()->named('セメント')->create();
+
+    StockPurchase::factory()
+        ->for($stock)
+        ->forTerm('2026-05-21')
+        ->quantity('2.000')
+        ->create(['memo' => '前月度の確認事項']);
+    StockPurchase::factory()
+        ->for($stock)
+        ->forTerm('2026-06-21')
+        ->quantity('3.000')
+        ->create(['memo' => '今月度の確認事項']);
+    StockPurchase::factory()
+        ->for($stock)
+        ->forTerm('2026-07-21')
+        ->quantity('4.000')
+        ->create(['memo' => '翌月度の確認事項']);
+
+    $this->actingAs($admin)
+        ->get(route('admin.stocks.index'))
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->where('terms.0.term_starts_on', '2026-06-21')
+            ->where('terms.0.previous_term_label', '2026年5月度')
+            ->where('terms.0.rows.0.memo', '今月度の確認事項')
+            ->where('terms.0.rows.0.previous_memo', '前月度の確認事項')
+            ->where('terms.1.term_starts_on', '2026-07-21')
+            ->where('terms.1.previous_term_label', '2026年6月度')
+            ->where('terms.1.rows.0.memo', '翌月度の確認事項')
+            ->where('terms.1.rows.0.previous_memo', '今月度の確認事項')
+        );
+});
+
+test('a negative purchase aggregate carries into the following term report', function (): void {
+    freezeStockReportTime();
+
+    $admin = User::factory()->admin()->create();
+    $stock = Stock::factory()->named('セメント')->create();
+
+    $this->actingAs($admin)
+        ->post(route('admin.stocks.purchase-corrections.store', $stock), [
+            'term_starts_on' => '2026-06-21',
+            'quantity_to_subtract' => '3',
+        ])
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    $this->actingAs($admin)
+        ->get(route('admin.stocks.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->where('terms.0.rows.0.purchased', '-3.000')
+            ->where('terms.0.rows.0.total', '-3.000')
+            ->where('terms.1.rows.0.carry_over', '-3.000')
+            ->where('terms.1.rows.0.purchased', '0.000')
+            ->where('terms.1.rows.0.total', '-3.000')
         );
 });
 
@@ -196,6 +261,7 @@ test('manual ledger adjustments are reported separately and keep the carry-over 
             ->where('terms.0.rows.0.adjustments', '5.000')
             ->where('terms.0.rows.0.total', '15.000')
             ->where('terms.1.rows.0.carry_over', '15.000')
+            ->where('terms.1.rows.0.total', '15.000')
         );
 });
 
@@ -209,7 +275,32 @@ test('the default term follows the business date around the 21st boundary', func
         ->get(route('admin.stocks.index'))
         ->assertInertia(fn (Assert $page): Assert => $page
             ->where('filters.month', '2026-06-01')
+            ->where('filters.next_month', '2026-07-01')
+            ->where('filters.is_current', true)
             ->where('terms.0.label', '2026年6月度')
+            ->where('terms.1.label', '2026年7月度')
+        );
+
+    // Explicitly selecting the current term must still report is_current. This
+    // resolves the term through StockTerm::fromMonth() rather than
+    // StockTerm::current(), so it is the only assertion that pins the business
+    // timezone used when parsing the month filter.
+    $this->actingAs($admin)
+        ->get(route('admin.stocks.index', ['month' => '2026-06-01']))
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->where('filters.month', '2026-06-01')
+            ->where('filters.is_current', true)
+            ->where('terms.0.label', '2026年6月度')
+        );
+
+    $this->actingAs($admin)
+        ->get(route('admin.stocks.index', ['month' => '2026-07-01']))
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->where('filters.month', '2026-07-01')
+            ->where('filters.next_month', '2026-08-01')
+            ->where('filters.is_current', false)
+            ->where('terms.0.label', '2026年7月度')
+            ->where('terms.1.label', '2026年8月度')
         );
 
     freezeStockReportTime('2026-07-21 10:00:00');
@@ -218,7 +309,10 @@ test('the default term follows the business date around the 21st boundary', func
         ->get(route('admin.stocks.index'))
         ->assertInertia(fn (Assert $page): Assert => $page
             ->where('filters.month', '2026-07-01')
+            ->where('filters.next_month', '2026-08-01')
+            ->where('filters.is_current', true)
             ->where('terms.0.label', '2026年7月度')
+            ->where('terms.1.label', '2026年8月度')
         );
 });
 
@@ -245,25 +339,127 @@ test('the month filter navigates terms and falls back on invalid input', functio
         ->assertInertia(fn (Assert $page): Assert => $page
             ->where('filters.month', '2026-06-01')
             ->where('filters.is_current', true)
+            ->where('filters.next_month', '2026-07-01')
+            ->where('terms.0.label', '2026年6月度')
+            ->where('terms.1.label', '2026年7月度')
         );
 });
 
-test('inactive stocks are hidden unless they still have figures in the visible terms', function (): void {
+test('future month filters remain selected with an editable following term', function (): void {
     freezeStockReportTime();
 
     $admin = User::factory()->admin()->create();
-    $withFigures = Stock::factory()->named('旧セメント')->inactive()->create();
-    Stock::factory()->named('旧ネジ')->inactive()->create();
-    Stock::factory()->named('現行ボンド')->create();
+    $stock = Stock::factory()->named('将来在庫')->create();
 
-    StockPurchase::factory()->for($withFigures)->forTerm('2026-06-21')->quantity('5.000')->create();
+    StockPurchase::factory()
+        ->for($stock)
+        ->forTerm('2026-11-21')
+        ->quantity('2.000')
+        ->create(['memo' => '11月度の引継ぎ']);
+    StockPurchase::factory()
+        ->for($stock)
+        ->forTerm('2026-12-21')
+        ->quantity('5.000')
+        ->create(['memo' => '12月度の予定']);
+    StockPurchase::factory()
+        ->for($stock)
+        ->forTerm('2027-01-21')
+        ->quantity('3.000')
+        ->create(['memo' => '1月度の予定']);
+
+    $this->actingAs($admin)
+        ->get(route('admin.stocks.index', ['month' => '2026-12-01']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->where('filters.month', '2026-12-01')
+            ->where('filters.previous_month', '2026-11-01')
+            ->where('filters.next_month', '2027-01-01')
+            ->where('filters.is_current', false)
+            ->where('terms.0.label', '2026年12月度')
+            ->where('terms.0.previous_term_label', '2026年11月度')
+            ->where('terms.0.rows.0.carry_over', '2.000')
+            ->where('terms.0.rows.0.purchased', '5.000')
+            ->where('terms.0.rows.0.total', '7.000')
+            ->where('terms.0.rows.0.memo', '12月度の予定')
+            ->where('terms.0.rows.0.previous_memo', '11月度の引継ぎ')
+            ->where('terms.1.label', '2027年1月度')
+            ->where('terms.1.previous_term_label', '2026年12月度')
+            ->where('terms.1.rows.0.carry_over', '7.000')
+            ->where('terms.1.rows.0.purchased', '3.000')
+            ->where('terms.1.rows.0.total', '10.000')
+            ->where('terms.1.rows.0.memo', '1月度の予定')
+            ->where('terms.1.rows.0.previous_memo', '12月度の予定')
+        );
+});
+
+test('current direct future and following terms cross calendar years correctly', function (): void {
+    $admin = User::factory()->admin()->create();
+    Stock::factory()->create();
+
+    freezeStockReportTime('2027-01-20 10:00:00');
 
     $this->actingAs($admin)
         ->get(route('admin.stocks.index'))
         ->assertInertia(fn (Assert $page): Assert => $page
-            ->has('terms.0.rows', 2)
+            ->where('filters.month', '2026-12-01')
+            ->where('filters.next_month', '2027-01-01')
+            ->where('filters.is_current', true)
+            ->where('terms.0.label', '2026年12月度')
+            ->where('terms.1.label', '2027年1月度')
+        );
+
+    $this->actingAs($admin)
+        ->get(route('admin.stocks.index', ['month' => '2027-01-01']))
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->where('filters.month', '2027-01-01')
+            ->where('filters.previous_month', '2026-12-01')
+            ->where('filters.next_month', '2027-02-01')
+            ->where('filters.is_current', false)
+            ->where('terms.0.label', '2027年1月度')
+            ->where('terms.1.label', '2027年2月度')
+        );
+
+    freezeStockReportTime('2027-01-21 10:00:00');
+
+    $this->actingAs($admin)
+        ->get(route('admin.stocks.index'))
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->where('filters.month', '2027-01-01')
+            ->where('filters.next_month', '2027-02-01')
+            ->where('filters.is_current', true)
+            ->where('terms.0.label', '2027年1月度')
+            ->where('terms.1.label', '2027年2月度')
+        );
+});
+
+test('inactive stocks are hidden unless they have figures or a memo in the visible terms', function (): void {
+    freezeStockReportTime();
+
+    $admin = User::factory()->admin()->create();
+    $withFigures = Stock::factory()->named('旧セメント')->inactive()->create();
+    $withMemo = Stock::factory()->named('旧メモ在庫')->inactive()->create();
+    Stock::factory()->named('旧ネジ')->inactive()->create();
+    Stock::factory()->named('現行ボンド')->create();
+
+    StockPurchase::factory()->for($withFigures)->forTerm('2026-06-21')->quantity('5.000')->create();
+    StockPurchase::factory()
+        ->for($withMemo)
+        ->forTerm('2026-06-21')
+        ->create(['memo' => '数量なしの引継ぎ']);
+
+    $response = $this->actingAs($admin)
+        ->get(route('admin.stocks.index'))
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->has('terms.0.rows', 3)
             ->where('terms.0.rows.0.name', '現行ボンド')
             ->where('terms.0.rows.1.name', '旧セメント')
             ->where('terms.0.rows.1.purchased', '5.000')
         );
+
+    $rows = collect($response->inertiaProps('terms.0.rows'))->keyBy('name');
+
+    expect($rows)->toHaveCount(3)
+        ->and($rows->has('旧ネジ'))->toBeFalse()
+        ->and($rows->get('旧メモ在庫')['purchased'])->toBe('0.000')
+        ->and($rows->get('旧メモ在庫')['memo'])->toBe('数量なしの引継ぎ');
 });

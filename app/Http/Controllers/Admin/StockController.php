@@ -30,13 +30,14 @@ class StockController extends Controller
         Gate::authorize('manage-stocks');
 
         $term = $this->resolveTerm($request->query('month'));
+        $isCurrent = $term->startsOn()->equalTo(StockTerm::current()->startsOn());
 
         return Inertia::render('admin/stocks/index', [
             'filters' => [
                 'month' => $term->monthParam(),
                 'previous_month' => $term->previous()->monthParam(),
                 'next_month' => $term->next()->monthParam(),
-                'is_current' => $term->monthParam() === StockTerm::current()->monthParam(),
+                'is_current' => $isCurrent,
             ],
             'terms' => $reportService->build($term),
             'today' => BusinessDate::today()->toDateString(),
@@ -78,7 +79,7 @@ class StockController extends Controller
 
             if (is_string($initialQuantity)
                 && StockQuantity::fromDecimal($initialQuantity)->isPositive()) {
-                $recorder->record($stock->id, StockTerm::current(), $initialQuantity, $request->user(), '初期在庫');
+                $recorder->add($stock->id, StockTerm::current(), $initialQuantity, $request->user(), '初期在庫');
             }
 
             return $stock;

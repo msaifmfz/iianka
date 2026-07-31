@@ -33,8 +33,21 @@ test('non admins cannot access stock management', function (string $role): void 
     $this->actingAs($user)->post(route('admin.stocks.store'), [])->assertForbidden();
     $this->actingAs($user)->put(route('admin.stocks.update', $stock), [])->assertForbidden();
     $this->actingAs($user)->delete(route('admin.stocks.destroy', $stock))->assertForbidden();
-    $this->actingAs($user)->put(route('admin.stocks.purchases.update', $stock), [])->assertForbidden();
+    $this->actingAs($user)->post(route('admin.stocks.purchases.store', $stock), [])->assertForbidden();
+    $this->actingAs($user)->post(route('admin.stocks.purchase-corrections.store', $stock), [])->assertForbidden();
+    $this->actingAs($user)->put(route('admin.stocks.term-memo.update', $stock), [])->assertForbidden();
 })->with(['editor', 'viewer']);
+
+test('guests are redirected from stock purchase and memo writes', function (): void {
+    $stock = Stock::factory()->create();
+
+    $this->post(route('admin.stocks.purchases.store', $stock), [])
+        ->assertRedirect(route('login'));
+    $this->post(route('admin.stocks.purchase-corrections.store', $stock), [])
+        ->assertRedirect(route('login'));
+    $this->put(route('admin.stocks.term-memo.update', $stock), [])
+        ->assertRedirect(route('login'));
+});
 
 test('admins can create stocks with aliases', function (): void {
     $admin = User::factory()->admin()->create();

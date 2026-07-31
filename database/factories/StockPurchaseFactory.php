@@ -24,6 +24,7 @@ class StockPurchaseFactory extends Factory
             'stock_id' => Stock::factory(),
             'term_starts_on' => '2026-06-21',
             'quantity' => '0.000',
+            'memo' => null,
         ];
     }
 
@@ -38,6 +39,13 @@ class StockPurchaseFactory extends Factory
     {
         return $this->state(fn (array $attributes): array => [
             'quantity' => $quantity,
+        ]);
+    }
+
+    public function memo(?string $memo): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'memo' => $memo,
         ]);
     }
 }

@@ -43,6 +43,7 @@ export type FlashResourceType =
     | 'admin_user'
     | 'stock'
     | 'stock_purchase_cell'
+    | 'stock_term_memo'
     | 'voucher_confirmation'
     | 'attendance_cell'
     | 'construction_subcontractor'

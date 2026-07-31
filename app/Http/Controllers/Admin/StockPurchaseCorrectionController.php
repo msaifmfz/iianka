@@ -7,28 +7,28 @@ namespace App\Http\Controllers\Admin;
 use App\Application\Stock\StockPurchaseRecorder;
 use App\Domain\Stock\ValueObjects\StockTerm;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\StoreStockPurchaseRequest;
+use App\Http\Requests\Admin\StoreStockPurchaseCorrectionRequest;
 use App\Models\Stock;
 use Illuminate\Http\RedirectResponse;
 
-class StockPurchaseController extends Controller
+class StockPurchaseCorrectionController extends Controller
 {
     public function store(
-        StoreStockPurchaseRequest $request,
+        StoreStockPurchaseCorrectionRequest $request,
         Stock $stock,
         StockPurchaseRecorder $recorder,
     ): RedirectResponse {
         $validated = $request->validated();
         $term = StockTerm::fromMonth($validated['term_starts_on']);
 
-        $recorder->add($stock->id, $term, $validated['quantity_to_add'], $request->user());
+        $recorder->correct($stock->id, $term, $validated['quantity_to_subtract'], $request->user());
 
-        $this->auditSuccess('admin.stocks.purchase_added', 'An admin added a stock purchase quantity.', $stock, [
+        $this->auditSuccess('admin.stocks.purchase_corrected', 'An admin corrected a stock purchase quantity.', $stock, [
             'term_starts_on' => $term->startsOn()->toDateString(),
-            'quantity_to_add' => $validated['quantity_to_add'],
+            'quantity_to_subtract' => $validated['quantity_to_subtract'],
         ]);
 
-        $this->flashToast('仕入数を追加しました。', resource: [
+        $this->flashToast('仕入数を訂正しました。', resource: [
             'type' => 'stock_purchase_cell',
             'id' => "{$stock->id}-{$term->startsOn()->toDateString()}",
             'action' => 'saved',

@@ -25,7 +25,7 @@ final readonly class StockTerm
      */
     public static function fromMonth(string $month): self
     {
-        return new self(Carbon::parse($month)->startOfMonth()->day(21)->startOfDay());
+        return new self(Carbon::parse($month, BusinessDate::TIMEZONE)->startOfMonth()->day(21)->startOfDay());
     }
 
     /**

@@ -17,9 +17,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
 /**
- * Builds the term-month stock report: per stock, the carry-over from the
- * previous term, the purchased quantity, the usage split into the three
- * ten-day buckets, and the resulting total.
+ * Builds the selected and next term-month stock reports: per stock, the
+ * carry-over, purchased quantity, usage split into three ten-day buckets,
+ * current and previous memo, and resulting total.
  *
  * Usage is attributed to the schedule's business date
  * (construction_schedules.scheduled_on), so this is a planned view: a term
@@ -35,13 +35,14 @@ use Illuminate\Support\Carbon;
 class StockTermReportService
 {
     /**
-     * Report data for the given term and the following term.
+     * Report data for the selected term followed by its next term.
      *
      * @return list<array{
      *     label: string,
      *     range_label: string,
      *     term_starts_on: string,
      *     month_param: string,
+     *     previous_term_label: string,
      *     buckets: list<array{label: string, starts_on: string, ends_on: string}>,
      *     rows: list<array{
      *         stock_id: int,
@@ -55,45 +56,68 @@ class StockTermReportService
      *         used_total: string,
      *         adjustments: string,
      *         total: string,
+     *         memo: string|null,
+     *         previous_memo: string|null,
      *     }>,
      * }>
      */
-    public function build(StockTerm $firstTerm): array
+    public function build(StockTerm $selectedTerm): array
     {
-        $secondTerm = $firstTerm->next();
+        $previousTerm = $selectedTerm->previous();
+        $nextTerm = $selectedTerm->next();
 
         $stocks = Stock::query()->orderByDesc('is_active')->orderBy('name')->get();
-        $purchases = $this->purchaseSums($firstTerm, $secondTerm);
-        $usage = $this->usageSums($firstTerm, $secondTerm);
-        $adjustments = $this->adjustmentSums($firstTerm, $secondTerm);
+        $purchases = $this->purchaseSums($selectedTerm, $nextTerm);
+        $usage = $this->usageSums($selectedTerm, $nextTerm);
+        $adjustments = $this->adjustmentSums($selectedTerm, $nextTerm);
+        $memos = $this->purchaseMemos($previousTerm, $selectedTerm, $nextTerm);
 
-        $firstRows = [];
-        $secondRows = [];
+        $selectedRows = [];
+        $nextRows = [];
 
         foreach ($stocks as $stock) {
             $purchase = $purchases[$stock->id] ?? ['before' => 0, 'first' => 0, 'second' => 0];
             $adjustment = $adjustments[$stock->id] ?? ['before' => 0, 'first' => 0, 'second' => 0];
             $used = $usage[$stock->id] ?? ['before' => 0, 'first' => [0, 0, 0], 'second' => [0, 0, 0]];
+            $memo = $memos[$stock->id] ?? ['previous' => null, 'first' => null, 'second' => null];
 
-            $firstCarryOver = $purchase['before'] + $adjustment['before'] - $used['before'];
-            $firstTotal = $firstCarryOver + $purchase['first'] + $adjustment['first'] - array_sum($used['first']);
-            $secondTotal = $firstTotal + $purchase['second'] + $adjustment['second'] - array_sum($used['second']);
+            $selectedCarryOver = $purchase['before'] + $adjustment['before'] - $used['before'];
+            $selectedTotal = $selectedCarryOver + $purchase['first'] + $adjustment['first'] - array_sum($used['first']);
+            $nextTotal = $selectedTotal + $purchase['second'] + $adjustment['second'] - array_sum($used['second']);
 
             if (! $stock->is_active && $this->allZero([
-                $firstCarryOver,
+                $selectedCarryOver,
                 $purchase['first'], $adjustment['first'], ...$used['first'],
                 $purchase['second'], $adjustment['second'], ...$used['second'],
-            ])) {
+            ]) && $memo['previous'] === null && $memo['first'] === null && $memo['second'] === null) {
                 continue;
             }
 
-            $firstRows[] = $this->row($stock, $firstCarryOver, $purchase['first'], $used['first'], $adjustment['first'], $firstTotal);
-            $secondRows[] = $this->row($stock, $firstTotal, $purchase['second'], $used['second'], $adjustment['second'], $secondTotal);
+            $selectedRows[] = $this->row(
+                $stock,
+                $selectedCarryOver,
+                $purchase['first'],
+                $used['first'],
+                $adjustment['first'],
+                $selectedTotal,
+                $memo['first'],
+                $memo['previous'],
+            );
+            $nextRows[] = $this->row(
+                $stock,
+                $selectedTotal,
+                $purchase['second'],
+                $used['second'],
+                $adjustment['second'],
+                $nextTotal,
+                $memo['second'],
+                $memo['first'],
+            );
         }
 
         return [
-            $this->termPayload($firstTerm, $firstRows),
-            $this->termPayload($secondTerm, $secondRows),
+            $this->termPayload($selectedTerm, $selectedRows),
+            $this->termPayload($nextTerm, $nextRows),
         ];
     }
 
@@ -104,6 +128,7 @@ class StockTermReportService
      *     range_label: string,
      *     term_starts_on: string,
      *     month_param: string,
+     *     previous_term_label: string,
      *     buckets: list<array{label: string, starts_on: string, ends_on: string}>,
      *     rows: list<array<string, mixed>>,
      * }
@@ -115,6 +140,7 @@ class StockTermReportService
             'range_label' => $term->rangeLabel(),
             'term_starts_on' => $term->startsOn()->toDateString(),
             'month_param' => $term->monthParam(),
+            'previous_term_label' => $term->previous()->label(),
             'buckets' => array_map(fn (array $bucket): array => [
                 'label' => $bucket['label'],
                 'starts_on' => $bucket['starts_on']->toDateString(),
@@ -138,10 +164,20 @@ class StockTermReportService
      *     used_total: string,
      *     adjustments: string,
      *     total: string,
+     *     memo: string|null,
+     *     previous_memo: string|null,
      * }
      */
-    private function row(Stock $stock, int $carryOver, int $purchased, array $usedMilliUnits, int $adjustments, int $total): array
-    {
+    private function row(
+        Stock $stock,
+        int $carryOver,
+        int $purchased,
+        array $usedMilliUnits,
+        int $adjustments,
+        int $total,
+        ?string $memo,
+        ?string $previousMemo,
+    ): array {
         return [
             'stock_id' => $stock->id,
             'name' => $stock->name,
@@ -157,6 +193,8 @@ class StockTermReportService
             'used_total' => StockQuantity::fromMilliUnits(array_sum($usedMilliUnits))->toDecimalString(),
             'adjustments' => StockQuantity::fromMilliUnits($adjustments)->toDecimalString(),
             'total' => StockQuantity::fromMilliUnits($total)->toDecimalString(),
+            'memo' => $memo,
+            'previous_memo' => $previousMemo,
         ];
     }
 
@@ -203,6 +241,42 @@ class StockTermReportService
         }
 
         return $sums;
+    }
+
+    /**
+     * Memos for the two visible terms and the preceding context term.
+     *
+     * @return array<int, array{previous: string|null, first: string|null, second: string|null}>
+     */
+    private function purchaseMemos(
+        StockTerm $previousTerm,
+        StockTerm $firstTerm,
+        StockTerm $secondTerm,
+    ): array {
+        $previousStart = $previousTerm->startsOn()->toDateString();
+        $firstStart = $firstTerm->startsOn()->toDateString();
+        $secondStart = $secondTerm->startsOn()->toDateString();
+        $memos = [];
+
+        $purchases = StockPurchase::query()
+            ->where(function (Builder $query) use ($previousStart, $firstStart, $secondStart): void {
+                $query->whereDate('term_starts_on', $previousStart)
+                    ->orWhereDate('term_starts_on', $firstStart)
+                    ->orWhereDate('term_starts_on', $secondStart);
+            })
+            ->get(['stock_id', 'term_starts_on', 'memo']);
+
+        foreach ($purchases as $purchase) {
+            $memos[$purchase->stock_id] ??= ['previous' => null, 'first' => null, 'second' => null];
+            $key = match ($purchase->term_starts_on->toDateString()) {
+                $previousStart => 'previous',
+                $firstStart => 'first',
+                default => 'second',
+            };
+            $memos[$purchase->stock_id][$key] = $purchase->memo;
+        }
+
+        return $memos;
     }
 
     /**
