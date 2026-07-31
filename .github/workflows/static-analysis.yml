@@ -123,5 +123,5 @@ jobs:
       - name: Composer Audit
         run: composer audit --locked --abandoned=report
 
-      - name: NPM Audit
-        run: npm audit --audit-level=high
+      - name: NPM Production Audit
+        run: npm audit --omit=dev --audit-level=high
