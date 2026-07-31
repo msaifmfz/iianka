@@ -17,6 +17,8 @@ async function login(page: Page): Promise<void> {
 }
 
 test.describe('admin stock management', () => {
+    test.describe.configure({ mode: 'serial' });
+
     test('edits future purchases and memos and preserves them across term navigation', async ({
         page,
     }, testInfo) => {
@@ -220,5 +222,76 @@ test.describe('admin stock management', () => {
 
         await expect(persistedNextRow).toContainText(/仕入計\s*2/);
         await expect(persistedNextRow).toContainText(futureMemo);
+    });
+
+    test('drags a stock to the first position and persists the order', async ({
+        page,
+    }, testInfo) => {
+        const stockName = `E2E並替え-${testInfo.project.name}`;
+
+        await login(page);
+        await page.goto('/admin/stocks/create');
+        await page.getByLabel('在庫名').fill(stockName);
+        await page.getByRole('button', { name: '在庫を追加' }).click();
+        await expect(page).toHaveURL(/\/admin\/stocks(?:\?.*)?$/);
+
+        await page.getByRole('button', { name: '表示順を変更' }).click();
+
+        const dialog = page.getByRole('dialog', { name: '在庫の表示順' });
+        const rows = dialog.locator('[data-stock-order-id]');
+        const sourceRow = rows.filter({ hasText: stockName });
+        const dragHandle = sourceRow.getByRole('button', {
+            name: `${stockName}の表示順を変更`,
+        });
+        const targetRow = rows.first();
+        const sourceBox = await dragHandle.boundingBox();
+        const targetBox = await targetRow.boundingBox();
+
+        if (sourceBox === null || targetBox === null) {
+            throw new Error('Could not resolve stock reorder drag positions.');
+        }
+
+        await page.mouse.move(
+            sourceBox.x + sourceBox.width / 2,
+            sourceBox.y + sourceBox.height / 2,
+        );
+        await page.mouse.down();
+        await page.mouse.move(
+            targetBox.x + targetBox.width / 2,
+            targetBox.y + targetBox.height / 2,
+            { steps: 12 },
+        );
+        await page.mouse.up();
+
+        await expect(rows.first()).toContainText(stockName);
+        // dnd-kit briefly suppresses the click immediately following a
+        // pointer drag so releasing the handle cannot activate controls.
+        await page.waitForTimeout(100);
+        const saveButton = dialog.getByRole('button', {
+            name: '表示順を保存',
+        });
+        const saveRequest = page.waitForRequest(
+            (request) =>
+                request.method() === 'PATCH' &&
+                new URL(request.url()).pathname === '/admin/stocks/order',
+        );
+
+        await expect(saveButton).toBeEnabled();
+        await saveButton.click();
+        await saveRequest;
+        await expect(dialog).toBeHidden();
+
+        await expect(
+            page.locator('table:visible').first().locator('tbody tr').first(),
+        ).toContainText(stockName);
+
+        await page.reload();
+        await page.getByRole('button', { name: '表示順を変更' }).click();
+        await expect(
+            page
+                .getByRole('dialog', { name: '在庫の表示順' })
+                .locator('[data-stock-order-id]')
+                .first(),
+        ).toContainText(stockName);
     });
 });

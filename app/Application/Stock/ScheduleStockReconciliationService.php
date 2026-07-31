@@ -37,7 +37,7 @@ class ScheduleStockReconciliationService
 
     /**
      * Parse the schedule's current content and apply the resulting stock
-     * deltas. No-op when the content hash is unchanged.
+     * deltas. No-op when both the content hash and parser version are current.
      *
      * @throws ValidationException
      */
@@ -57,7 +57,10 @@ class ScheduleStockReconciliationService
         $content = $locked->content ?? '';
         $contentHash = hash('sha256', $content);
 
-        if ($contentHash === $locked->content_hash) {
+        if (
+            $contentHash === $locked->content_hash
+            && $locked->stock_parser_version === ScheduleContentStockParser::VERSION
+        ) {
             return;
         }
 
@@ -204,6 +207,7 @@ class ScheduleStockReconciliationService
         $locked->forceFill([
             'content_hash' => $contentHash,
             'content_version' => $locked->content_version + 1,
+            'stock_parser_version' => ScheduleContentStockParser::VERSION,
             'stock_extraction_status' => $result->hasIgnoredMentions()
                 ? StockExtractionStatus::ProcessedWithIgnoredText
                 : StockExtractionStatus::Processed,

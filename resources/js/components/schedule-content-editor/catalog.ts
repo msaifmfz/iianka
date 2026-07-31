@@ -246,7 +246,7 @@ function unitToCharIndex(chars: string[], unitOffset: number): number {
 
 /**
  * Filter the slash-command dropdown: prefix matches before substring
- * matches, current names before aliases, then alphabetical.
+ * matches, current names before aliases, then the saved catalog order.
  */
 export function filterStockOptions(
     query: string,
@@ -255,12 +255,16 @@ export function filterStockOptions(
     const folded = normalizeStockText(query);
 
     if (folded === '') {
-        return [...stocks].sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+        return [...stocks];
     }
 
-    const scored: Array<{ stock: StockOption; score: number }> = [];
+    const scored: Array<{
+        stock: StockOption;
+        score: number;
+        catalogIndex: number;
+    }> = [];
 
-    for (const stock of stocks) {
+    for (const [catalogIndex, stock] of stocks.entries()) {
         const name = normalizeStockText(stock.name);
         const aliases = stock.aliases.map(normalizeStockText);
         let score: number | null = null;
@@ -276,14 +280,11 @@ export function filterStockOptions(
         }
 
         if (score !== null) {
-            scored.push({ stock, score });
+            scored.push({ stock, score, catalogIndex });
         }
     }
 
-    scored.sort(
-        (a, b) =>
-            a.score - b.score || a.stock.name.localeCompare(b.stock.name, 'ja'),
-    );
+    scored.sort((a, b) => a.score - b.score || a.catalogIndex - b.catalogIndex);
 
     return scored.map((item) => item.stock);
 }

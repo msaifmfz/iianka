@@ -19,6 +19,8 @@ test('admins can view the stock management page', function (): void {
             ->has('terms.0.buckets', 3)
             ->has('terms.0.rows', 1)
             ->where('terms.0.rows.0.name', 'セメント')
+            ->has('stockOrder', 1)
+            ->where('stockOrder.0.name', 'セメント')
         );
 });
 
@@ -36,6 +38,7 @@ test('non admins cannot access stock management', function (string $role): void 
     $this->actingAs($user)->post(route('admin.stocks.purchases.store', $stock), [])->assertForbidden();
     $this->actingAs($user)->post(route('admin.stocks.purchase-corrections.store', $stock), [])->assertForbidden();
     $this->actingAs($user)->put(route('admin.stocks.term-memo.update', $stock), [])->assertForbidden();
+    $this->actingAs($user)->patch(route('admin.stocks.order.update'), ['ordered_ids' => [$stock->id]])->assertForbidden();
 })->with(['editor', 'viewer']);
 
 test('guests are redirected from stock purchase and memo writes', function (): void {
@@ -47,7 +50,73 @@ test('guests are redirected from stock purchase and memo writes', function (): v
         ->assertRedirect(route('login'));
     $this->put(route('admin.stocks.term-memo.update', $stock), [])
         ->assertRedirect(route('login'));
+    $this->patch(route('admin.stocks.order.update'), ['ordered_ids' => [$stock->id]])
+        ->assertRedirect(route('login'));
 });
+
+test('admins can reorder every stock and reports use the saved order', function (): void {
+    $admin = User::factory()->admin()->create();
+    $first = Stock::factory()->named('一番')->create(['sort_order' => 10]);
+    $second = Stock::factory()->named('二番')->create(['sort_order' => 20]);
+    $third = Stock::factory()->named('三番')->create(['sort_order' => 30]);
+    $inactive = Stock::factory()->named('無効在庫')->inactive()->create(['sort_order' => 40]);
+
+    $this->actingAs($admin)
+        ->from(route('admin.stocks.index'))
+        ->patch(route('admin.stocks.order.update'), [
+            'ordered_ids' => [$third->id, $inactive->id, $first->id, $second->id],
+        ])
+        ->assertRedirect(route('admin.stocks.index'))
+        ->assertSessionHasNoErrors()
+        ->assertInertiaFlash('toast.message', '在庫の表示順を保存しました。');
+
+    expect($third->refresh()->sort_order)->toBe(10)
+        ->and($inactive->refresh()->sort_order)->toBe(20)
+        ->and($first->refresh()->sort_order)->toBe(30)
+        ->and($second->refresh()->sort_order)->toBe(40);
+
+    $this->actingAs($admin)
+        ->get(route('admin.stocks.index'))
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->where('stockOrder.0.id', $third->id)
+            ->where('stockOrder.1.id', $inactive->id)
+            ->where('stockOrder.2.id', $first->id)
+            ->where('stockOrder.3.id', $second->id)
+            ->where('terms.0.rows.0.stock_id', $third->id)
+            ->where('terms.0.rows.1.stock_id', $first->id)
+            ->where('terms.0.rows.2.stock_id', $second->id)
+            ->where('terms.1.rows.0.stock_id', $third->id)
+            ->where('terms.1.rows.1.stock_id', $first->id)
+            ->where('terms.1.rows.2.stock_id', $second->id));
+});
+
+test('stock reordering rejects incomplete duplicate and unknown id sets', function (array $orderedIds): void {
+    $admin = User::factory()->admin()->create();
+    $first = Stock::factory()->named('一番')->create(['sort_order' => 10]);
+    $second = Stock::factory()->named('二番')->create(['sort_order' => 20]);
+
+    $resolvedIds = array_map(
+        fn (string $id): int => match ($id) {
+            'first' => $first->id,
+            'second' => $second->id,
+            default => 999999,
+        },
+        $orderedIds,
+    );
+
+    $this->actingAs($admin)
+        ->from(route('admin.stocks.index'))
+        ->patch(route('admin.stocks.order.update'), ['ordered_ids' => $resolvedIds])
+        ->assertRedirect(route('admin.stocks.index'))
+        ->assertSessionHasErrors('ordered_ids');
+
+    expect($first->refresh()->sort_order)->toBe(10)
+        ->and($second->refresh()->sort_order)->toBe(20);
+})->with([
+    'missing stock' => [['first']],
+    'duplicate stock' => [['first', 'first']],
+    'unknown stock' => [['first', 'unknown']],
+]);
 
 test('admins can create stocks with aliases', function (): void {
     $admin = User::factory()->admin()->create();
@@ -85,6 +154,24 @@ test('admins can create stocks with aliases', function (): void {
         'alias' => 'ＢＯＮＤ',
         'normalized_alias' => 'bond',
     ]);
+});
+
+test('new stocks are appended after the current display order', function (): void {
+    $admin = User::factory()->admin()->create();
+    Stock::factory()->named('既存在庫')->create(['sort_order' => 40]);
+
+    $this->actingAs($admin)
+        ->post(route('admin.stocks.store'), [
+            'name' => '追加在庫',
+            'sku' => null,
+            'allows_fractional_quantity' => false,
+            'aliases' => [],
+            'initial_quantity' => null,
+        ])
+        ->assertRedirect(route('admin.stocks.index'))
+        ->assertSessionHasNoErrors();
+
+    expect(Stock::query()->where('name', '追加在庫')->value('sort_order'))->toBe(50);
 });
 
 test('creating a stock with an initial quantity records a purchase in the current term', function (): void {

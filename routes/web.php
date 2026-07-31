@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\StockController as AdminStockController;
+use App\Http\Controllers\Admin\StockOrderController as AdminStockOrderController;
 use App\Http\Controllers\Admin\StockPurchaseController as AdminStockPurchaseController;
 use App\Http\Controllers\Admin\StockPurchaseCorrectionController as AdminStockPurchaseCorrectionController;
 use App\Http\Controllers\Admin\StockTermMemoController as AdminStockTermMemoController;
@@ -127,6 +128,8 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
             ->name('stocks.purchase-corrections.store');
         Route::put('stocks/{stock}/term-memo', [AdminStockTermMemoController::class, 'update'])
             ->name('stocks.term-memo.update');
+        Route::patch('stocks/order', AdminStockOrderController::class)
+            ->name('stocks.order.update');
         Route::resource('stocks', AdminStockController::class)->except('show');
     });
 });

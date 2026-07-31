@@ -28,6 +28,7 @@ class StockFactory extends Factory
             'normalized_name' => new StockNameNormalizer()->normalize($name),
             'allows_fractional_quantity' => false,
             'is_active' => true,
+            'sort_order' => 0,
         ];
     }
 

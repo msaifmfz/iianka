@@ -17,6 +17,7 @@ class StockSeeder extends Seeder
     public function run(): void
     {
         $normalizer = new StockNameNormalizer;
+        $nextSortOrder = ((int) Stock::query()->max('sort_order')) + Stock::SORT_ORDER_STEP;
 
         $items = [
             ['name' => '牛乳', 'sku' => 'MILK-001', 'quantity' => '20.000', 'fractional' => false, 'active' => true, 'aliases' => ['ミルク']],
@@ -44,7 +45,12 @@ class StockSeeder extends Seeder
             );
 
             if ($stock->wasRecentlyCreated) {
-                $stock->forceFill(['current_quantity' => $item['quantity']])->save();
+                $stock->forceFill([
+                    'current_quantity' => $item['quantity'],
+                    'sort_order' => $nextSortOrder,
+                ])->save();
+
+                $nextSortOrder += Stock::SORT_ORDER_STEP;
             }
 
             foreach ($item['aliases'] as $alias) {

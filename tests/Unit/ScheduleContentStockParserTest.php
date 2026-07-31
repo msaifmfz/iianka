@@ -72,6 +72,61 @@ test('recognizes japanese names with and without spacing', function (string $con
     'full-width colon and digit' => ['牛乳：２'],
 ]);
 
+test('recognizes supported counters attached to quantities', function (string $counter): void {
+    $result = new ScheduleContentStockParser()->parse("ミルク 4{$counter}", defaultCatalog());
+
+    expect($result->mentions)->toHaveCount(1)
+        ->and($result->mentions[0]->stockId)->toBe(50)
+        ->and($result->mentions[0]->status)->toBe(StockMentionStatus::Recognized)
+        ->and($result->mentions[0]->quantity?->toDecimalString())->toBe('4.000');
+})->with([
+    'bottles and long objects' => ['本'],
+    'pieces' => ['個'],
+    'sheets' => ['枚'],
+    'machines' => ['台'],
+    'boxes' => ['箱'],
+    'bags' => ['袋'],
+    'cans' => ['缶'],
+    'bottles' => ['瓶'],
+    'rolls' => ['巻'],
+    'bundles' => ['束'],
+    'groups' => ['組'],
+    'tools' => ['丁'],
+    'pairs' => ['足'],
+    'sets' => ['セット'],
+    'cases' => ['ケース'],
+    'packs' => ['パック'],
+    'loanword rolls' => ['ロール'],
+    'loanword sheets' => ['シート'],
+]);
+
+test('accepts natural japanese text after a counter and keeps numeric offsets', function (): void {
+    $result = new ScheduleContentStockParser()->parse('ミルク ４本を使用', defaultCatalog());
+
+    expect($result->mentions)->toHaveCount(1)
+        ->and($result->mentions[0]->quantity?->toDecimalString())->toBe('4.000')
+        ->and($result->mentions[0]->quantityStartOffset)->toBe(4)
+        ->and($result->mentions[0]->quantityEndOffset)->toBe(5);
+});
+
+test('recognizes quantities with measurement units and arbitrary suffixes', function (string $content): void {
+    $result = new ScheduleContentStockParser()->parse($content, defaultCatalog());
+
+    expect($result->mentions)->toHaveCount(1)
+        ->and($result->mentions[0]->stockId)->toBe(50)
+        ->and($result->mentions[0]->status)->toBe(StockMentionStatus::Recognized)
+        ->and($result->mentions[0]->quantity?->toDecimalString())->toBe('4.000');
+})->with([
+    'litres' => ['ミルク 4L'],
+    'kilograms' => ['ミルク 4kg'],
+    'grams' => ['ミルク 4g'],
+    'metres' => ['ミルク 4m'],
+    'centimetres' => ['ミルク 4cm'],
+    'millimetres' => ['ミルク 4mm'],
+    'unknown japanese suffix' => ['ミルク 4着'],
+    'unknown alphabetic suffix' => ['ミルク 4widgets'],
+]);
+
 test('recognizes aliases and reports the alias identification method', function (): void {
     $result = new ScheduleContentStockParser()->parse('ミルク×3', defaultCatalog());
 
@@ -107,17 +162,25 @@ test('matches japanese compound names over their prefixes', function (): void {
 });
 
 test('handles catalog names that contain digits', function (): void {
-    $result = new ScheduleContentStockParser()->parse('Milk 2L 3', defaultCatalog());
+    $result = new ScheduleContentStockParser()->parse('Milk 2L 3kg', defaultCatalog());
 
     expect($result->mentions)->toHaveCount(1)
         ->and($result->mentions[0]->stockId)->toBe(17)
         ->and($result->mentions[0]->quantity?->toDecimalString())->toBe('3.000');
 });
 
-test('rejects a quantity glued to a following word', function (): void {
-    $result = new ScheduleContentStockParser()->parse('Milk 2L 3', [stockEntry(15, 'Milk')]);
+test('does not reinterpret a catalog name measurement as a counter quantity', function (): void {
+    $result = new ScheduleContentStockParser()->parse('Milk 2L', defaultCatalog());
 
     expect($result->mentions)->toBe([]);
+});
+
+test('uses a catalog-name measurement as quantity when no longer stock name exists', function (): void {
+    $result = new ScheduleContentStockParser()->parse('Milk 2L', [stockEntry(15, 'Milk')]);
+
+    expect($result->mentions)->toHaveCount(1)
+        ->and($result->mentions[0]->stockId)->toBe(15)
+        ->and($result->mentions[0]->quantity?->toDecimalString())->toBe('2.000');
 });
 
 test('aggregates multiple mentions of the same stock', function (): void {

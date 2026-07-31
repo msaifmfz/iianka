@@ -66,7 +66,7 @@ class StockTermReportService
         $previousTerm = $selectedTerm->previous();
         $nextTerm = $selectedTerm->next();
 
-        $stocks = Stock::query()->orderByDesc('is_active')->orderBy('name')->get();
+        $stocks = Stock::query()->orderBy('sort_order')->orderBy('id')->get();
         $purchases = $this->purchaseSums($selectedTerm, $nextTerm);
         $usage = $this->usageSums($selectedTerm, $nextTerm);
         $adjustments = $this->adjustmentSums($selectedTerm, $nextTerm);

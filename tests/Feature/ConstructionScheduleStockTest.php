@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Domain\Stock\Enums\StockExtractionStatus;
+use App\Domain\Stock\Parsing\ScheduleContentStockParser;
 use App\Models\ConstructionSchedule;
 use App\Models\ScheduleContentRevision;
 use App\Models\ScheduleStockBalance;
@@ -49,6 +50,7 @@ test('storing a schedule extracts stock usage and updates inventory', function (
     expect($schedule->content)->toBe("牛乳 2\nMilk Powder 3")
         ->and($schedule->content_hash)->toBe(hash('sha256', "牛乳 2\nMilk Powder 3"))
         ->and($schedule->content_version)->toBe(2)
+        ->and($schedule->stock_parser_version)->toBe(ScheduleContentStockParser::VERSION)
         ->and($schedule->stock_extraction_status)->toBe(StockExtractionStatus::Processed)
         ->and($schedule->stock_extracted_at)->not->toBeNull();
 
@@ -59,7 +61,7 @@ test('storing a schedule extracts stock usage and updates inventory', function (
         'schedule_type' => 'construction_schedule',
         'schedule_id' => $schedule->id,
         'content_hash' => $schedule->content_hash,
-        'parser_version' => '1.0.0',
+        'parser_version' => ScheduleContentStockParser::VERSION,
         'created_by' => $editor->id,
     ]);
 
@@ -90,6 +92,62 @@ test('storing a schedule extracts stock usage and updates inventory', function (
         'stock_id' => $powder->id,
         'applied_quantity' => '3.000',
     ]);
+});
+
+test('a measurement suffix on schedule content deducts the numeric quantity', function (): void {
+    $editor = User::factory()->editor()->create();
+    $milk = Stock::factory()->named('ミルク')->quantity('20.000')->create();
+
+    $this->actingAs($editor)
+        ->post(route('construction-schedules.store'), constructionStockPayload('ミルク 4Lを使用'))
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    $schedule = stockTestSchedule();
+
+    expect($milk->refresh()->current_quantity)->toBe('16.000')
+        ->and($schedule->stock_parser_version)->toBe(ScheduleContentStockParser::VERSION);
+
+    $this->assertDatabaseHas('schedule_stock_mentions', [
+        'schedule_id' => $schedule->id,
+        'stock_id' => $milk->id,
+        'quantity' => '4.000',
+        'status' => 'recognized',
+    ]);
+});
+
+test('unchanged content is reparsed once when its parser version is old', function (): void {
+    $editor = User::factory()->editor()->create();
+    $milk = Stock::factory()->named('ミルク')->quantity('20.000')->create();
+    $content = 'ミルク 4L';
+    $schedule = ConstructionSchedule::factory()->create([
+        'location' => '在庫テスト現場',
+        'content' => $content,
+        'content_hash' => hash('sha256', $content),
+        'content_version' => 2,
+        'stock_parser_version' => '1.1.0',
+    ]);
+
+    $this->actingAs($editor)
+        ->put(route('construction-schedules.update', $schedule), constructionStockPayload($content, 2))
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    expect($milk->refresh()->current_quantity)->toBe('16.000')
+        ->and($schedule->refresh()->content_version)->toBe(3)
+        ->and($schedule->stock_parser_version)->toBe(ScheduleContentStockParser::VERSION)
+        ->and(StockTransaction::query()->count())->toBe(1)
+        ->and(ScheduleContentRevision::query()->count())->toBe(1);
+
+    $this->actingAs($editor)
+        ->put(route('construction-schedules.update', $schedule), constructionStockPayload($content, 3))
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    expect($milk->refresh()->current_quantity)->toBe('16.000')
+        ->and($schedule->refresh()->content_version)->toBe(3)
+        ->and(StockTransaction::query()->count())->toBe(1)
+        ->and(ScheduleContentRevision::query()->count())->toBe(1);
 });
 
 test('storing a schedule without stock mentions records nothing', function (): void {
@@ -436,6 +494,34 @@ test('the schedule form receives active stock options with aliases', function ()
             ->where('stockOptions.0.aliases.0', 'ミルク')
             ->where('stockOptions.0.available_quantity', '20.000')
             ->where('stockOptions.0.allows_fractional_quantity', false));
+});
+
+test('schedule stock options and applied usages follow the saved stock order', function (): void {
+    $editor = User::factory()->editor()->create();
+    $second = Stock::factory()->named('先に見える在庫')->quantity('20.000')->create(['sort_order' => 20]);
+    $first = Stock::factory()->named('後の名前だが一番')->quantity('20.000')->create(['sort_order' => 10]);
+    Stock::factory()->named('無効在庫')->inactive()->create(['sort_order' => 5]);
+
+    $this->actingAs($editor)
+        ->get(route('construction-schedules.create'))
+        ->assertInertia(fn ($page) => $page
+            ->where('stockOptions.0.id', $first->id)
+            ->where('stockOptions.1.id', $second->id)
+            ->has('stockOptions', 2));
+
+    $this->actingAs($editor)
+        ->post(
+            route('construction-schedules.store'),
+            constructionStockPayload("{$second->name} 1\n{$first->name} 1"),
+        )
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    $this->actingAs($editor)
+        ->get(route('construction-schedules.show', stockTestSchedule()))
+        ->assertInertia(fn ($page) => $page
+            ->where('stockUsages.0.stock_id', $first->id)
+            ->where('stockUsages.1.stock_id', $second->id));
 });
 
 test('the show page exposes applied stock usage', function (): void {

@@ -20,6 +20,7 @@ use Override;
  * @property string $current_quantity
  * @property bool $allows_fractional_quantity
  * @property bool $is_active
+ * @property int $sort_order
  * @property-read Collection<int, StockAlias> $aliases
  */
 #[Fillable([
@@ -28,11 +29,14 @@ use Override;
     'normalized_name',
     'allows_fractional_quantity',
     'is_active',
+    'sort_order',
 ])]
 class Stock extends Model
 {
     /** @use HasFactory<StockFactory> */
     use HasFactory;
+
+    public const int SORT_ORDER_STEP = 10;
 
     /**
      * @return array<string, string>
@@ -44,6 +48,7 @@ class Stock extends Model
             'current_quantity' => 'decimal:3',
             'allows_fractional_quantity' => 'boolean',
             'is_active' => 'boolean',
+            'sort_order' => 'integer',
         ];
     }
 

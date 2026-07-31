@@ -1,13 +1,15 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import {
     CalendarRange,
     ChevronLeft,
     ChevronRight,
     Info,
+    ListOrdered,
     Minus,
     Package,
     Pencil,
     Plus,
+    RotateCcw,
     Save,
     StickyNote,
 } from 'lucide-react';
@@ -18,9 +20,11 @@ import {
     edit as stockEdit,
     index as stockIndex,
 } from '@/actions/App/Http/Controllers/Admin/StockController';
+import stockOrderUpdate from '@/actions/App/Http/Controllers/Admin/StockOrderController';
 import { store as purchaseStore } from '@/actions/App/Http/Controllers/Admin/StockPurchaseController';
 import { store as purchaseCorrectionStore } from '@/actions/App/Http/Controllers/Admin/StockPurchaseCorrectionController';
 import { update as termMemoUpdate } from '@/actions/App/Http/Controllers/Admin/StockTermMemoController';
+import SortableOrderList from '@/components/sortable-order-list';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -47,6 +51,7 @@ import {
     signedStockQuantity,
 } from '@/lib/stock';
 import { cn } from '@/lib/utils';
+import { fieldOrElementError } from '@/lib/validation';
 import type { FlashResource } from '@/types/ui';
 
 type ReportRow = {
@@ -81,6 +86,12 @@ type ReportTerm = {
     rows: ReportRow[];
 };
 
+type StockOrderItem = {
+    id: number;
+    name: string;
+    is_active: boolean;
+};
+
 type Props = {
     filters: {
         month: string;
@@ -89,11 +100,228 @@ type Props = {
         is_current: boolean;
     };
     terms: ReportTerm[];
+    stockOrder: StockOrderItem[];
     today: string;
 };
 
 const signedQuantity = signedStockQuantity;
 const isZero = isZeroStockQuantity;
+
+function stockOrderIds(stocks: StockOrderItem[]): number[] {
+    return stocks.map((stock) => stock.id);
+}
+
+function stockOrderIdsAreEqual(
+    firstIds: number[],
+    secondIds: number[],
+): boolean {
+    return (
+        firstIds.length === secondIds.length &&
+        firstIds.every((id, index) => id === secondIds[index])
+    );
+}
+
+function normalizeStockOrderIds(
+    pendingIds: number[] | null,
+    serverIds: number[],
+): number[] {
+    if (pendingIds === null) {
+        return serverIds;
+    }
+
+    const serverIdSet = new Set(serverIds);
+    const preservedIds = pendingIds.filter((id) => serverIdSet.has(id));
+    const preservedIdSet = new Set(preservedIds);
+
+    return [
+        ...preservedIds,
+        ...serverIds.filter((id) => !preservedIdSet.has(id)),
+    ];
+}
+
+function orderStocksByIds(
+    stocks: StockOrderItem[],
+    orderedIds: number[],
+): StockOrderItem[] {
+    const stocksById = new Map(stocks.map((stock) => [stock.id, stock]));
+
+    return orderedIds.flatMap((id) => {
+        const stock = stocksById.get(id);
+
+        return stock ? [stock] : [];
+    });
+}
+
+function getStockOrderId(stock: StockOrderItem): number {
+    return stock.id;
+}
+
+function getStockOrderLabel(stock: StockOrderItem): string {
+    return stock.name;
+}
+
+function StockOrderDialog({ stocks }: { stocks: StockOrderItem[] }) {
+    const [open, setOpen] = useState(false);
+    const [pendingIds, setPendingIds] = useState<number[] | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const [orderError, setOrderError] = useState<string | null>(null);
+    const serverIds = stockOrderIds(stocks);
+    const orderedIds = normalizeStockOrderIds(pendingIds, serverIds);
+    const orderedStocks = orderStocksByIds(stocks, orderedIds);
+    const isDirty = !stockOrderIdsAreEqual(orderedIds, serverIds);
+
+    function handleOpenChange(nextOpen: boolean) {
+        if (isSaving) {
+            return;
+        }
+
+        setOpen(nextOpen);
+
+        if (!nextOpen) {
+            setPendingIds(null);
+            setOrderError(null);
+        }
+    }
+
+    function resetOrder() {
+        setPendingIds(null);
+        setOrderError(null);
+    }
+
+    function saveOrder() {
+        if (!isDirty || isSaving) {
+            return;
+        }
+
+        setIsSaving(true);
+        setOrderError(null);
+
+        router.patch(
+            stockOrderUpdate.url(),
+            { ordered_ids: orderedIds },
+            {
+                only: ['stockOrder', 'terms'],
+                preserveScroll: true,
+                onError: (errors) =>
+                    setOrderError(
+                        fieldOrElementError(errors, 'ordered_ids') ??
+                            '表示順を保存できませんでした。',
+                    ),
+                onFinish: () => setIsSaving(false),
+                onSuccess: () => {
+                    setPendingIds(null);
+                    setOrderError(null);
+                    setOpen(false);
+                },
+            },
+        );
+    }
+
+    return (
+        <Dialog open={open} onOpenChange={handleOpenChange}>
+            <DialogTrigger asChild>
+                <Button
+                    type="button"
+                    variant="outline"
+                    disabled={stocks.length < 2}
+                >
+                    <ListOrdered className="size-4" />
+                    表示順を変更
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="max-h-[90vh] sm:max-w-xl">
+                <DialogHeader>
+                    <DialogTitle>在庫の表示順</DialogTitle>
+                    <DialogDescription>
+                        ドラッグして並べ替えます。キーボードでは、並べ替えボタンにフォーカスしてスペースキーを押してください。
+                    </DialogDescription>
+                </DialogHeader>
+
+                {orderError && (
+                    <div
+                        role="alert"
+                        className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                    >
+                        {orderError}
+                    </div>
+                )}
+
+                <div className="max-h-[58vh] overflow-y-auto pr-1">
+                    <SortableOrderList
+                        className="space-y-2"
+                        disabled={isSaving}
+                        getId={getStockOrderId}
+                        getLabel={getStockOrderLabel}
+                        items={orderedStocks}
+                        onReorder={(nextStocks) => {
+                            setPendingIds(stockOrderIds(nextStocks));
+                            setOrderError(null);
+                        }}
+                        renderItem={(
+                            stock,
+                            { dragHandle, index, isDragging },
+                        ) => (
+                            <div
+                                data-stock-order-id={stock.id}
+                                className={cn(
+                                    'flex items-center gap-2 rounded-lg border bg-background p-2 transition-shadow',
+                                    isDragging &&
+                                        'shadow-lg ring-2 ring-ring/20',
+                                )}
+                            >
+                                {dragHandle}
+                                <Badge
+                                    variant="outline"
+                                    className="h-9 min-w-11 justify-center"
+                                >
+                                    #{index + 1}
+                                </Badge>
+                                <span
+                                    className={cn(
+                                        'min-w-0 flex-1 truncate font-medium',
+                                        !stock.is_active &&
+                                            'text-muted-foreground',
+                                    )}
+                                >
+                                    {stock.name}
+                                </span>
+                                <Badge
+                                    variant={
+                                        stock.is_active
+                                            ? 'secondary'
+                                            : 'outline'
+                                    }
+                                >
+                                    {stock.is_active ? '有効' : '無効'}
+                                </Badge>
+                            </div>
+                        )}
+                    />
+                </div>
+
+                <DialogFooter>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={resetOrder}
+                        disabled={!isDirty || isSaving}
+                    >
+                        <RotateCcw className="size-4" />
+                        元に戻す
+                    </Button>
+                    <Button
+                        type="button"
+                        onClick={saveOrder}
+                        disabled={!isDirty || isSaving}
+                    >
+                        <Save className="size-4" />
+                        表示順を保存
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
 
 function shortDate(isoDate: string) {
     const [, month, day] = isoDate.split('-');
@@ -918,7 +1146,12 @@ function TermCard({
     );
 }
 
-export default function AdminStocksIndex({ filters, terms, today }: Props) {
+export default function AdminStocksIndex({
+    filters,
+    terms,
+    stockOrder,
+    today,
+}: Props) {
     const recentResource = useRecentResource();
     const hasFutureTerm = terms.some((term) => term.term_starts_on > today);
 
@@ -933,12 +1166,15 @@ export default function AdminStocksIndex({ filters, terms, today }: Props) {
                         </p>
                         <h1 className="text-2xl font-bold">在庫管理</h1>
                     </div>
-                    <Button asChild>
-                        <Link href={stockCreate()}>
-                            <Plus className="size-4" />
-                            在庫を追加
-                        </Link>
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <StockOrderDialog stocks={stockOrder} />
+                        <Button asChild>
+                            <Link href={stockCreate()}>
+                                <Plus className="size-4" />
+                                在庫を追加
+                            </Link>
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">

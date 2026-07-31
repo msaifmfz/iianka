@@ -107,4 +107,33 @@ test.describe('schedule content stock picker', () => {
 
         await expect(stockListbox(page)).toBeHidden();
     });
+
+    test('an attached measurement unit is counted as the numeric stock usage', async ({
+        page,
+    }, testInfo) => {
+        await login(page, editorLoginId);
+        const editor = await openContentEditor(page);
+
+        await editor.pressSequentially('/養生');
+        await stockListbox(page)
+            .getByRole('option', { name: new RegExp(stockName) })
+            .click();
+        await editor.pressSequentially('4Lを使用');
+
+        const location = `E2E stock unit ${testInfo.project.name}`;
+        await page.getByLabel('現場名').fill(location);
+        await page.getByRole('button', { name: '工事予定を作成' }).click();
+        await page
+            .getByRole('link', {
+                name: `${location}の予定詳細を見る`,
+            })
+            .click();
+
+        const usageSection = page.getByText('使用在庫').locator('..');
+
+        await expect(usageSection.getByRole('listitem')).toContainText(
+            stockName,
+        );
+        await expect(usageSection.getByRole('listitem')).toContainText('4');
+    });
 });

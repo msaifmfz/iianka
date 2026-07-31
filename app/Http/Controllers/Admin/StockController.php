@@ -40,6 +40,10 @@ class StockController extends Controller
                 'is_current' => $isCurrent,
             ],
             'terms' => $reportService->build($term),
+            'stockOrder' => Stock::query()
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get(['id', 'name', 'is_active']),
             'today' => BusinessDate::today()->toDateString(),
         ]);
     }
@@ -59,12 +63,19 @@ class StockController extends Controller
         $normalizer = new StockNameNormalizer;
 
         $stock = DB::transaction(function () use ($validated, $normalizer, $recorder, $request): Stock {
+            $lastSortOrder = Stock::query()
+                ->orderByDesc('sort_order')
+                ->orderByDesc('id')
+                ->lockForUpdate()
+                ->value('sort_order');
+
             $stock = Stock::query()->create([
                 'sku' => ($validated['sku'] ?? '') !== '' ? $validated['sku'] : null,
                 'name' => $validated['name'],
                 'normalized_name' => $normalizer->normalize($validated['name']),
                 'allows_fractional_quantity' => $validated['allows_fractional_quantity'],
                 'is_active' => true,
+                'sort_order' => ((int) $lastSortOrder) + Stock::SORT_ORDER_STEP,
             ]);
 
             foreach ($validated['aliases'] as $alias) {

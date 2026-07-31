@@ -23,6 +23,7 @@ use Override;
  * @property string|null $content
  * @property string|null $content_hash
  * @property int $content_version
+ * @property string|null $stock_parser_version
  * @property StockExtractionStatus|null $stock_extraction_status
  * @property Carbon|null $stock_extracted_at
  * @property-read \Illuminate\Database\Eloquent\Collection<int, SiteGuideFile> $selectedGuideFiles

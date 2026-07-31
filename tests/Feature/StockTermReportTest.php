@@ -451,15 +451,13 @@ test('inactive stocks are hidden unless they have figures or a memo in the visib
         ->get(route('admin.stocks.index'))
         ->assertInertia(fn (Assert $page): Assert => $page
             ->has('terms.0.rows', 3)
-            ->where('terms.0.rows.0.name', '現行ボンド')
-            ->where('terms.0.rows.1.name', '旧セメント')
-            ->where('terms.0.rows.1.purchased', '5.000')
         );
 
     $rows = collect($response->inertiaProps('terms.0.rows'))->keyBy('name');
 
     expect($rows)->toHaveCount(3)
         ->and($rows->has('旧ネジ'))->toBeFalse()
+        ->and($rows->get('旧セメント')['purchased'])->toBe('5.000')
         ->and($rows->get('旧メモ在庫')['purchased'])->toBe('0.000')
         ->and($rows->get('旧メモ在庫')['memo'])->toBe('数量なしの引継ぎ');
 });

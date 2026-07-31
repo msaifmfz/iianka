@@ -277,8 +277,10 @@ class ConstructionScheduleController extends Controller
         return ScheduleStockBalance::query()
             ->where('schedule_type', ScheduleStockSourceType::ConstructionSchedule)
             ->where('schedule_id', $schedule->id)
-            ->with('stock:id,name,is_active')
+            ->with('stock:id,name,is_active,sort_order')
             ->get()
+            ->sort(fn (ScheduleStockBalance $first, ScheduleStockBalance $second): int => $first->stock->sort_order <=> $second->stock->sort_order
+                ?: $first->stock_id <=> $second->stock_id)
             ->toBase()
             ->map(fn (ScheduleStockBalance $balance): array => [
                 'stock_id' => $balance->stock_id,
@@ -286,7 +288,6 @@ class ConstructionScheduleController extends Controller
                 'quantity' => $balance->applied_quantity,
                 'is_active' => $balance->stock->is_active,
             ])
-            ->sortBy('name')
             ->values();
     }
 
@@ -578,7 +579,8 @@ class ConstructionScheduleController extends Controller
         return Stock::query()
             ->where('is_active', true)
             ->with(['aliases' => fn ($query) => $query->where('is_active', true)])
-            ->orderBy('name')
+            ->orderBy('sort_order')
+            ->orderBy('id')
             ->get()
             ->toBase()
             ->map(fn (Stock $stock): array => [

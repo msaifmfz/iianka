@@ -13,8 +13,9 @@ use Normalizer;
  *
  * Matching is exact (no fuzzy matching) against normalized current names and
  * active aliases, longest candidate first, on Unicode-aware token boundaries.
- * A quantity must follow the mention within a small separator window;
- * mentions without a quantity token are not reported.
+ * A quantity must follow the mention within a small separator window. Any
+ * suffix attached directly to the number is ignored; mentions without a
+ * quantity token are not reported.
  *
  * All offsets are Unicode code-point offsets into the original content.
  *
@@ -23,7 +24,7 @@ use Normalizer;
  */
 final class ScheduleContentStockParser
 {
-    public const string VERSION = '1.0.0';
+    public const string VERSION = '1.2.0';
 
     private const int MAX_SEPARATOR_CHARS = 5;
 
@@ -264,9 +265,10 @@ final class ScheduleContentStockParser
 
     /**
      * Read the quantity token following a mention: up to five separator
-     * characters, then an optionally negative decimal number. Line breaks and
-     * sentence terminators are not separators, so scanning never crosses
-     * them. Returns null when no acceptable number follows.
+     * characters, then an optionally negative decimal number. An attached
+     * suffix is ignored. Line breaks and sentence terminators are not
+     * separators, so scanning never crosses them. Returns null when no
+     * acceptable number follows.
      *
      * @param  list<string>  $chars
      * @param  list<array{0: int, 1: int}>  $reserved
@@ -319,10 +321,6 @@ final class ScheduleContentStockParser
                 $raw .= $chars[$position];
                 $position++;
             }
-        }
-
-        if ($position < $length && $this->isWordChar($chars[$position])) {
-            return null;
         }
 
         if ($this->intersectsReserved($reserved, $start, $position)) {
