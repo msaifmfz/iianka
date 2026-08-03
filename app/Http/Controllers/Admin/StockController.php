@@ -96,7 +96,7 @@ class StockController extends Controller
             return $stock;
         });
 
-        $this->auditSuccess('admin.stocks.created', 'An admin created a stock item.', $stock, [
+        $this->auditSuccess('admin.stocks.created', 'A stock item was created.', $stock, [
             'name' => $stock->name,
             'aliases' => $validated['aliases'],
             'initial_quantity' => $validated['initial_quantity'] ?? null,
@@ -165,7 +165,7 @@ class StockController extends Controller
             }
         });
 
-        $this->auditSuccess('admin.stocks.updated', 'An admin updated a stock item.', $stock, [
+        $this->auditSuccess('admin.stocks.updated', 'A stock item was updated.', $stock, [
             'changed' => array_values(array_diff(array_keys($stock->getChanges()), ['updated_at'])),
             'aliases' => $validated['aliases'],
         ]);
@@ -186,7 +186,7 @@ class StockController extends Controller
         Gate::authorize('manage-stocks');
         abort_if($this->hasHistory($stock), 422, '履歴のある在庫は削除できません。代わりに無効化してください。');
 
-        $this->auditSuccess('admin.stocks.deleted', 'An admin deleted a stock item.', $stock, [
+        $this->auditSuccess('admin.stocks.deleted', 'A stock item was deleted.', $stock, [
             'name' => $stock->name,
         ]);
 

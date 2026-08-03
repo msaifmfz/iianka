@@ -3,21 +3,38 @@ import type { Page } from '@playwright/test';
 
 const password = 'password';
 const adminLoginId = 'e2e-admin';
+const editorLoginId = 'e2e-editor';
 
 function escapeRegExp(value: string): string {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-async function login(page: Page): Promise<void> {
+async function login(page: Page, userLoginId = adminLoginId): Promise<void> {
     await page.goto('/login');
-    await page.getByLabel('ログインID').fill(adminLoginId);
+    await page.getByLabel('ログインID').fill(userLoginId);
     await page.locator('input[name="password"]').fill(password);
     await page.getByRole('button', { name: 'ログイン' }).click();
     await expect(page).toHaveURL(/\/schedule-overview(?:\?.*)?$/);
 }
 
-test.describe('admin stock management', () => {
+test.describe('stock management', () => {
     test.describe.configure({ mode: 'serial' });
+
+    test('shows the stock management menu to editors', async ({ page }) => {
+        await login(page, editorLoginId);
+
+        const stockManagementLink = page.getByRole('link', {
+            name: '在庫管理',
+            exact: true,
+        });
+
+        await expect(stockManagementLink).toBeVisible();
+        await stockManagementLink.click();
+        await expect(page).toHaveURL(/\/admin\/stocks(?:\?.*)?$/);
+        await expect(
+            page.getByRole('heading', { name: '在庫管理', exact: true }),
+        ).toBeVisible();
+    });
 
     test('edits future purchases and memos and preserves them across term navigation', async ({
         page,

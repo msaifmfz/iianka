@@ -23,7 +23,7 @@ class StockPurchaseCorrectionController extends Controller
 
         $recorder->correct($stock->id, $term, $validated['quantity_to_subtract'], $request->user());
 
-        $this->auditSuccess('admin.stocks.purchase_corrected', 'An admin corrected a stock purchase quantity.', $stock, [
+        $this->auditSuccess('admin.stocks.purchase_corrected', 'A stock purchase quantity was corrected.', $stock, [
             'term_starts_on' => $term->startsOn()->toDateString(),
             'quantity_to_subtract' => $validated['quantity_to_subtract'],
         ]);

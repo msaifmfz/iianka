@@ -20,7 +20,7 @@ class StoreStockRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->user()?->isAdmin() === true;
+        return $this->user()?->canManageStocks() === true;
     }
 
     /**

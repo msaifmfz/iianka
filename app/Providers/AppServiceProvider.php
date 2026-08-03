@@ -64,7 +64,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('manage-content', fn (User $user): bool => $user->canManageContent());
         Gate::define('view-all-content', fn (User $user): bool => $user->canViewAllContent());
         Gate::define('manage-users', fn (User $user): bool => $user->canManageUsers());
-        Gate::define('manage-stocks', fn (User $user): bool => $user->isAdmin());
+        Gate::define('manage-stocks', fn (User $user): bool => $user->canManageStocks());
         Gate::define('view-audit-logs', fn (User $user): bool => $user->canViewAuditLogs());
     }
 

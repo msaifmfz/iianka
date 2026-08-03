@@ -29,7 +29,7 @@ class StockOrderController extends Controller
 
         $this->auditSuccess(
             'admin.stocks.reordered',
-            'An admin updated the stock display order.',
+            'The stock display order was updated.',
             metadata: ['ordered_ids' => $orderedIds],
         );
 

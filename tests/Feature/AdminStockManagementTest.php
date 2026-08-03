@@ -1,20 +1,27 @@
 <?php
 
+use App\Domain\Stock\ValueObjects\StockTerm;
+use App\Models\AuditLog;
 use App\Models\Stock;
 use App\Models\StockAlias;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
 
-test('admins can view the stock management page', function (): void {
-    $admin = User::factory()->admin()->create();
+test('stock managers can view the stock management page', function (string $role): void {
+    $manager = match ($role) {
+        'admin' => User::factory()->admin()->create(),
+        'editor' => User::factory()->editor()->create(),
+        default => throw new InvalidArgumentException("Unsupported stock manager role [{$role}]."),
+    };
     Stock::factory()->named('セメント')->create();
 
-    $this->actingAs($admin)
+    $this->actingAs($manager)
         ->get(route('admin.stocks.index'))
         ->assertOk()
         ->assertInertia(fn (Assert $page): Assert => $page
             ->component('admin/stocks/index')
+            ->where('auth.permissions.manage_stocks', true)
             ->has('terms', 2)
             ->has('terms.0.buckets', 3)
             ->has('terms.0.rows', 1)
@@ -22,16 +29,15 @@ test('admins can view the stock management page', function (): void {
             ->has('stockOrder', 1)
             ->where('stockOrder.0.name', 'セメント')
         );
-});
+})->with(['admin', 'editor']);
 
-test('non admins cannot access stock management', function (string $role): void {
-    $user = $role === 'editor'
-        ? User::factory()->editor()->create()
-        : User::factory()->create();
+test('viewers cannot access stock management', function (): void {
+    $user = User::factory()->create();
     $stock = Stock::factory()->create();
 
     $this->actingAs($user)->get(route('admin.stocks.index'))->assertForbidden();
     $this->actingAs($user)->get(route('admin.stocks.create'))->assertForbidden();
+    $this->actingAs($user)->get(route('admin.stocks.edit', $stock))->assertForbidden();
     $this->actingAs($user)->post(route('admin.stocks.store'), [])->assertForbidden();
     $this->actingAs($user)->put(route('admin.stocks.update', $stock), [])->assertForbidden();
     $this->actingAs($user)->delete(route('admin.stocks.destroy', $stock))->assertForbidden();
@@ -39,7 +45,110 @@ test('non admins cannot access stock management', function (string $role): void 
     $this->actingAs($user)->post(route('admin.stocks.purchase-corrections.store', $stock), [])->assertForbidden();
     $this->actingAs($user)->put(route('admin.stocks.term-memo.update', $stock), [])->assertForbidden();
     $this->actingAs($user)->patch(route('admin.stocks.order.update'), ['ordered_ids' => [$stock->id]])->assertForbidden();
-})->with(['editor', 'viewer']);
+});
+
+test('editors can perform every stock management action', function (): void {
+    $editor = User::factory()->editor()->create();
+    $existingStock = Stock::factory()->named('既存在庫')->create(['sort_order' => 10]);
+    $deletableStock = Stock::factory()->named('削除対象')->create(['sort_order' => 20]);
+    $termStartsOn = StockTerm::current()->startsOn()->toDateString();
+
+    $this->actingAs($editor)
+        ->get(route('admin.stocks.create'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->component('admin/stocks/form')
+            ->where('managedStock', null));
+
+    $this->actingAs($editor)
+        ->post(route('admin.stocks.store'), [
+            'name' => '編集者在庫',
+            'sku' => 'EDITOR-001',
+            'allows_fractional_quantity' => false,
+            'aliases' => ['編集者別名'],
+            'initial_quantity' => null,
+        ])
+        ->assertRedirect(route('admin.stocks.index'))
+        ->assertSessionHasNoErrors();
+
+    $managedStock = Stock::query()->where('name', '編集者在庫')->firstOrFail();
+
+    $this->actingAs($editor)
+        ->get(route('admin.stocks.edit', $managedStock))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->component('admin/stocks/form')
+            ->where('managedStock.id', $managedStock->id));
+
+    $this->actingAs($editor)
+        ->put(route('admin.stocks.update', $managedStock), [
+            'name' => '編集者更新在庫',
+            'sku' => 'EDITOR-002',
+            'allows_fractional_quantity' => false,
+            'is_active' => true,
+            'aliases' => ['更新別名'],
+        ])
+        ->assertRedirect(route('admin.stocks.index'))
+        ->assertSessionHasNoErrors();
+
+    $this->actingAs($editor)
+        ->post(route('admin.stocks.purchases.store', $managedStock), [
+            'term_starts_on' => $termStartsOn,
+            'quantity_to_add' => '5',
+        ])
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    $this->actingAs($editor)
+        ->post(route('admin.stocks.purchase-corrections.store', $managedStock), [
+            'term_starts_on' => $termStartsOn,
+            'quantity_to_subtract' => '2',
+        ])
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    $this->actingAs($editor)
+        ->put(route('admin.stocks.term-memo.update', $managedStock), [
+            'term_starts_on' => $termStartsOn,
+            'memo' => '編集者が更新',
+        ])
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    $this->actingAs($editor)
+        ->from(route('admin.stocks.index'))
+        ->patch(route('admin.stocks.order.update'), [
+            'ordered_ids' => [$managedStock->id, $existingStock->id, $deletableStock->id],
+        ])
+        ->assertRedirect(route('admin.stocks.index'))
+        ->assertSessionHasNoErrors();
+
+    $this->actingAs($editor)
+        ->delete(route('admin.stocks.destroy', $deletableStock))
+        ->assertRedirect(route('admin.stocks.index'));
+
+    expect($managedStock->refresh()->name)->toBe('編集者更新在庫')
+        ->and($managedStock->sku)->toBe('EDITOR-002')
+        ->and($managedStock->current_quantity)->toBe('3.000')
+        ->and($managedStock->sort_order)->toBe(10)
+        ->and($existingStock->refresh()->sort_order)->toBe(20)
+        ->and(Stock::query()->whereKey($deletableStock->id)->doesntExist())->toBeTrue();
+
+    expect($managedStock->purchases()->sole()->memo)->toBe('編集者が更新');
+
+    expect(AuditLog::query()
+        ->where('actor_user_id', $editor->id)
+        ->pluck('description', 'event')
+        ->all())->toBe([
+            'admin.stocks.created' => 'A stock item was created.',
+            'admin.stocks.updated' => 'A stock item was updated.',
+            'admin.stocks.purchase_added' => 'A stock purchase quantity was added.',
+            'admin.stocks.purchase_corrected' => 'A stock purchase quantity was corrected.',
+            'admin.stocks.term_memo_updated' => 'A stock term memo was updated.',
+            'admin.stocks.reordered' => 'The stock display order was updated.',
+            'admin.stocks.deleted' => 'A stock item was deleted.',
+        ]);
+});
 
 test('guests are redirected from stock purchase and memo writes', function (): void {
     $stock = Stock::factory()->create();

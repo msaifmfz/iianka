@@ -57,6 +57,11 @@ class User extends Authenticatable implements PasskeyUser
         return $this->isAdmin();
     }
 
+    public function canManageStocks(): bool
+    {
+        return in_array($this->role, [UserRole::Admin, UserRole::Editor], true);
+    }
+
     public function canManageContent(): bool
     {
         return in_array($this->role, [UserRole::Admin, UserRole::Editor], true);

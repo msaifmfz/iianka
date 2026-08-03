@@ -24,7 +24,7 @@ class StockTermMemoController extends Controller
 
         $updater->update($stock->id, $term, $memo);
 
-        $this->auditSuccess('admin.stocks.term_memo_updated', 'An admin updated a stock term memo.', $stock, [
+        $this->auditSuccess('admin.stocks.term_memo_updated', 'A stock term memo was updated.', $stock, [
             'term_starts_on' => $term->startsOn()->toDateString(),
             'action' => $memo === null ? 'cleared' : 'saved',
         ]);
