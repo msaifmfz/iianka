@@ -15,8 +15,8 @@
         "lint": "eslint . --fix",
         "lint:check": "eslint .",
         "types:check": "tsc --noEmit",
-        "changelog": "git fetch --tags origin && git-cliff --unreleased --prepend CHANGELOG.md",
-        "changelog:preview": "git fetch --tags origin && git-cliff --unreleased",
+        "changelog": "git fetch --tags --force origin && git-cliff --unreleased --prepend CHANGELOG.md",
+        "changelog:preview": "git fetch --tags --force origin && git-cliff --unreleased",
         "prepare": "lefthook install"
     },
     "devDependencies": {
