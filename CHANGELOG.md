@@ -5,6 +5,12 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Only final releases are listed; `-rc.N` pre-releases fold into their final version.
 
+## [0.4.5](https://github.com/msaifmfz/iianka/compare/v0.4.4...v0.4.5) - 2026-08-03
+
+### Changed
+
+- Update patch
+
 ## [0.4.4](https://github.com/msaifmfz/iianka/compare/v0.4.3...v0.4.4) - 2026-08-03
 
 ### Added
