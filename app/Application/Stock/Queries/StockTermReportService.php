@@ -34,6 +34,8 @@ use Illuminate\Support\Carbon;
  */
 class StockTermReportService
 {
+    public function __construct(private readonly UsageScheduleQuery $usageSchedules) {}
+
     /**
      * Report data for the selected term followed by its next term.
      *
@@ -53,6 +55,7 @@ class StockTermReportService
      *         carry_over: string,
      *         purchased: string,
      *         used: list<string>,
+     *         usage_schedules: array<string, list<array{schedule_id: int, quantity: string}>>,
      *         used_total: string,
      *         adjustments: string,
      *         total: string,
@@ -69,6 +72,7 @@ class StockTermReportService
         $stocks = Stock::query()->orderBy('sort_order')->orderBy('id')->get();
         $purchases = $this->purchaseSums($selectedTerm, $nextTerm);
         $usage = $this->usageSums($selectedTerm, $nextTerm);
+        $usageReferences = $this->usageSchedules->references($selectedTerm, $nextTerm);
         $adjustments = $this->adjustmentSums($selectedTerm, $nextTerm);
         $memos = $this->purchaseMemos($previousTerm, $selectedTerm, $nextTerm);
 
@@ -98,6 +102,7 @@ class StockTermReportService
                 $selectedCarryOver,
                 $purchase['first'],
                 $used['first'],
+                $usageReferences->forTerm($stock->id, $selectedTerm),
                 $adjustment['first'],
                 $selectedTotal,
                 $memo['first'],
@@ -108,6 +113,7 @@ class StockTermReportService
                 $selectedTotal,
                 $purchase['second'],
                 $used['second'],
+                $usageReferences->forTerm($stock->id, $nextTerm),
                 $adjustment['second'],
                 $nextTotal,
                 $memo['second'],
@@ -152,6 +158,7 @@ class StockTermReportService
 
     /**
      * @param  list<int>  $usedMilliUnits
+     * @param  array<string, list<array{schedule_id: int, quantity: string}>>  $usageSchedules
      * @return array{
      *     stock_id: int,
      *     name: string,
@@ -161,6 +168,7 @@ class StockTermReportService
      *     carry_over: string,
      *     purchased: string,
      *     used: list<string>,
+     *     usage_schedules: array<string, list<array{schedule_id: int, quantity: string}>>,
      *     used_total: string,
      *     adjustments: string,
      *     total: string,
@@ -173,6 +181,7 @@ class StockTermReportService
         int $carryOver,
         int $purchased,
         array $usedMilliUnits,
+        array $usageSchedules,
         int $adjustments,
         int $total,
         ?string $memo,
@@ -190,6 +199,7 @@ class StockTermReportService
                 fn (int $quantity): string => StockQuantity::fromMilliUnits($quantity)->toDecimalString(),
                 $usedMilliUnits,
             ),
+            'usage_schedules' => $usageSchedules,
             'used_total' => StockQuantity::fromMilliUnits(array_sum($usedMilliUnits))->toDecimalString(),
             'adjustments' => StockQuantity::fromMilliUnits($adjustments)->toDecimalString(),
             'total' => StockQuantity::fromMilliUnits($total)->toDecimalString(),

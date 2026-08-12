@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Concerns;
 
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 /**
@@ -13,6 +14,15 @@ use Illuminate\Http\Request;
  */
 trait HandlesScheduleReturnTo
 {
+    /**
+     * Send the user back to the page the schedule was reached from, falling
+     * back to the given URL when it was reached directly.
+     */
+    protected function redirectToReturnTo(Request $request, string $fallbackUrl): RedirectResponse
+    {
+        return redirect($this->returnTo($request) ?? $fallbackUrl);
+    }
+
     protected function returnTo(Request $request): ?string
     {
         $returnTo = $request->query('return_to');
@@ -37,7 +47,7 @@ trait HandlesScheduleReturnTo
      */
     protected function allowedReturnToPrefixes(): array
     {
-        return ['/construction-schedules', '/schedule-overview'];
+        return ['/construction-schedules', '/schedule-overview', '/admin/stocks'];
     }
 
     /**

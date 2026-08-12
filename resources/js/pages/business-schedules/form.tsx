@@ -13,7 +13,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useScheduleTimeFields } from '@/hooks/use-schedule-time-fields';
 import { businessDateString } from '@/lib/dates';
-import { goBackToReturnTo } from '@/lib/return-to';
+import {
+    goBackToReturnTo,
+    returnToLabel,
+    returnToQuery,
+} from '@/lib/return-to';
 import {
     availableTimeSlots,
     conflictsWithSchedules,
@@ -197,10 +201,7 @@ export default function BusinessScheduleForm({
         event.preventDefault();
         rememberContentOption(data.content);
 
-        const options =
-            returnTo === null || returnTo === undefined
-                ? undefined
-                : { query: { return_to: returnTo } };
+        const options = returnToQuery(returnTo);
 
         post(
             schedule
@@ -225,6 +226,7 @@ export default function BusinessScheduleForm({
             <Head title={schedule ? '業務予定編集' : '新規業務予定'} />
             <FloatingBackButton
                 onClick={handleGoBack}
+                label={returnToLabel(returnTo)}
                 className="bottom-5 md:bottom-6 xl:bottom-8"
             />
             <div className="mx-auto max-w-5xl space-y-6 px-2 py-4 pb-24 sm:p-4 sm:pb-24 md:p-6 md:pb-6">

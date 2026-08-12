@@ -8,6 +8,7 @@ use App\Domain\Stock\Parsing\StockNameNormalizer;
 use App\Domain\Stock\ValueObjects\StockQuantity;
 use App\Domain\Stock\ValueObjects\StockTerm;
 use App\Http\Controllers\Controller;
+use App\Http\Presenters\Stock\UsageSchedulePreviews;
 use App\Http\Requests\Admin\StoreStockRequest;
 use App\Http\Requests\Admin\UpdateStockRequest;
 use App\Models\ScheduleStockBalance;
@@ -16,6 +17,7 @@ use App\Models\Stock;
 use App\Models\StockAlias;
 use App\Services\BusinessDate;
 use Exception;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -25,8 +27,11 @@ use Inertia\Response;
 
 class StockController extends Controller
 {
-    public function index(Request $request, StockTermReportService $reportService): Response
-    {
+    public function index(
+        Request $request,
+        StockTermReportService $reportService,
+        UsageSchedulePreviews $usageSchedulePreviews,
+    ): Response {
         Gate::authorize('manage-stocks');
 
         $term = $this->resolveTerm($request->query('month'));
@@ -39,8 +44,13 @@ class StockController extends Controller
                 'next_month' => $term->next()->monthParam(),
                 'is_current' => $isCurrent,
             ],
-            'terms' => $reportService->build($term),
-            'stockOrder' => Stock::query()
+            // Closures, so the partial reload that fetches the previews below
+            // does not rebuild the report and throw it away.
+            'terms' => fn (): array => $reportService->build($term),
+            // Requested by the page the first time a usage bucket is opened;
+            // most visits never look at one.
+            'usageSchedulePreviews' => Inertia::optional(fn (): array => $usageSchedulePreviews->forTerm($term)),
+            'stockOrder' => fn (): EloquentCollection => Stock::query()
                 ->orderBy('sort_order')
                 ->orderBy('id')
                 ->get(['id', 'name', 'is_active']),

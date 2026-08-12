@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Application\Stock\ScheduleStockReconciliationService;
 use App\Domain\Reception\Enums\ReceptionCaseStatus;
 use App\Models\BusinessSchedule;
 use App\Models\ConstructionSchedule;
@@ -11,6 +12,7 @@ use App\Models\ReceptionCase;
 use App\Models\ReceptionDocumentType;
 use App\Models\Stock;
 use App\Models\User;
+use App\Services\BusinessDate;
 use App\UserRole;
 use Illuminate\Database\Seeder;
 
@@ -71,6 +73,28 @@ class E2eSeeder extends Seeder
             ->named('E2E養生テープ')
             ->quantity('25.000')
             ->create();
+
+        $usageStock = Stock::factory()
+            ->named('E2E在庫使用予定')
+            ->quantity('25.000')
+            ->create();
+        $usageSchedule = ConstructionSchedule::create([
+            'scheduled_on' => BusinessDate::today()->toDateString(),
+            'schedule_number' => 9001,
+            'starts_at' => '09:00',
+            'ends_at' => '10:30',
+            'status' => ConstructionSchedule::STATUS_CONFIRMED,
+            'meeting_place' => 'E2E Meeting Place',
+            'personnel' => '2名',
+            'location' => 'E2E 在庫使用予定 現場',
+            'general_contractor' => 'E2E Stock Contractor',
+            'person_in_charge' => 'E2E Person',
+            'content' => "{$usageStock->name} 2",
+            'carry_out_note' => 'E2E 持ち出し確認',
+            'navigation_address' => 'Tokyo',
+        ]);
+        $usageSchedule->assignedUsers()->attach($worker);
+        app(ScheduleStockReconciliationService::class)->reconcile($usageSchedule, $admin);
 
         ReceptionCase::create([
             'case_number' => 'WJA-C-20260703-9001',

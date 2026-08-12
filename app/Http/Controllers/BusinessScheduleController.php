@@ -77,7 +77,6 @@ class BusinessScheduleController extends Controller
             'assigned_user_ids' => $request->input('assigned_user_ids', []),
         ]);
 
-        $returnTo = $this->returnTo($request);
         $this->flashToast('業務予定を作成しました。', resource: [
             'type' => 'business_schedule',
             'id' => $schedule->id,
@@ -85,16 +84,11 @@ class BusinessScheduleController extends Controller
             'label' => $schedule->location,
         ]);
 
-        if ($returnTo !== null) {
-            return redirect($returnTo);
-        }
-
-        return redirect()
-            ->route('construction-schedules.index', [
-                'range' => 'today',
-                'date' => $schedule->scheduled_on->toDateString(),
-                'type' => 'business',
-            ]);
+        return $this->redirectToReturnTo($request, route('construction-schedules.index', [
+            'range' => 'today',
+            'date' => $schedule->scheduled_on->toDateString(),
+            'type' => 'business',
+        ]));
     }
 
     public function show(Request $request, BusinessSchedule $businessSchedule): Response
@@ -136,7 +130,6 @@ class BusinessScheduleController extends Controller
             'assigned_user_ids' => $request->input('assigned_user_ids', []),
         ]);
 
-        $returnTo = $this->returnTo($request);
         $this->flashToast('業務予定を修正しました。', resource: [
             'type' => 'business_schedule',
             'id' => $businessSchedule->id,
@@ -144,12 +137,7 @@ class BusinessScheduleController extends Controller
             'label' => $businessSchedule->location,
         ]);
 
-        if ($returnTo !== null) {
-            return redirect($returnTo);
-        }
-
-        return redirect()
-            ->route('business-schedules.show', $businessSchedule);
+        return $this->redirectToReturnTo($request, route('business-schedules.show', $businessSchedule));
     }
 
     public function updateNumber(
@@ -174,7 +162,7 @@ class BusinessScheduleController extends Controller
         return back();
     }
 
-    public function destroy(BusinessSchedule $businessSchedule): RedirectResponse
+    public function destroy(Request $request, BusinessSchedule $businessSchedule): RedirectResponse
     {
         Gate::authorize('manage-content');
 
@@ -184,8 +172,7 @@ class BusinessScheduleController extends Controller
 
         $this->flashToast('業務予定を削除しました。');
 
-        return redirect()
-            ->route('construction-schedules.index', ['type' => 'business']);
+        return $this->redirectToReturnTo($request, route('construction-schedules.index', ['type' => 'business']));
     }
 
     /**

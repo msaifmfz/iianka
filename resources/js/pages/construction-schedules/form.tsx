@@ -16,13 +16,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useScheduleTimeFields } from '@/hooks/use-schedule-time-fields';
 import { businessDateString } from '@/lib/dates';
-import { goBackToReturnTo } from '@/lib/return-to';
+import {
+    goBackToReturnTo,
+    returnToLabel,
+    returnToQuery,
+} from '@/lib/return-to';
 import {
     availableTimeSlots,
     conflictsWithSchedules,
     matchingBusySchedules,
     matchingLeaveRecords,
 } from '@/lib/schedule-availability';
+import {
+    constructionScheduleStatusLabel,
+    constructionScheduleStatuses,
+} from '@/lib/schedule-status';
 import { dashboard } from '@/routes';
 import type {
     ConstructionSchedule,
@@ -79,13 +87,6 @@ type ScheduleForm = {
     guide_files: File[];
     guide_file_names: string[];
 };
-
-const statuses: { value: ConstructionScheduleStatus; label: string }[] = [
-    { value: 'scheduled', label: '予定' },
-    { value: 'confirmed', label: '確定' },
-    { value: 'postponed', label: '延期' },
-    { value: 'canceled', label: '中止' },
-];
 
 const siteRegionOptions = [
     '北海道',
@@ -213,10 +214,7 @@ export default function ConstructionScheduleForm({
     function submit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
 
-        const options =
-            returnTo === null || returnTo === undefined
-                ? undefined
-                : { query: { return_to: returnTo } };
+        const options = returnToQuery(returnTo);
 
         post(
             schedule
@@ -240,6 +238,7 @@ export default function ConstructionScheduleForm({
             <Head title={schedule ? '予定編集' : '新規予定'} />
             <FloatingBackButton
                 onClick={handleGoBack}
+                label={returnToLabel(returnTo)}
                 className="bottom-5 md:bottom-6 xl:bottom-8"
             />
             <div className="mx-auto max-w-5xl space-y-6 px-2 py-4 pb-24 sm:p-4 sm:pb-24 md:p-6 md:pb-6">
@@ -387,12 +386,11 @@ export default function ConstructionScheduleForm({
                                     )
                                 }
                             >
-                                {statuses.map((status) => (
-                                    <option
-                                        key={status.value}
-                                        value={status.value}
-                                    >
-                                        {status.label}
+                                {constructionScheduleStatuses.map((status) => (
+                                    <option key={status} value={status}>
+                                        {constructionScheduleStatusLabel(
+                                            status,
+                                        )}
                                     </option>
                                 ))}
                             </select>

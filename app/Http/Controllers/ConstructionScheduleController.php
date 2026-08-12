@@ -238,7 +238,6 @@ class ConstructionScheduleController extends Controller
             'site_guide_file_ids' => $request->input('site_guide_file_ids', []),
         ]);
 
-        $returnTo = $this->returnTo($request);
         $this->flashToast('工事予定を作成しました。', resource: [
             'type' => 'construction_schedule',
             'id' => $schedule->id,
@@ -246,15 +245,10 @@ class ConstructionScheduleController extends Controller
             'label' => $schedule->location,
         ]);
 
-        if ($returnTo !== null) {
-            return redirect($returnTo);
-        }
-
-        return redirect()
-            ->route('construction-schedules.index', [
-                'range' => 'today',
-                'date' => $schedule->scheduled_on->toDateString(),
-            ]);
+        return $this->redirectToReturnTo($request, route('construction-schedules.index', [
+            'range' => 'today',
+            'date' => $schedule->scheduled_on->toDateString(),
+        ]));
     }
 
     public function show(Request $request, ConstructionSchedule $constructionSchedule): Response
@@ -334,7 +328,6 @@ class ConstructionScheduleController extends Controller
             'site_guide_file_ids' => $request->input('site_guide_file_ids', []),
         ]);
 
-        $returnTo = $this->returnTo($request);
         $this->flashToast('工事予定を修正しました。', resource: [
             'type' => 'construction_schedule',
             'id' => $constructionSchedule->id,
@@ -342,12 +335,7 @@ class ConstructionScheduleController extends Controller
             'label' => $constructionSchedule->location,
         ]);
 
-        if ($returnTo !== null) {
-            return redirect($returnTo);
-        }
-
-        return redirect()
-            ->route('construction-schedules.show', $constructionSchedule);
+        return $this->redirectToReturnTo($request, route('construction-schedules.show', $constructionSchedule));
     }
 
     public function updateNumber(
@@ -385,8 +373,7 @@ class ConstructionScheduleController extends Controller
 
         $this->flashToast('工事予定を削除しました。');
 
-        return redirect()
-            ->route('construction-schedules.index');
+        return $this->redirectToReturnTo($request, route('construction-schedules.index'));
     }
 
     /**

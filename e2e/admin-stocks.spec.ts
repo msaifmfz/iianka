@@ -36,6 +36,62 @@ test.describe('stock management', () => {
         ).toBeVisible();
     });
 
+    test('previews a stock usage schedule on hold and returns after opening it', async ({
+        page,
+    }) => {
+        await login(page);
+        await page.goto('/admin/stocks');
+
+        const stockUrl = page.url();
+        const usageTrigger = page.getByRole('button', {
+            name: /^E2E在庫使用予定の.+の使用予定を確認（1件）$/,
+        });
+
+        await expect(usageTrigger).toBeVisible();
+        await usageTrigger.click();
+
+        const usageDialog = page.getByRole('dialog', {
+            name: /E2E在庫使用予定.*の使用/,
+        });
+        const scheduleLink = usageDialog.getByRole('button', {
+            name: 'E2E 在庫使用予定 現場の予定ページを開く',
+        });
+        const scheduleLinkBox = await scheduleLink.boundingBox();
+
+        if (scheduleLinkBox === null) {
+            throw new Error('Could not resolve the usage schedule position.');
+        }
+
+        await page.mouse.move(
+            scheduleLinkBox.x + scheduleLinkBox.width / 2,
+            scheduleLinkBox.y + scheduleLinkBox.height / 2,
+        );
+        await page.mouse.down();
+        await page.waitForTimeout(550);
+        await page.mouse.up();
+
+        const detailDialog = page.getByRole('dialog', {
+            name: 'E2E 在庫使用予定 現場',
+        });
+
+        await expect(detailDialog).toBeVisible();
+        await expect(detailDialog).toContainText('E2E Stock Contractor');
+        await expect(detailDialog).toContainText('E2E 持ち出し確認');
+        await expect(page).toHaveURL(stockUrl);
+
+        await page.keyboard.press('Escape');
+        await expect(detailDialog).toBeHidden();
+        await expect(usageDialog).toBeVisible();
+
+        await scheduleLink.click();
+        await expect(page).toHaveURL(
+            /\/construction-schedules\/\d+\?return_to=/,
+        );
+
+        await page.getByRole('button', { name: '在庫管理へ戻る' }).click();
+        await expect(page).toHaveURL(stockUrl);
+    });
+
     test('edits future purchases and memos and preserves them across term navigation', async ({
         page,
     }, testInfo) => {

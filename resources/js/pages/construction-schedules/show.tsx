@@ -18,7 +18,8 @@ import {
     recentResourceMatches,
     useRecentResource,
 } from '@/hooks/use-recent-resource';
-import { visitReturnTo } from '@/lib/return-to';
+import { returnToLabel, returnToQuery, visitReturnTo } from '@/lib/return-to';
+import { constructionScheduleStatusLabel } from '@/lib/schedule-status';
 import { formatStockQuantity } from '@/lib/stock';
 import { cn, phoneHref } from '@/lib/utils';
 import type { ConstructionSchedule, ScheduleStockUsage } from '@/types';
@@ -28,13 +29,6 @@ type Props = {
     canManage: boolean;
     returnTo: string | null;
     stockUsages: ScheduleStockUsage[];
-};
-
-const statusLabels: Record<ConstructionSchedule['status'], string> = {
-    scheduled: '予定',
-    confirmed: '確定',
-    postponed: '延期',
-    canceled: '中止',
 };
 
 export default function ConstructionScheduleShow({
@@ -61,6 +55,7 @@ export default function ConstructionScheduleShow({
             date: schedule.scheduled_on,
         },
     });
+    const returnOptions = returnToQuery(returnTo);
 
     function handleReturnToIndex() {
         visitReturnTo(returnTo, fallbackReturnTo);
@@ -77,7 +72,7 @@ export default function ConstructionScheduleShow({
             return;
         }
 
-        router.delete(scheduleDestroy.url(schedule.id));
+        router.delete(scheduleDestroy.url(schedule.id, returnOptions));
     }
 
     return (
@@ -86,6 +81,7 @@ export default function ConstructionScheduleShow({
             {deleteDialog}
             <FloatingBackButton
                 onClick={handleReturnToIndex}
+                label={returnToLabel(returnTo)}
                 className="bottom-[calc(5.75rem+env(safe-area-inset-bottom))] md:bottom-6 xl:bottom-8"
             />
             <div className="mx-auto w-full max-w-7xl space-y-6 p-4 pb-28 md:p-6 md:pb-6 xl:p-8">
@@ -93,7 +89,12 @@ export default function ConstructionScheduleShow({
                     {canManage && (
                         <div className="flex flex-wrap gap-2">
                             <Button asChild>
-                                <Link href={scheduleEdit(schedule.id)}>
+                                <Link
+                                    href={scheduleEdit(
+                                        schedule.id,
+                                        returnOptions,
+                                    )}
+                                >
                                     <Pencil className="size-4" />
                                     編集
                                 </Link>
@@ -127,7 +128,9 @@ export default function ConstructionScheduleShow({
                                 </CardTitle>
                             </div>
                             <span className="rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-900 dark:bg-amber-950 dark:text-amber-200">
-                                {statusLabels[schedule.status]}
+                                {constructionScheduleStatusLabel(
+                                    schedule.status,
+                                )}
                             </span>
                             {isRecentResource && recentResource !== null && (
                                 <RecentResourceBadge
@@ -348,7 +351,9 @@ export default function ConstructionScheduleShow({
                 {canManage && (
                     <div className="mt-2 grid grid-cols-2 gap-2">
                         <Button asChild variant="outline" className="w-full">
-                            <Link href={scheduleEdit(schedule.id)}>
+                            <Link
+                                href={scheduleEdit(schedule.id, returnOptions)}
+                            >
                                 <Pencil className="size-4" />
                                 編集
                             </Link>

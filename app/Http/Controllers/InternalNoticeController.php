@@ -53,7 +53,6 @@ class InternalNoticeController extends Controller
             'assigned_user_ids' => $request->input('assigned_user_ids', []),
         ]);
 
-        $returnTo = $this->returnTo($request);
         $this->flashToast('業務連絡を作成しました。', resource: [
             'type' => 'internal_notice',
             'id' => $notice->id,
@@ -61,16 +60,11 @@ class InternalNoticeController extends Controller
             'label' => $notice->title,
         ]);
 
-        if ($returnTo !== null) {
-            return redirect($returnTo);
-        }
-
-        return redirect()
-            ->route('construction-schedules.index', [
-                'range' => 'today',
-                'date' => $notice->scheduled_on->toDateString(),
-                'type' => 'internal_notice',
-            ]);
+        return $this->redirectToReturnTo($request, route('construction-schedules.index', [
+            'range' => 'today',
+            'date' => $notice->scheduled_on->toDateString(),
+            'type' => 'internal_notice',
+        ]));
     }
 
     public function show(Request $request, InternalNotice $internalNotice): Response
@@ -111,7 +105,6 @@ class InternalNoticeController extends Controller
             'assigned_user_ids' => $request->input('assigned_user_ids', []),
         ]);
 
-        $returnTo = $this->returnTo($request);
         $this->flashToast('業務連絡を修正しました。', resource: [
             'type' => 'internal_notice',
             'id' => $internalNotice->id,
@@ -119,15 +112,10 @@ class InternalNoticeController extends Controller
             'label' => $internalNotice->title,
         ]);
 
-        if ($returnTo !== null) {
-            return redirect($returnTo);
-        }
-
-        return redirect()
-            ->route('internal-notices.show', $internalNotice);
+        return $this->redirectToReturnTo($request, route('internal-notices.show', $internalNotice));
     }
 
-    public function destroy(InternalNotice $internalNotice): RedirectResponse
+    public function destroy(Request $request, InternalNotice $internalNotice): RedirectResponse
     {
         Gate::authorize('manage-content');
 
@@ -137,8 +125,7 @@ class InternalNoticeController extends Controller
 
         $this->flashToast('業務連絡を削除しました。');
 
-        return redirect()
-            ->route('construction-schedules.index', ['type' => 'internal_notice']);
+        return $this->redirectToReturnTo($request, route('construction-schedules.index', ['type' => 'internal_notice']));
     }
 
     /**

@@ -199,30 +199,6 @@ parameters:
 			path: app/Http/Controllers/InternalNoticeController.php
 
 		-
-			message: '#^Anonymous function should return array\{id\: int, type\: ''business'', schedule_number\: int\<0, max\>\|null, title\: string, location\: string, content\: string, time\: string, starts_at\: string\|null, \.\.\.\} but returns array\{id\: int, type\: ''business'', schedule_number\: int\<0, max\>\|null, title\: string, location\: string, content\: string, time\: string, starts_at\: string\|null, \.\.\.\}\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/ScheduleOverviewController.php
-
-		-
-			message: '#^Anonymous function should return array\{id\: int, type\: ''construction'', schedule_number\: int\<0, max\>\|null, title\: string, location\: string, content\: string\|null, carry_out_note\: string\|null, time\: string, \.\.\.\} but returns array\{id\: int, type\: ''construction'', schedule_number\: int\<0, max\>\|null, title\: string, location\: string, content\: string\|null, carry_out_note\: string\|null, time\: string, \.\.\.\}\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/ScheduleOverviewController.php
-
-		-
-			message: '#^Anonymous function should return array\{id\: int, type\: ''internal_notice'', schedule_number\: null, title\: string, location\: string\|null, content\: string, time\: string, starts_at\: string\|null, \.\.\.\} but returns array\{id\: int, type\: ''internal_notice'', schedule_number\: null, title\: string, location\: string\|null, content\: string, time\: string, starts_at\: string\|null, \.\.\.\}\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/ScheduleOverviewController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\ScheduleOverviewController\:\:selectedDayEvents\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, type\: string, schedule_number\: int\|null, title\: string, location\: string\|null, content\: string\|null, carry_out_note\?\: string\|null, time\: string, \.\.\.\}\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/ScheduleOverviewController.php
-
-		-
 			message: '#^Method App\\Http\\Controllers\\ScheduleOverviewController\:\:selectedDayTimeline\(\) should return array\{users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>, events\: Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>, attendanceLeaveRecords\: Illuminate\\Support\\Collection\<int, array\{id\: int, user_id\: int, user_name\: string, work_date\: string, note\: string\|null\}\>\} but returns array\{users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>, events\: Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>, attendanceLeaveRecords\: Illuminate\\Support\\Collection\<int, array\{id\: int, user_id\: int, user_name\: string, work_date\: string, note\: string\|null\}\>\}\.$#'
 			identifier: return.type
 			count: 1
@@ -230,36 +206,6 @@ parameters:
 
 		-
 			message: '#^Parameter \#1 \$calendarDays of method App\\Http\\Controllers\\ScheduleOverviewController\:\:monthSummary\(\) expects Illuminate\\Support\\Collection\<int, array\{date\: string, construction_count\: int, business_count\: int, internal_notice_count\: int, carry_out_count\: int, unconfirmed_voucher_count\: int, schedule_count\: int\}\>, Illuminate\\Support\\Collection\<int, array\{date\: string, construction_count\: int, business_count\: int, internal_notice_count\: int, carry_out_count\: int, voucher_confirmation_count\: int, unconfirmed_voucher_count\: int, schedule_count\: int\}\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/ScheduleOverviewController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\BusinessSchedule\>\:\:map\(\) expects callable\(App\\Models\\BusinessSchedule, int\)\: array\{id\: int, type\: ''business'', schedule_number\: int\<0, max\>\|null, title\: string, location\: string, content\: string, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\}, Closure\(App\\Models\\BusinessSchedule\)\: array\{id\: int, type\: ''business'', schedule_number\: int\<0, max\>\|null, title\: string, location\: string, content\: string, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\} given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/ScheduleOverviewController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\ConstructionSchedule\>\:\:map\(\) expects callable\(App\\Models\\ConstructionSchedule, int\)\: array\{id\: int, type\: ''construction'', schedule_number\: int\<0, max\>\|null, title\: string, location\: string, content\: string\|null, carry_out_note\: string\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\}, Closure\(App\\Models\\ConstructionSchedule\)\: array\{id\: int, type\: ''construction'', schedule_number\: int\<0, max\>\|null, title\: string, location\: string, content\: string\|null, carry_out_note\: string\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\} given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/ScheduleOverviewController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\InternalNotice\>\:\:map\(\) expects callable\(App\\Models\\InternalNotice, int\)\: array\{id\: int, type\: ''internal_notice'', schedule_number\: null, title\: string, location\: string\|null, content\: string, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\}, Closure\(App\\Models\\InternalNotice\)\: array\{id\: int, type\: ''internal_notice'', schedule_number\: null, title\: string, location\: string\|null, content\: string, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\} given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/ScheduleOverviewController.php
-
-		-
-			message: '#^Parameter \#1 \$items of method Illuminate\\Support\\Collection\<int,array\<string, Illuminate\\Support\\Collection\<int, array\<string, int\|string\|null\>\>\|int\|string\|null\>\>\:\:merge\(\) expects Illuminate\\Contracts\\Support\\Arrayable\<int, array\{id\: int, type\: string, schedule_number\: int\|null, title\: string, location\: string, content\: string, time\: string, starts_at\: string\|null, \.\.\.\}\>\|iterable\<int, array\{id\: int, type\: string, schedule_number\: int\|null, title\: string, location\: string, content\: string, time\: string, starts_at\: string\|null, \.\.\.\}\>, Illuminate\\Support\\Collection\<int, array\{id\: int, type\: string, schedule_number\: int\|null, title\: string, location\: string, content\: string, time\: string, starts_at\: string\|null, \.\.\.\}\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/ScheduleOverviewController.php
-
-		-
-			message: '#^Parameter \#1 \$items of method Illuminate\\Support\\Collection\<int,array\<string, Illuminate\\Support\\Collection\<int, array\<string, int\|string\|null\>\>\|int\|string\|null\>\>\:\:merge\(\) expects Illuminate\\Contracts\\Support\\Arrayable\<int, array\{id\: int, type\: string, schedule_number\: null, title\: string, location\: string\|null, content\: string, time\: string, starts_at\: string\|null, \.\.\.\}\>\|iterable\<int, array\{id\: int, type\: string, schedule_number\: null, title\: string, location\: string\|null, content\: string, time\: string, starts_at\: string\|null, \.\.\.\}\>, Illuminate\\Support\\Collection\<int, array\{id\: int, type\: string, schedule_number\: null, title\: string, location\: string\|null, content\: string, time\: string, starts_at\: string\|null, \.\.\.\}\> given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Http/Controllers/ScheduleOverviewController.php

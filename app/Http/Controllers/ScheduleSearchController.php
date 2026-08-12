@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Presenters\Schedule\ScheduleDetailPresenter;
 use App\Http\Requests\SearchSchedulesRequest;
 use App\Models\BusinessSchedule;
 use App\Models\ConstructionSchedule;
 use App\Models\User;
-use App\Services\ScheduleFormOptionsService;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -18,7 +18,7 @@ class ScheduleSearchController extends Controller
 {
     private const int PER_PAGE = 20;
 
-    public function __construct(private readonly ScheduleFormOptionsService $scheduleFormOptions) {}
+    public function __construct(private readonly ScheduleDetailPresenter $scheduleDetail) {}
 
     public function __invoke(SearchSchedulesRequest $request): Response
     {
@@ -128,14 +128,14 @@ class ScheduleSearchController extends Controller
                     $schedule = $constructionSchedules->get((int) $row->id);
 
                     return $schedule instanceof ConstructionSchedule
-                        ? $this->schedulePayload($schedule, 'construction', $visibleUserIds)
+                        ? $this->schedulePayload($schedule, $visibleUserIds)
                         : null;
                 }
 
                 $schedule = $businessSchedules->get((int) $row->id);
 
                 return $schedule instanceof BusinessSchedule
-                    ? $this->schedulePayload($schedule, 'business', $visibleUserIds)
+                    ? $this->schedulePayload($schedule, $visibleUserIds)
                     : null;
             })
             ->filter()
@@ -153,24 +153,10 @@ class ScheduleSearchController extends Controller
      * @param  Collection<int, int>  $visibleUserIds
      * @return array<string, mixed>
      */
-    private function schedulePayload(ConstructionSchedule|BusinessSchedule $schedule, string $type, Collection $visibleUserIds): array
+    private function schedulePayload(ConstructionSchedule|BusinessSchedule $schedule, Collection $visibleUserIds): array
     {
-        return [
-            'id' => $schedule->id,
-            'type' => $type,
-            'scheduled_on' => $schedule->scheduled_on->toDateString(),
-            'schedule_number' => $schedule->schedule_number,
-            'time' => $schedule->formattedTime(),
-            'starts_at' => $schedule->starts_at,
-            'ends_at' => $schedule->ends_at,
-            'time_note' => $schedule->time_note,
-            'location' => $schedule->location,
-            'general_contractor' => $schedule->general_contractor,
-            'content' => $schedule->content,
-            'carry_out_note' => $schedule instanceof ConstructionSchedule ? $schedule->carry_out_note : null,
-            'assigned_users' => $this->scheduleFormOptions->userPayload(
-                $schedule->assignedUsers->whereIn('id', $visibleUserIds)->values()
-            ),
-        ];
+        return $schedule instanceof ConstructionSchedule
+            ? $this->scheduleDetail->construction($schedule, $visibleUserIds)
+            : $this->scheduleDetail->business($schedule, $visibleUserIds);
     }
 }

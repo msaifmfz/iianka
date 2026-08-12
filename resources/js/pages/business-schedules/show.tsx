@@ -18,7 +18,7 @@ import {
     recentResourceMatches,
     useRecentResource,
 } from '@/hooks/use-recent-resource';
-import { visitReturnTo } from '@/lib/return-to';
+import { returnToLabel, returnToQuery, visitReturnTo } from '@/lib/return-to';
 import { cn } from '@/lib/utils';
 import type { BusinessSchedule } from '@/types';
 
@@ -48,6 +48,8 @@ export default function BusinessScheduleShow({
         },
     });
 
+    const returnOptions = returnToQuery(returnTo);
+
     function handleReturnToIndex() {
         visitReturnTo(returnTo, fallbackReturnTo);
     }
@@ -63,20 +65,28 @@ export default function BusinessScheduleShow({
             return;
         }
 
-        router.delete(businessScheduleDestroy.url(schedule.id));
+        router.delete(businessScheduleDestroy.url(schedule.id, returnOptions));
     }
 
     return (
         <>
             <Head title={`${schedule.location} - 業務予定詳細`} />
             {deleteDialog}
-            <FloatingBackButton onClick={handleReturnToIndex} />
+            <FloatingBackButton
+                onClick={handleReturnToIndex}
+                label={returnToLabel(returnTo)}
+            />
             <div className="mx-auto w-full max-w-7xl space-y-6 p-4 pb-24 md:p-6 md:pb-6 xl:p-8">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     {canManage && (
                         <div className="flex flex-wrap gap-2">
                             <Button asChild>
-                                <Link href={businessScheduleEdit(schedule.id)}>
+                                <Link
+                                    href={businessScheduleEdit(
+                                        schedule.id,
+                                        returnOptions,
+                                    )}
+                                >
                                     <Pencil className="size-4" />
                                     編集
                                 </Link>

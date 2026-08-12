@@ -2,10 +2,12 @@
 
 use App\Domain\Stock\Enums\StockTransactionType;
 use App\Models\ConstructionSchedule;
+use App\Models\ScheduleStockBalance;
 use App\Models\Stock;
 use App\Models\StockPurchase;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Inertia\Inertia;
 use Inertia\Testing\AssertableInertia as Assert;
 
 /**
@@ -25,6 +27,24 @@ function stockReportSchedulePayload(string $scheduledOn, ?string $content, strin
 function freezeStockReportTime(string $datetime = '2026-07-15 10:00:00'): void
 {
     Carbon::setTestNow(Carbon::parse($datetime, 'Asia/Tokyo'));
+}
+
+/**
+ * Headers for the follow-up request the page makes the first time a usage
+ * bucket is opened. `usageSchedulePreviews` is an optional prop, so it stays
+ * out of the payload until a partial reload asks for it by name; that reload
+ * answers with JSON, hence the assertJsonPath() assertions on it below.
+ *
+ * @return array<string, string>
+ */
+function usageSchedulePreviewHeaders(): array
+{
+    return [
+        'X-Inertia' => 'true',
+        'X-Inertia-Version' => (string) Inertia::getVersion(),
+        'X-Inertia-Partial-Component' => 'admin/stocks/index',
+        'X-Inertia-Partial-Data' => 'usageSchedulePreviews',
+    ];
 }
 
 test('the report aggregates the selected and next terms in display order', function (): void {
@@ -51,6 +71,12 @@ test('the report aggregates the selected and next terms in display order', funct
             ->assertSessionHasNoErrors();
     }
 
+    $previousSchedule = ConstructionSchedule::query()->where('location', '前月度の現場')->firstOrFail();
+    $firstBucketSchedule = ConstructionSchedule::query()->where('location', '第1区間の現場')->firstOrFail();
+    $secondBucketSchedule = ConstructionSchedule::query()->where('location', '第2区間の現場')->firstOrFail();
+    $thirdBucketSchedule = ConstructionSchedule::query()->where('location', '第3区間の現場')->firstOrFail();
+    $nextTermSchedule = ConstructionSchedule::query()->where('location', '翌月度の現場')->firstOrFail();
+
     $this->actingAs($admin)
         ->get(route('admin.stocks.index'))
         ->assertOk()
@@ -65,6 +91,18 @@ test('the report aggregates the selected and next terms in display order', funct
             ->where('terms.0.rows.0.carry_over', '8.000')
             ->where('terms.0.rows.0.purchased', '5.000')
             ->where('terms.0.rows.0.used', ['1.000', '2.000', '3.000'])
+            ->where('terms.0.rows.0.usage_schedules.2026-06-21', [[
+                'schedule_id' => $firstBucketSchedule->id,
+                'quantity' => '1.000',
+            ]])
+            ->where('terms.0.rows.0.usage_schedules.2026-07-01', [[
+                'schedule_id' => $secondBucketSchedule->id,
+                'quantity' => '2.000',
+            ]])
+            ->where('terms.0.rows.0.usage_schedules.2026-07-11', [[
+                'schedule_id' => $thirdBucketSchedule->id,
+                'quantity' => '3.000',
+            ]])
             ->where('terms.0.rows.0.used_total', '6.000')
             ->where('terms.0.rows.0.adjustments', '0.000')
             ->where('terms.0.rows.0.total', '7.000')
@@ -74,9 +112,29 @@ test('the report aggregates the selected and next terms in display order', funct
             ->where('terms.1.rows.0.carry_over', '7.000')
             ->where('terms.1.rows.0.purchased', '3.000')
             ->where('terms.1.rows.0.used', ['4.000', '0.000', '0.000'])
+            ->where('terms.1.rows.0.usage_schedules.2026-07-21', [[
+                'schedule_id' => $nextTermSchedule->id,
+                'quantity' => '4.000',
+            ]])
+            ->where('terms.1.rows.0.usage_schedules.2026-08-01', [])
+            ->where('terms.1.rows.0.usage_schedules.2026-08-11', [])
             ->where('terms.1.rows.0.total', '6.000')
             ->where('terms.1.previous_term_label', '2026年6月度')
+            ->missing('usageSchedulePreviews')
         );
+
+    $preview = "props.usageSchedulePreviews.{$firstBucketSchedule->id}";
+
+    $this->actingAs($admin)
+        ->get(route('admin.stocks.index'), usageSchedulePreviewHeaders())
+        ->assertOk()
+        ->assertJsonCount(4, 'props.usageSchedulePreviews')
+        ->assertJsonPath("{$preview}.title", '第1区間の現場')
+        ->assertJsonPath("{$preview}.scheduled_on", '2026-06-25')
+        ->assertJsonPath("{$preview}.status", 'scheduled')
+        ->assertJsonPath("{$preview}.content", 'セメント 1')
+        ->assertJsonPath("{$preview}.assigned_users", [])
+        ->assertJsonMissingPath("props.usageSchedulePreviews.{$previousSchedule->id}");
 });
 
 test('the selected and next terms expose their own memo and previous term context', function (): void {
@@ -164,6 +222,16 @@ test('usage lands in the correct bucket at every boundary date', function (): vo
             ->assertSessionHasNoErrors();
     }
 
+    $boundaryIds = ConstructionSchedule::query()
+        ->pluck('id', 'location');
+    $usage = fn (int ...$indexes): array => array_map(
+        fn (int $index): array => [
+            'schedule_id' => $boundaryIds["境界テスト現場{$index}"],
+            'quantity' => '1.000',
+        ],
+        $indexes,
+    );
+
     $this->actingAs($admin)
         ->get(route('admin.stocks.index'))
         ->assertOk()
@@ -174,7 +242,144 @@ test('usage lands in the correct bucket at every boundary date', function (): vo
             ->where('terms.1.rows.0.carry_over', '-7.000')
             ->where('terms.1.rows.0.used', ['1.000', '0.000', '0.000'])
             ->where('terms.1.rows.0.total', '-8.000')
+            // Each bucket's detail list must agree with the bucket total
+            // above, including on the first and last day of every bucket.
+            ->where('terms.0.rows.0.usage_schedules.2026-06-21', $usage(1, 2))
+            ->where('terms.0.rows.0.usage_schedules.2026-07-01', $usage(3, 4))
+            ->where('terms.0.rows.0.usage_schedules.2026-07-11', $usage(5, 6))
+            ->where('terms.1.rows.0.usage_schedules.2026-07-21', $usage(7))
+            ->where('terms.1.rows.0.usage_schedules.2026-08-01', [])
+            ->where('terms.1.rows.0.usage_schedules.2026-08-11', [])
         );
+
+    $this->actingAs($admin)
+        ->get(route('admin.stocks.index'), usageSchedulePreviewHeaders())
+        ->assertOk()
+        ->assertJsonCount(7, 'props.usageSchedulePreviews')
+        ->assertJsonMissingPath("props.usageSchedulePreviews.{$boundaryIds['境界テスト現場0']}");
+});
+
+test('usage schedule previews hide assignees who are hidden from workers', function (): void {
+    freezeStockReportTime();
+
+    $admin = User::factory()->admin()->create();
+    $editor = User::factory()->editor()->create();
+    $worker = User::factory()->create(['name' => '表示担当']);
+    $hidden = User::factory()->hiddenFromWorkers()->create(['name' => '非表示担当']);
+    Stock::factory()->named('セメント')->create();
+
+    $this->actingAs($editor)
+        ->post(route('construction-schedules.store'), [
+            ...stockReportSchedulePayload('2026-06-25', 'セメント 1', '担当者テスト現場'),
+            'assigned_user_ids' => [$worker->id, $hidden->id],
+        ])
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    $schedule = ConstructionSchedule::query()->where('location', '担当者テスト現場')->firstOrFail();
+
+    $this->actingAs($admin)
+        ->get(route('admin.stocks.index'), usageSchedulePreviewHeaders())
+        ->assertOk()
+        ->assertJsonPath("props.usageSchedulePreviews.{$schedule->id}.assigned_users", [[
+            'id' => $worker->id,
+            'name' => '表示担当',
+            'email' => $worker->email,
+        ]]);
+});
+
+test('a bucket lists its schedules in schedule order, not creation order', function (): void {
+    freezeStockReportTime();
+
+    $admin = User::factory()->admin()->create();
+    $editor = User::factory()->editor()->create();
+    Stock::factory()->named('セメント')->create();
+
+    // Created newest first, so a list following the stock balance rows would
+    // come back reversed.
+    foreach ([
+        ['2026-06-30', '月末の現場'],
+        ['2026-06-25', '中旬の現場'],
+        ['2026-06-21', '月初の現場'],
+    ] as [$date, $location]) {
+        $this->actingAs($editor)
+            ->post(route('construction-schedules.store'), stockReportSchedulePayload($date, 'セメント 1', $location))
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+    }
+
+    $scheduleIds = ConstructionSchedule::query()->pluck('id', 'location');
+
+    $this->actingAs($admin)
+        ->get(route('admin.stocks.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->where('terms.0.rows.0.usage_schedules.2026-06-21', [
+                ['schedule_id' => $scheduleIds['月初の現場'], 'quantity' => '1.000'],
+                ['schedule_id' => $scheduleIds['中旬の現場'], 'quantity' => '1.000'],
+                ['schedule_id' => $scheduleIds['月末の現場'], 'quantity' => '1.000'],
+            ])
+        );
+});
+
+test('a schedule consuming two stocks is linked from both rows', function (): void {
+    freezeStockReportTime();
+
+    $admin = User::factory()->admin()->create();
+    $editor = User::factory()->editor()->create();
+    Stock::factory()->named('セメント')->create();
+    Stock::factory()->named('ネジ')->create();
+
+    $this->actingAs($editor)
+        ->post(route('construction-schedules.store'), stockReportSchedulePayload('2026-06-25', "セメント 2\nネジ 3", '複数在庫の現場'))
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    $schedule = ConstructionSchedule::query()->where('location', '複数在庫の現場')->firstOrFail();
+
+    $this->actingAs($admin)
+        ->get(route('admin.stocks.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->where('terms.0.rows.0.name', 'セメント')
+            ->where('terms.0.rows.0.usage_schedules.2026-06-21', [[
+                'schedule_id' => $schedule->id,
+                'quantity' => '2.000',
+            ]])
+            ->where('terms.0.rows.1.name', 'ネジ')
+            ->where('terms.0.rows.1.usage_schedules.2026-06-21', [[
+                'schedule_id' => $schedule->id,
+                'quantity' => '3.000',
+            ]])
+        );
+});
+
+test('a schedule balance released back to zero is left out of the usage links', function (): void {
+    freezeStockReportTime();
+
+    $admin = User::factory()->admin()->create();
+    $editor = User::factory()->editor()->create();
+    Stock::factory()->named('セメント')->create();
+
+    $this->actingAs($editor)
+        ->post(route('construction-schedules.store'), stockReportSchedulePayload('2026-06-25', 'セメント 2', '数量ゼロの現場'))
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    ScheduleStockBalance::query()->update(['applied_quantity' => '0.000']);
+
+    $this->actingAs($admin)
+        ->get(route('admin.stocks.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->where('terms.0.rows.0.used', ['0.000', '0.000', '0.000'])
+            ->where('terms.0.rows.0.usage_schedules.2026-06-21', [])
+        );
+
+    $this->actingAs($admin)
+        ->get(route('admin.stocks.index'), usageSchedulePreviewHeaders())
+        ->assertOk()
+        ->assertJsonPath('props.usageSchedulePreviews', []);
 });
 
 test('moving a schedule to another term re-attributes its usage', function (): void {

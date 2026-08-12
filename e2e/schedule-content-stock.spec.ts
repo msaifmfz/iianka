@@ -76,6 +76,10 @@ test.describe('schedule content stock picker', () => {
                 name: `${location}の予定詳細を見る`,
             })
             .click();
+        // Wait for the detail page before reaching for its edit link: the index
+        // it navigates away from carries edit links for the same day's other
+        // schedules, which a slow navigation would let `first()` pick instead.
+        await expect(page).toHaveURL(/\/construction-schedules\/\d+(?:\?|$)/);
         await page.getByRole('link', { name: '編集' }).first().click();
 
         const editEditor = page.locator(

@@ -1,4 +1,4 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
     CalendarRange,
     ChevronLeft,
@@ -13,7 +13,14 @@ import {
     Save,
     StickyNote,
 } from 'lucide-react';
-import { useState } from 'react';
+import {
+    createContext,
+    useCallback,
+    useContext,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import type { FormEvent } from 'react';
 import {
     create as stockCreate,
@@ -24,6 +31,12 @@ import stockOrderUpdate from '@/actions/App/Http/Controllers/Admin/StockOrderCon
 import { store as purchaseStore } from '@/actions/App/Http/Controllers/Admin/StockPurchaseController';
 import { store as purchaseCorrectionStore } from '@/actions/App/Http/Controllers/Admin/StockPurchaseCorrectionController';
 import { update as termMemoUpdate } from '@/actions/App/Http/Controllers/Admin/StockTermMemoController';
+import { show as constructionScheduleShow } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
+import {
+    ScheduleDetailDialog,
+    useScheduleDetailHold,
+} from '@/components/schedule-detail-dialog';
+import type { ScheduleDetailEvent } from '@/components/schedule-detail-dialog';
 import SortableOrderList from '@/components/sortable-order-list';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -41,10 +54,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
+import { useIndexScrollRestore } from '@/hooks/use-index-scroll-restore';
 import {
     recentResourceMatches,
     useRecentResource,
 } from '@/hooks/use-recent-resource';
+import { constructionScheduleStatusLabel } from '@/lib/schedule-status';
 import {
     formatStockQuantity,
     isZeroStockQuantity,
@@ -52,7 +67,71 @@ import {
 } from '@/lib/stock';
 import { cn } from '@/lib/utils';
 import { fieldOrElementError } from '@/lib/validation';
+import type { ConstructionScheduleStatus } from '@/types';
 import type { FlashResource } from '@/types/ui';
+
+type UsageScheduleReference = {
+    schedule_id: number;
+    quantity: string;
+};
+
+type UsageSchedulePreview = ScheduleDetailEvent & {
+    type: 'construction';
+    scheduled_on: string;
+    status: ConstructionScheduleStatus;
+};
+
+type UsageSchedulePreviews = Record<string, UsageSchedulePreview>;
+
+type UsageScheduleContextValue = {
+    /** Undefined until the follow-up request resolves; see useUsageSchedulePreviews. */
+    previews?: UsageSchedulePreviews;
+    requestPreviews: () => void;
+    returnTo: string;
+    onOpenDetail: (schedule: ScheduleDetailEvent) => void;
+};
+
+const UsageScheduleContext = createContext<UsageScheduleContextValue | null>(
+    null,
+);
+
+function useUsageScheduleContext() {
+    const context = useContext(UsageScheduleContext);
+
+    if (context === null) {
+        throw new Error(
+            'Usage schedule components must be rendered inside UsageScheduleContext.',
+        );
+    }
+
+    return context;
+}
+
+/**
+ * The schedule details behind the usage links. They are an optional prop, so
+ * they are fetched the first time a usage bucket is opened rather than on
+ * every visit — most visits never open one. Remembering which URL was asked
+ * keeps a second dialog from firing the same request, while still re-arming
+ * when the term changes.
+ */
+function useUsageSchedulePreviews(
+    url: string,
+    previews?: UsageSchedulePreviews,
+) {
+    const requestedUrl = useRef<string | null>(null);
+
+    return useCallback(
+        function requestPreviews() {
+            if (previews !== undefined || requestedUrl.current === url) {
+                return;
+            }
+
+            requestedUrl.current = url;
+            router.reload({ only: ['usageSchedulePreviews'] });
+        },
+        [previews, url],
+    );
+}
 
 type ReportRow = {
     stock_id: number;
@@ -63,6 +142,7 @@ type ReportRow = {
     carry_over: string;
     purchased: string;
     used: string[];
+    usage_schedules: Record<string, UsageScheduleReference[]>;
     used_total: string;
     adjustments: string;
     total: string;
@@ -100,10 +180,13 @@ type Props = {
         is_current: boolean;
     };
     terms: ReportTerm[];
+    /** Optional: absent until a usage bucket is opened; see useUsageSchedulePreviews. */
+    usageSchedulePreviews?: UsageSchedulePreviews;
     stockOrder: StockOrderItem[];
     today: string;
 };
 
+const stockIndexScrollStorageKey = 'admin-stocks:index-scroll:';
 const signedQuantity = signedStockQuantity;
 const isZero = isZeroStockQuantity;
 
@@ -862,6 +945,237 @@ function AdjustmentsNote({ value }: { value: string }) {
     );
 }
 
+function UsageScheduleItem({
+    schedule,
+    quantity,
+}: {
+    schedule: UsageSchedulePreview;
+    quantity: string;
+}) {
+    const { returnTo, onOpenDetail } = useUsageScheduleContext();
+    const detailHold = useScheduleDetailHold(onOpenDetail);
+
+    // A button rather than a link: long-pressing an anchor opens the browser's
+    // own link menu on touch devices, which would fight the hold-to-preview.
+    return (
+        <li className="grid grid-cols-[minmax(0,1fr)_auto] items-stretch gap-2 rounded-xl border bg-card p-1.5 dark:border-neutral-800">
+            <button
+                type="button"
+                aria-label={`${schedule.title}の予定ページを開く`}
+                className="grid min-w-0 touch-manipulation gap-1 rounded-lg px-3 py-2 text-left transition select-none hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                onPointerDown={(pointerEvent) =>
+                    detailHold.startHold(pointerEvent, schedule)
+                }
+                onPointerMove={detailHold.updateHold}
+                onPointerUp={detailHold.finishHold}
+                onPointerCancel={detailHold.finishHold}
+                onPointerLeave={detailHold.finishHold}
+                onContextMenu={(event) => event.preventDefault()}
+                onClick={() => {
+                    if (detailHold.consumeClickAfterHold()) {
+                        return;
+                    }
+
+                    router.visit(
+                        constructionScheduleShow(schedule.id, {
+                            query: { return_to: returnTo },
+                        }),
+                    );
+                }}
+            >
+                <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                    <span>
+                        {shortDate(schedule.scheduled_on)} {schedule.time}
+                    </span>
+                    <span>#{schedule.schedule_number ?? '?'}</span>
+                    <span className="rounded-full bg-muted px-2 py-0.5 font-medium text-foreground">
+                        {constructionScheduleStatusLabel(schedule.status)}
+                    </span>
+                </span>
+                <span className="truncate font-semibold">{schedule.title}</span>
+                <span className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    {schedule.general_contractor && (
+                        <span className="truncate">
+                            {schedule.general_contractor}
+                        </span>
+                    )}
+                    <span>使用 {formatStockQuantity(quantity)}</span>
+                </span>
+            </button>
+            <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-auto self-stretch px-3 text-xs"
+                aria-label={`${schedule.title}の詳細を表示`}
+                onClick={() => onOpenDetail(schedule)}
+            >
+                詳細
+            </Button>
+        </li>
+    );
+}
+
+function UsageScheduleItemSkeleton() {
+    return (
+        <li className="grid gap-2 rounded-xl border bg-card p-1.5 dark:border-neutral-800">
+            <div className="grid gap-2 px-3 py-2">
+                <div className="h-3 w-32 animate-pulse rounded bg-muted" />
+                <div className="h-4 w-48 animate-pulse rounded bg-muted" />
+                <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+            </div>
+        </li>
+    );
+}
+
+/**
+ * A usage the details could not be loaded for: the schedule was deleted or
+ * moved out of the term between this page rendering and the details arriving,
+ * or the request for them failed. The quantity is still known, and the link
+ * still resolves, so the row stays useful instead of pulsing forever.
+ */
+function UsageScheduleItemFallback({
+    reference,
+}: {
+    reference: UsageScheduleReference;
+}) {
+    const { returnTo } = useUsageScheduleContext();
+
+    return (
+        <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-xl border bg-card p-1.5 dark:border-neutral-800">
+            <span className="grid gap-1 px-3 py-2 text-xs text-muted-foreground">
+                <span className="font-semibold text-foreground">
+                    予定の詳細を取得できませんでした
+                </span>
+                <span>使用 {formatStockQuantity(reference.quantity)}</span>
+            </span>
+            <Button asChild variant="ghost" size="sm" className="text-xs">
+                <Link
+                    href={constructionScheduleShow(reference.schedule_id, {
+                        query: { return_to: returnTo },
+                    })}
+                >
+                    予定を開く
+                </Link>
+            </Button>
+        </li>
+    );
+}
+
+function UsageScheduleList({
+    references,
+}: {
+    references: UsageScheduleReference[];
+}) {
+    const { previews } = useUsageScheduleContext();
+
+    return (
+        <ul className="grid max-h-[min(60vh,32rem)] gap-2 overflow-y-auto pr-1">
+            {references.map((reference) => {
+                if (previews === undefined) {
+                    return (
+                        <UsageScheduleItemSkeleton
+                            key={reference.schedule_id}
+                        />
+                    );
+                }
+
+                const schedule = previews[String(reference.schedule_id)];
+
+                return schedule === undefined ? (
+                    <UsageScheduleItemFallback
+                        key={reference.schedule_id}
+                        reference={reference}
+                    />
+                ) : (
+                    <UsageScheduleItem
+                        key={reference.schedule_id}
+                        schedule={schedule}
+                        quantity={reference.quantity}
+                    />
+                );
+            })}
+        </ul>
+    );
+}
+
+function UsageSchedulesDialog({
+    stockName,
+    bucket,
+    value,
+    references,
+}: {
+    stockName: string;
+    bucket: ReportBucket;
+    value: string;
+    references: UsageScheduleReference[];
+}) {
+    const { requestPreviews } = useUsageScheduleContext();
+
+    return (
+        <Dialog
+            onOpenChange={(open) => {
+                if (open) {
+                    requestPreviews();
+                }
+            }}
+        >
+            <DialogTrigger asChild>
+                <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    className="h-auto gap-1 p-0 text-xs font-semibold text-sky-700 dark:text-sky-300"
+                    aria-label={`${stockName}の${bucket.label}の使用予定を確認（${references.length}件）`}
+                >
+                    <ListOrdered className="size-3.5" />
+                    施工 {references.length}件
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-xl">
+                <DialogHeader>
+                    <DialogTitle>{stockName} の使用</DialogTitle>
+                    <DialogDescription>
+                        {bucket.label}（{shortDate(bucket.starts_on)}〜
+                        {shortDate(bucket.ends_on)}）・使用量{' '}
+                        {formatStockQuantity(value)}
+                        。タップで予定ページを開き、長押しで詳細を確認できます。
+                    </DialogDescription>
+                </DialogHeader>
+                <UsageScheduleList references={references} />
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function UsageQuantity({
+    row,
+    bucket,
+    value,
+}: {
+    row: ReportRow;
+    bucket: ReportBucket;
+    value: string;
+}) {
+    // Driven by the row's own references so the count is right before the
+    // schedule details arrive.
+    const references = row.usage_schedules[bucket.starts_on] ?? [];
+
+    return (
+        <div className="grid justify-items-end gap-1">
+            <QuantityText value={value} />
+            {references.length > 0 && (
+                <UsageSchedulesDialog
+                    stockName={row.name}
+                    bucket={bucket}
+                    value={value}
+                    references={references}
+                />
+            )}
+        </div>
+    );
+}
+
 function TermCard({
     term,
     today,
@@ -953,8 +1267,10 @@ function TermCard({
                                         >
                                             使用 {bucket.label}
                                         </dt>
-                                        <dd>
-                                            <QuantityText
+                                        <dd className="text-right">
+                                            <UsageQuantity
+                                                row={row}
+                                                bucket={bucket}
                                                 value={row.used[index] ?? '0'}
                                             />
                                         </dd>
@@ -1088,9 +1404,11 @@ function TermCard({
                                     {term.buckets.map((bucket, index) => (
                                         <td
                                             key={bucket.starts_on}
-                                            className="px-4 py-3 text-right"
+                                            className="px-4 py-3 text-right align-top"
                                         >
-                                            <QuantityText
+                                            <UsageQuantity
+                                                row={row}
+                                                bucket={bucket}
                                                 value={row.used[index] ?? '0'}
                                             />
                                         </td>
@@ -1149,14 +1467,33 @@ function TermCard({
 export default function AdminStocksIndex({
     filters,
     terms,
+    usageSchedulePreviews,
     stockOrder,
     today,
 }: Props) {
+    const { url } = usePage();
     const recentResource = useRecentResource();
+    const [detailSchedule, setDetailSchedule] =
+        useState<ScheduleDetailEvent | null>(null);
     const hasFutureTerm = terms.some((term) => term.term_starts_on > today);
+    const requestPreviews = useUsageSchedulePreviews(
+        url,
+        usageSchedulePreviews,
+    );
+    const usageScheduleContext = useMemo(
+        () => ({
+            previews: usageSchedulePreviews,
+            requestPreviews,
+            returnTo: url,
+            onOpenDetail: setDetailSchedule,
+        }),
+        [usageSchedulePreviews, requestPreviews, url],
+    );
+
+    useIndexScrollRestore(stockIndexScrollStorageKey, url);
 
     return (
-        <>
+        <UsageScheduleContext value={usageScheduleContext}>
             <Head title="在庫管理" />
             <div className="mx-auto max-w-7xl space-y-6 px-2 py-4 sm:p-4 md:p-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1234,7 +1571,30 @@ export default function AdminStocksIndex({
                     />
                 ))}
             </div>
-        </>
+            <ScheduleDetailDialog
+                event={detailSchedule}
+                open={detailSchedule !== null}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setDetailSchedule(null);
+                    }
+                }}
+                description="使用の内容を確認できます。"
+            >
+                {detailSchedule !== null && (
+                    <Button asChild className="w-full">
+                        <Link
+                            href={constructionScheduleShow(detailSchedule.id, {
+                                query: { return_to: url },
+                            })}
+                            prefetch
+                        >
+                            予定ページを開く
+                        </Link>
+                    </Button>
+                )}
+            </ScheduleDetailDialog>
+        </UsageScheduleContext>
     );
 }
 

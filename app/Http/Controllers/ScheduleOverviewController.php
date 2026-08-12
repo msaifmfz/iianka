@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\HandlesScheduleReturnTo;
+use App\Http\Presenters\Schedule\ScheduleDetailPresenter;
 use App\Models\BusinessSchedule;
 use App\Models\ConstructionSchedule;
 use App\Models\InternalNotice;
@@ -21,7 +22,10 @@ class ScheduleOverviewController extends Controller
 {
     use HandlesScheduleReturnTo;
 
-    public function __construct(private readonly ScheduleFormOptionsService $scheduleFormOptions) {}
+    public function __construct(
+        private readonly ScheduleFormOptionsService $scheduleFormOptions,
+        private readonly ScheduleDetailPresenter $scheduleDetail,
+    ) {}
 
     public function __invoke(Request $request): Response
     {
@@ -288,25 +292,14 @@ class ScheduleOverviewController extends Controller
                 'starts_at',
                 'ends_at',
                 'time_note',
+                'status',
                 'location',
+                'general_contractor',
                 'content',
                 'carry_out_note',
             ])
             ->toBase()
-            ->map(fn (ConstructionSchedule $schedule): array => [
-                'id' => $schedule->id,
-                'type' => 'construction',
-                'schedule_number' => $schedule->schedule_number,
-                'title' => $schedule->location,
-                'location' => $schedule->location,
-                'content' => $schedule->content,
-                'carry_out_note' => $schedule->carry_out_note,
-                'time' => $schedule->formattedTime(),
-                'starts_at' => $schedule->starts_at,
-                'ends_at' => $schedule->ends_at,
-                'time_note' => $schedule->time_note,
-                'assigned_users' => $this->scheduleFormOptions->userPayload($schedule->assignedUsers->whereIn('id', $visibleUserIds)->values()),
-            ]);
+            ->map(fn (ConstructionSchedule $schedule): array => $this->scheduleDetail->construction($schedule, $visibleUserIds));
 
         $businessSchedules = BusinessSchedule::query()
             ->with('assignedUsers:id,name,email,is_hidden_from_workers')
@@ -319,22 +312,11 @@ class ScheduleOverviewController extends Controller
                 'ends_at',
                 'time_note',
                 'location',
+                'general_contractor',
                 'content',
             ])
             ->toBase()
-            ->map(fn (BusinessSchedule $schedule): array => [
-                'id' => $schedule->id,
-                'type' => 'business',
-                'schedule_number' => $schedule->schedule_number,
-                'title' => $schedule->location,
-                'location' => $schedule->location,
-                'content' => $schedule->content,
-                'time' => $schedule->formattedTime(),
-                'starts_at' => $schedule->starts_at,
-                'ends_at' => $schedule->ends_at,
-                'time_note' => $schedule->time_note,
-                'assigned_users' => $this->scheduleFormOptions->userPayload($schedule->assignedUsers->whereIn('id', $visibleUserIds)->values()),
-            ]);
+            ->map(fn (BusinessSchedule $schedule): array => $this->scheduleDetail->business($schedule, $visibleUserIds));
 
         $internalNotices = InternalNotice::query()
             ->with('assignedUsers:id,name,email,is_hidden_from_workers')
@@ -350,21 +332,10 @@ class ScheduleOverviewController extends Controller
                 'content',
             ])
             ->toBase()
-            ->map(fn (InternalNotice $notice): array => [
-                'id' => $notice->id,
-                'type' => 'internal_notice',
-                'schedule_number' => null,
-                'title' => $notice->title,
-                'location' => $notice->location,
-                'content' => $notice->content,
-                'time' => $notice->formattedTime(),
-                'starts_at' => $notice->starts_at,
-                'ends_at' => $notice->ends_at,
-                'time_note' => $notice->time_note,
-                'assigned_users' => $this->scheduleFormOptions->userPayload($notice->assignedUsers->whereIn('id', $visibleUserIds)->values()),
-            ]);
+            ->map(fn (InternalNotice $notice): array => $this->scheduleDetail->internalNotice($notice, $visibleUserIds));
 
-        return $constructionSchedules
+        /** @var Collection<int, array<string, mixed>> $events */
+        $events = $constructionSchedules
             ->merge($businessSchedules)
             ->merge($internalNotices)
             ->sortBy(fn (array $event): string => sprintf(
@@ -374,5 +345,7 @@ class ScheduleOverviewController extends Controller
                 $event['title'],
             ))
             ->values();
+
+        return $events;
     }
 }

@@ -18,6 +18,22 @@ it('passes the requested schedule index url to the construction schedule detail 
             ->where('returnTo', '/construction-schedules?range=month&date=2026-04-01&type%5B0%5D=construction&type%5B1%5D=business'));
 });
 
+it('passes the requested stock management url to the construction schedule detail page', function (): void {
+    $user = User::factory()->create();
+    $schedule = ConstructionSchedule::factory()->create();
+    $returnTo = '/admin/stocks?month=2026-06-01';
+
+    $this->actingAs($user)
+        ->get(route('construction-schedules.show', [
+            'construction_schedule' => $schedule,
+            'return_to' => $returnTo,
+        ]))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->component('construction-schedules/show')
+            ->where('returnTo', $returnTo));
+});
+
 it('passes the requested schedule index url to the business schedule detail page', function (): void {
     $user = User::factory()->create();
     $schedule = BusinessSchedule::factory()->create();
@@ -154,6 +170,51 @@ it('redirects construction schedule saves back to schedule overview when request
         ->assertRedirect($returnTo)
         ->assertInertiaFlash('toast.type', 'success')
         ->assertInertiaFlash('toast.message', '工事予定を修正しました。');
+});
+
+it('redirects construction schedule deletion back to stock management when requested', function (): void {
+    $admin = User::factory()->admin()->create();
+    $schedule = ConstructionSchedule::factory()->create();
+    $returnTo = '/admin/stocks?month=2026-06-01';
+
+    $this->actingAs($admin)
+        ->delete(route('construction-schedules.destroy', [
+            'construction_schedule' => $schedule,
+            'return_to' => $returnTo,
+        ]))
+        ->assertRedirect($returnTo)
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '工事予定を削除しました。');
+});
+
+it('redirects business schedule deletion back to the requested page', function (): void {
+    $admin = User::factory()->admin()->create();
+    $schedule = BusinessSchedule::factory()->create();
+    $returnTo = '/schedule-overview?date=2026-05-13';
+
+    $this->actingAs($admin)
+        ->delete(route('business-schedules.destroy', [
+            'business_schedule' => $schedule,
+            'return_to' => $returnTo,
+        ]))
+        ->assertRedirect($returnTo)
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '業務予定を削除しました。');
+});
+
+it('redirects internal notice deletion back to the requested page', function (): void {
+    $admin = User::factory()->admin()->create();
+    $notice = InternalNotice::factory()->create();
+    $returnTo = '/schedule-overview?date=2026-05-13';
+
+    $this->actingAs($admin)
+        ->delete(route('internal-notices.destroy', [
+            'internal_notice' => $notice,
+            'return_to' => $returnTo,
+        ]))
+        ->assertRedirect($returnTo)
+        ->assertInertiaFlash('toast.type', 'success')
+        ->assertInertiaFlash('toast.message', '業務連絡を削除しました。');
 });
 
 it('redirects business schedule saves back to schedule overview when requested', function (): void {

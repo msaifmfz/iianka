@@ -77,13 +77,13 @@ import type {
     ScheduleIndexFilters as Filters,
     ScheduleType,
 } from '@/lib/schedule-index';
+import {
+    constructionScheduleStatusBadgeClasses,
+    constructionScheduleStatusLabel,
+} from '@/lib/schedule-status';
 import { scheduleTypeDescriptors } from '@/lib/schedule-types';
 import { cn, phoneHref } from '@/lib/utils';
-import type {
-    ConstructionSchedule,
-    ConstructionUser,
-    ScheduleEvent,
-} from '@/types';
+import type { ConstructionUser, ScheduleEvent } from '@/types';
 import type { FlashResource, FlashResourceType } from '@/types/ui';
 
 type ScheduleNavigation = {
@@ -114,22 +114,6 @@ const emptyWorkerSummary: Props['workerSummary'] = {
     notice_count: 0,
     pending_voucher_count: 0,
     status_change_count: 0,
-};
-
-const statusLabels: Record<ConstructionSchedule['status'], string> = {
-    scheduled: '予定',
-    confirmed: '確定',
-    postponed: '延期',
-    canceled: '中止',
-};
-
-const statusClasses: Record<ConstructionSchedule['status'], string> = {
-    scheduled: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200',
-    confirmed:
-        'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200',
-    postponed:
-        'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
-    canceled: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200',
 };
 
 const scheduleTypePriority: Record<ScheduleType, number> = {
@@ -603,9 +587,11 @@ function ScheduleCard({
                         </span>
                         {schedule.type === 'construction' && (
                             <span
-                                className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClasses[schedule.status]}`}
+                                className={`rounded-full px-3 py-1 text-xs font-semibold ${constructionScheduleStatusBadgeClasses(schedule.status)}`}
                             >
-                                {statusLabels[schedule.status]}
+                                {constructionScheduleStatusLabel(
+                                    schedule.status,
+                                )}
                             </span>
                         )}
                         {isAssignedToCurrentUser && (

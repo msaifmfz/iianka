@@ -9,6 +9,7 @@ import FormField from '@/components/form-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { businessDateString } from '@/lib/dates';
+import { returnToLabel, returnToQuery } from '@/lib/return-to';
 import { toggleNumber } from '@/lib/utils';
 import type { ConstructionUser, InternalNotice } from '@/types';
 
@@ -70,10 +71,7 @@ export default function InternalNoticeForm({
     function submit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
 
-        const options =
-            returnTo === null || returnTo === undefined
-                ? undefined
-                : { query: { return_to: returnTo } };
+        const options = returnToQuery(returnTo);
 
         post(
             notice
@@ -103,6 +101,7 @@ export default function InternalNoticeForm({
             <Head title={notice ? '業務連絡編集' : '新規業務連絡'} />
             <FloatingBackButton
                 onClick={handleGoBack}
+                label={returnToLabel(returnTo)}
                 className="bottom-5 md:bottom-6 xl:bottom-8"
             />
             <div className="mx-auto max-w-5xl space-y-6 px-2 py-4 pb-24 sm:p-4 sm:pb-24 md:p-6 md:pb-6">
