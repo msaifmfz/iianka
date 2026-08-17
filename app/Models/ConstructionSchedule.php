@@ -16,6 +16,7 @@ use Override;
 
 /**
  * @property string $status
+ * @property int|null $reception_case_id
  * @property string|null $starts_at
  * @property string|null $ends_at
  * @property string|null $time_note
@@ -27,8 +28,10 @@ use Override;
  * @property StockExtractionStatus|null $stock_extraction_status
  * @property Carbon|null $stock_extracted_at
  * @property-read \Illuminate\Database\Eloquent\Collection<int, SiteGuideFile> $selectedGuideFiles
+ * @property-read ReceptionCase|null $receptionCase
  */
 #[Fillable([
+    'reception_case_id',
     'scheduled_on',
     'schedule_number',
     'starts_at',
@@ -137,6 +140,14 @@ class ConstructionSchedule extends Model
     public function voucherCheckedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'voucher_checked_by_user_id');
+    }
+
+    /**
+     * @return BelongsTo<ReceptionCase, $this>
+     */
+    public function receptionCase(): BelongsTo
+    {
+        return $this->belongsTo(ReceptionCase::class);
     }
 
     /**

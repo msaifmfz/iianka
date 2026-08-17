@@ -9,6 +9,7 @@ use App\Domain\Reception\Enums\ReceptionCaseStatus;
 use App\Http\Controllers\Concerns\FlashesReceptionCaseToasts;
 use App\Http\Controllers\Concerns\RecordsReceptionCaseChanges;
 use App\Http\Presenters\Reception\ReceptionCasePresenter;
+use App\Http\Presenters\Reception\ReceptionLinkedSchedulePresenter;
 use App\Http\Requests\SubmitReceptionCaseRequest;
 use App\Http\Requests\UpdateReceptionCaseRequest;
 use App\Models\ReceptionCase;
@@ -76,8 +77,12 @@ class ReceptionCaseController extends Controller
         ]);
     }
 
-    public function show(Request $request, ReceptionCase $receptionCase, ReceptionCasePresenter $presenter): Response
-    {
+    public function show(
+        Request $request,
+        ReceptionCase $receptionCase,
+        ReceptionCasePresenter $presenter,
+        ReceptionLinkedSchedulePresenter $linkedSchedulePresenter,
+    ): Response {
         $this->authorize('view', $receptionCase);
 
         $user = $request->user();
@@ -88,8 +93,16 @@ class ReceptionCaseController extends Controller
             ->withListRelations($user->id, withActivities: true, withAttachments: true)
             ->findOrFail($receptionCase->id);
 
+        // Order is left to the presenter, which merges both relations into one list.
+        $receptionCase->load([
+            'constructionSchedules.assignedUsers:id,name,email,is_hidden_from_workers',
+            'businessSchedules.assignedUsers:id,name,email,is_hidden_from_workers',
+        ]);
+
         return Inertia::render('reception/cases/show', [
             'caseData' => $presenter->case($receptionCase, $user),
+            'linkedSchedules' => $linkedSchedulePresenter->forCase($receptionCase),
+            'canManageSchedules' => $user->canManageContent(),
             'documentTypes' => $presenter->documentTypes($this->documentTypesFor($receptionCase)),
             'assigneeOptions' => $user->canManageContent() ? $this->assigneeOptions($presenter) : [],
             'attachmentConstraints' => $presenter->attachmentConstraints(),

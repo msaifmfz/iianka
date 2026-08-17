@@ -81,6 +81,7 @@ class ReceptionCasePresenter
                 'update_work_memo' => $viewer->can('updateWorkMemo', $case),
                 'handover' => $viewer->can('handover', $case),
                 'complete' => $viewer->can('complete', $case),
+                'create_schedule' => $viewer->can('createSchedule', $case),
             ],
         ];
     }

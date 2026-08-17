@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Domain\Reception\Enums\ReceptionCaseStatus;
 use App\Http\Requests\Concerns\ValidatesAssignedUserScheduleTiming;
 use App\Http\Requests\Concerns\ValidatesScheduleNumber;
+use App\Models\ReceptionCase;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Override;
 
 class StoreBusinessScheduleRequest extends FormRequest
@@ -45,6 +48,11 @@ class StoreBusinessScheduleRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'reception_case_id' => [
+                'nullable',
+                'integer',
+                Rule::exists(ReceptionCase::class, 'id')->whereNot('status', ReceptionCaseStatus::Draft),
+            ],
             'scheduled_on' => ['required', 'date'],
             'schedule_number' => ['nullable', 'integer', 'min:1'],
             'starts_at' => ['nullable', 'date_format:H:i'],
@@ -58,6 +66,17 @@ class StoreBusinessScheduleRequest extends FormRequest
             'memo' => ['nullable', 'string'],
             'assigned_user_ids' => ['nullable', 'array'],
             'assigned_user_ids.*' => ['integer', 'exists:users,id'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    #[Override]
+    public function attributes(): array
+    {
+        return [
+            'reception_case_id' => '受付案件',
         ];
     }
 

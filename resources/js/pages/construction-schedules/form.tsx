@@ -7,6 +7,7 @@ import {
 } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
 import { FloatingBackButton } from '@/components/floating-back-button';
 import FormField from '@/components/form-field';
+import { ReceptionScheduleSourceBanner } from '@/components/reception-schedule-source-banner';
 import { ScheduleAvailabilityPanel } from '@/components/schedule-availability-panel';
 import { ScheduleContentEditor } from '@/components/schedule-content-editor';
 import { ScheduleStaffPicker } from '@/components/schedule-staff-picker';
@@ -38,6 +39,7 @@ import type {
     ConstructionSubcontractor,
     ConstructionUser,
     AttendanceLeaveRecord,
+    ReceptionScheduleSource,
     ScheduleAvailability,
     SiteGuideFile,
     StockOption,
@@ -50,6 +52,10 @@ type Props = {
     initialStartsAt?: string | null;
     initialEndsAt?: string | null;
     initialAssignedUserIds?: number[];
+    initialLocation?: string | null;
+    initialGeneralContractor?: string | null;
+    initialContent?: string | null;
+    sourceReceptionCase?: ReceptionScheduleSource | null;
     users: ConstructionUser[];
     subcontractors: ConstructionSubcontractor[];
     siteGuideFiles: SiteGuideFile[];
@@ -61,6 +67,7 @@ type Props = {
 
 type ScheduleForm = {
     _method: 'put' | '';
+    reception_case_id: number | null;
     scheduled_on: string;
     schedule_number: string;
     starts_at: string;
@@ -146,6 +153,10 @@ export default function ConstructionScheduleForm({
     initialStartsAt,
     initialEndsAt,
     initialAssignedUserIds = [],
+    initialLocation,
+    initialGeneralContractor,
+    initialContent,
+    sourceReceptionCase,
     users,
     subcontractors,
     siteGuideFiles,
@@ -158,6 +169,7 @@ export default function ConstructionScheduleForm({
     const { data, setData, post, processing, progress, errors } =
         useForm<ScheduleForm>({
             _method: schedule ? 'put' : '',
+            reception_case_id: sourceReceptionCase?.id ?? null,
             scheduled_on:
                 schedule?.scheduled_on ??
                 initialScheduledOn ??
@@ -170,11 +182,12 @@ export default function ConstructionScheduleForm({
             status: schedule?.status ?? 'scheduled',
             meeting_place: schedule?.meeting_place ?? '',
             personnel: schedule?.personnel ?? '',
-            location: schedule?.location ?? '',
+            location: schedule?.location ?? initialLocation ?? '',
             site_region: schedule ? (schedule.site_region ?? '') : '滋賀県',
-            general_contractor: schedule?.general_contractor ?? '',
+            general_contractor:
+                schedule?.general_contractor ?? initialGeneralContractor ?? '',
             person_in_charge: schedule?.person_in_charge ?? '',
-            content: schedule?.content ?? '',
+            content: schedule?.content ?? initialContent ?? '',
             content_version: schedule?.content_version?.toString() ?? '',
             carry_out_note: schedule?.carry_out_note ?? '',
             navigation_address: schedule?.navigation_address ?? '',
@@ -252,6 +265,17 @@ export default function ConstructionScheduleForm({
                         </h1>
                     </div>
                 </div>
+
+                {sourceReceptionCase && (
+                    <ReceptionScheduleSourceBanner
+                        source={sourceReceptionCase}
+                    />
+                )}
+                {errors.reception_case_id && (
+                    <p className="text-sm font-medium text-destructive">
+                        {errors.reception_case_id}
+                    </p>
+                )}
 
                 <form
                     onSubmit={submit}
@@ -509,7 +533,7 @@ export default function ConstructionScheduleForm({
                         error={errors.content}
                     >
                         <ScheduleContentEditor
-                            defaultValue={schedule?.content ?? ''}
+                            defaultValue={data.content}
                             onChange={(content) => setData('content', content)}
                             stocks={stockOptions}
                             ariaLabelledBy="schedule-content-label"

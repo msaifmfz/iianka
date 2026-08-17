@@ -63,6 +63,7 @@ export type ReceptionCaseCan = {
     start: boolean;
     handover: boolean;
     complete: boolean;
+    create_schedule: boolean;
 };
 
 export type ReceptionCaseActivity = {
@@ -75,6 +76,7 @@ export type ReceptionCaseActivity = {
         | 'started'
         | 'handover_requested'
         | 'completed'
+        | 'schedule_created'
         | 'attachment_added'
         | 'attachment_deleted';
     memo: string | null;
@@ -110,6 +112,15 @@ export type ReceptionCaseAttachment = {
     duration_seconds: number | null;
     uploaded_by: ReceptionUser | null;
     created_at: string | null;
+};
+
+export type ReceptionScheduleSource = {
+    id: number;
+    case_number: string;
+    status: ReceptionCaseStatus;
+    status_label: string;
+    company_name: string | null;
+    site_name: string | null;
 };
 
 export type ReceptionCase = {

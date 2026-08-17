@@ -13,6 +13,7 @@ enum ReceptionCaseActivityType: string
     case Started = 'started';
     case HandoverRequested = 'handover_requested';
     case Completed = 'completed';
+    case ScheduleCreated = 'schedule_created';
     case AttachmentAdded = 'attachment_added';
     case AttachmentDeleted = 'attachment_deleted';
 }

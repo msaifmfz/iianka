@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Application\Reception\ReceptionScheduleSource;
 use App\Application\Stock\ScheduleStockReconciliationService;
 use App\Domain\Stock\Enums\ScheduleStockSourceType;
 use App\Http\Controllers\Concerns\HandlesScheduleReturnTo;
@@ -12,6 +13,7 @@ use App\Models\BusinessSchedule;
 use App\Models\ConstructionSchedule;
 use App\Models\ConstructionSubcontractor;
 use App\Models\InternalNotice;
+use App\Models\ReceptionCase;
 use App\Models\ScheduleStockBalance;
 use App\Models\SiteGuideFile;
 use App\Models\Stock;
@@ -38,6 +40,7 @@ class ConstructionScheduleController extends Controller
     public function __construct(
         private readonly ScheduleFormOptionsService $scheduleFormOptions,
         private readonly ScheduleCalendarService $scheduleCalendar,
+        private readonly ReceptionScheduleSource $receptionScheduleSource,
     ) {}
 
     /**
@@ -205,10 +208,17 @@ class ConstructionScheduleController extends Controller
     {
         Gate::authorize('manage-content');
 
+        $source = $this->receptionScheduleSource->fromRequest($request);
+
+        if ($source instanceof ReceptionCase) {
+            Gate::authorize('createSchedule', $source);
+        }
+
         return Inertia::render('construction-schedules/form', [
             'schedule' => null,
             'returnTo' => $this->returnTo($request),
             ...$this->initialFormValues($request),
+            ...$this->receptionScheduleSource->constructionFormValues($source),
             ...$this->formOptions(null),
         ]);
     }
@@ -216,9 +226,19 @@ class ConstructionScheduleController extends Controller
     public function store(StoreConstructionScheduleRequest $request, ScheduleStockReconciliationService $stockReconciliation): RedirectResponse
     {
         $validated = $request->validated();
+        $source = $this->receptionScheduleSource->find(
+            isset($validated['reception_case_id']) ? (int) $validated['reception_case_id'] : null,
+        );
 
-        $schedule = DB::transaction(function () use ($request, $validated, $stockReconciliation): ConstructionSchedule {
-            $schedule = ConstructionSchedule::create($this->scheduleAttributes($validated));
+        if ($source instanceof ReceptionCase) {
+            Gate::authorize('createSchedule', $source);
+        }
+
+        $schedule = DB::transaction(function () use ($request, $validated, $stockReconciliation, $source): ConstructionSchedule {
+            $schedule = ConstructionSchedule::create([
+                ...$this->scheduleAttributes($validated),
+                'reception_case_id' => $source?->id,
+            ]);
 
             // Reconcile before any disk writes: a stock validation failure
             // rolls back the transaction but would leave stored files behind.
@@ -230,12 +250,17 @@ class ConstructionScheduleController extends Controller
             $this->storeGuideFiles($schedule, $request->file('guide_files', []), $validated['guide_file_names'] ?? []);
             $this->scheduleFormOptions->rememberGeneralContractor($validated['general_contractor'] ?? null);
 
+            if ($source instanceof ReceptionCase) {
+                $this->receptionScheduleSource->recordCreated($source, $request->user(), $schedule);
+            }
+
             return $schedule;
         });
 
         $this->auditSuccess('construction_schedules.created', 'A construction schedule was created.', $schedule, [
             'assigned_user_ids' => $request->input('assigned_user_ids', []),
             'site_guide_file_ids' => $request->input('site_guide_file_ids', []),
+            'reception_case_id' => $source?->id,
         ]);
 
         $this->flashToast('工事予定を作成しました。', resource: [
@@ -253,10 +278,17 @@ class ConstructionScheduleController extends Controller
 
     public function show(Request $request, ConstructionSchedule $constructionSchedule): Response
     {
-        $constructionSchedule->load(['assignedUsers:id,name,email,is_hidden_from_workers', 'subcontractors:id,name,phone', 'voucherCheckedBy:id,name,email,is_hidden_from_workers', 'selectedGuideFiles']);
+        $constructionSchedule->load([
+            'assignedUsers:id,name,email,is_hidden_from_workers',
+            'subcontractors:id,name,phone',
+            'voucherCheckedBy:id,name,email,is_hidden_from_workers',
+            'selectedGuideFiles',
+            'receptionCase:id,case_number,status,company_name,site_name',
+        ]);
 
         return Inertia::render('construction-schedules/show', [
             'schedule' => $this->schedulePayload(collect([$constructionSchedule]))->first(),
+            'sourceReceptionCase' => $this->receptionScheduleSource->payload($constructionSchedule->receptionCase),
             'canManage' => request()->user()?->canManageContent() === true,
             'returnTo' => $this->returnTo($request),
             'stockUsages' => $this->stockUsages($constructionSchedule),
@@ -289,11 +321,18 @@ class ConstructionScheduleController extends Controller
     {
         Gate::authorize('manage-content');
 
-        $constructionSchedule->load(['assignedUsers:id,name,email,is_hidden_from_workers', 'subcontractors:id,name,phone', 'voucherCheckedBy:id,name,email,is_hidden_from_workers', 'selectedGuideFiles']);
+        $constructionSchedule->load([
+            'assignedUsers:id,name,email,is_hidden_from_workers',
+            'subcontractors:id,name,phone',
+            'voucherCheckedBy:id,name,email,is_hidden_from_workers',
+            'selectedGuideFiles',
+            'receptionCase:id,case_number,status,company_name,site_name',
+        ]);
 
         return Inertia::render('construction-schedules/form', [
             'schedule' => $this->schedulePayload(collect([$constructionSchedule]))->first(),
             'returnTo' => $this->returnTo($request),
+            'sourceReceptionCase' => $this->receptionScheduleSource->payload($constructionSchedule->receptionCase),
             ...$this->formOptions($constructionSchedule),
         ]);
     }

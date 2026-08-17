@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Application\Reception\ReceptionScheduleSource;
 use App\Http\Controllers\Concerns\HandlesScheduleReturnTo;
 use App\Http\Requests\StoreBusinessScheduleRequest;
 use App\Http\Requests\UpdateBusinessScheduleNumberRequest;
 use App\Http\Requests\UpdateBusinessScheduleRequest;
 use App\Models\BusinessSchedule;
+use App\Models\ReceptionCase;
 use App\Models\User;
 use App\Services\ScheduleFormOptionsService;
 use Illuminate\Http\RedirectResponse;
@@ -21,7 +23,10 @@ class BusinessScheduleController extends Controller
 {
     use HandlesScheduleReturnTo;
 
-    public function __construct(private readonly ScheduleFormOptionsService $scheduleFormOptions) {}
+    public function __construct(
+        private readonly ScheduleFormOptionsService $scheduleFormOptions,
+        private readonly ReceptionScheduleSource $receptionScheduleSource,
+    ) {}
 
     /**
      * @var list<string>
@@ -52,10 +57,17 @@ class BusinessScheduleController extends Controller
     {
         Gate::authorize('manage-content');
 
+        $source = $this->receptionScheduleSource->fromRequest($request);
+
+        if ($source instanceof ReceptionCase) {
+            Gate::authorize('createSchedule', $source);
+        }
+
         return Inertia::render('business-schedules/form', [
             'schedule' => null,
             'returnTo' => $this->returnTo($request),
             ...$this->initialFormValues($request),
+            ...$this->receptionScheduleSource->businessFormValues($source),
             ...$this->formOptions(null),
         ]);
     }
@@ -63,18 +75,33 @@ class BusinessScheduleController extends Controller
     public function store(StoreBusinessScheduleRequest $request): RedirectResponse
     {
         $validated = $request->validated();
+        $source = $this->receptionScheduleSource->find(
+            isset($validated['reception_case_id']) ? (int) $validated['reception_case_id'] : null,
+        );
 
-        $schedule = DB::transaction(function () use ($request, $validated): BusinessSchedule {
-            $schedule = BusinessSchedule::create($this->scheduleAttributes($validated));
+        if ($source instanceof ReceptionCase) {
+            Gate::authorize('createSchedule', $source);
+        }
+
+        $schedule = DB::transaction(function () use ($request, $validated, $source): BusinessSchedule {
+            $schedule = BusinessSchedule::create([
+                ...$this->scheduleAttributes($validated),
+                'reception_case_id' => $source?->id,
+            ]);
 
             $schedule->assignedUsers()->sync($request->input('assigned_user_ids', []));
             $this->scheduleFormOptions->rememberGeneralContractor($validated['general_contractor'] ?? null);
+
+            if ($source instanceof ReceptionCase) {
+                $this->receptionScheduleSource->recordCreated($source, $request->user(), $schedule);
+            }
 
             return $schedule;
         });
 
         $this->auditSuccess('business_schedules.created', 'A business schedule was created.', $schedule, [
             'assigned_user_ids' => $request->input('assigned_user_ids', []),
+            'reception_case_id' => $source?->id,
         ]);
 
         $this->flashToast('業務予定を作成しました。', resource: [
@@ -93,10 +120,14 @@ class BusinessScheduleController extends Controller
 
     public function show(Request $request, BusinessSchedule $businessSchedule): Response
     {
-        $businessSchedule->load('assignedUsers:id,name,email');
+        $businessSchedule->load([
+            'assignedUsers:id,name,email',
+            'receptionCase:id,case_number,status,company_name,site_name',
+        ]);
 
         return Inertia::render('business-schedules/show', [
             'schedule' => $this->schedulePayload(collect([$businessSchedule]))->first(),
+            'sourceReceptionCase' => $this->receptionScheduleSource->payload($businessSchedule->receptionCase),
             'canManage' => request()->user()?->canManageContent() === true,
             'returnTo' => $this->returnTo($request),
         ]);
@@ -106,11 +137,15 @@ class BusinessScheduleController extends Controller
     {
         Gate::authorize('manage-content');
 
-        $businessSchedule->load('assignedUsers:id,name,email');
+        $businessSchedule->load([
+            'assignedUsers:id,name,email',
+            'receptionCase:id,case_number,status,company_name,site_name',
+        ]);
 
         return Inertia::render('business-schedules/form', [
             'schedule' => $this->schedulePayload(collect([$businessSchedule]))->first(),
             'returnTo' => $this->returnTo($request),
+            'sourceReceptionCase' => $this->receptionScheduleSource->payload($businessSchedule->receptionCase),
             ...$this->formOptions($businessSchedule),
         ]);
     }

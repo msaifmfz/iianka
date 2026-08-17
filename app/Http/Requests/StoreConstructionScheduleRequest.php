@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Domain\Reception\Enums\ReceptionCaseStatus;
 use App\Http\Requests\Concerns\ValidatesConstructionScheduleTiming;
 use App\Http\Requests\Concerns\ValidatesGuideFileUploads;
 use App\Http\Requests\Concerns\ValidatesScheduleNumber;
 use App\Models\ConstructionSchedule;
+use App\Models\ReceptionCase;
 use App\Models\SiteGuideFile;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -43,6 +45,11 @@ class StoreConstructionScheduleRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'reception_case_id' => [
+                'nullable',
+                'integer',
+                Rule::exists(ReceptionCase::class, 'id')->whereNot('status', ReceptionCaseStatus::Draft),
+            ],
             'scheduled_on' => ['required', 'date'],
             'schedule_number' => ['nullable', 'integer', 'min:1'],
             'starts_at' => ['nullable', 'date_format:H:i'],
@@ -83,6 +90,7 @@ class StoreConstructionScheduleRequest extends FormRequest
     public function attributes(): array
     {
         return [
+            'reception_case_id' => '受付案件',
             'location' => '現場名',
             'site_region' => '現場地域',
         ];

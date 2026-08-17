@@ -43,11 +43,14 @@ trait HandlesScheduleReturnTo
     }
 
     /**
+     * The trailing slash on the reception prefix is deliberate: schedules are
+     * only ever reached from a case detail page, never from the case index.
+     *
      * @return list<string>
      */
     protected function allowedReturnToPrefixes(): array
     {
-        return ['/construction-schedules', '/schedule-overview', '/admin/stocks'];
+        return ['/construction-schedules', '/schedule-overview', '/admin/stocks', '/reception/cases/'];
     }
 
     /**

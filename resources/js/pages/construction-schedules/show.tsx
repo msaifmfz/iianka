@@ -11,6 +11,7 @@ import {
     RecentResourceBadge,
     recentResourceHighlightClass,
 } from '@/components/recent-resource-feedback';
+import { ReceptionScheduleSourceBanner } from '@/components/reception-schedule-source-banner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
@@ -22,10 +23,15 @@ import { returnToLabel, returnToQuery, visitReturnTo } from '@/lib/return-to';
 import { constructionScheduleStatusLabel } from '@/lib/schedule-status';
 import { formatStockQuantity } from '@/lib/stock';
 import { cn, phoneHref } from '@/lib/utils';
-import type { ConstructionSchedule, ScheduleStockUsage } from '@/types';
+import type {
+    ConstructionSchedule,
+    ReceptionScheduleSource,
+    ScheduleStockUsage,
+} from '@/types';
 
 type Props = {
     schedule: ConstructionSchedule;
+    sourceReceptionCase: ReceptionScheduleSource | null;
     canManage: boolean;
     returnTo: string | null;
     stockUsages: ScheduleStockUsage[];
@@ -33,6 +39,7 @@ type Props = {
 
 export default function ConstructionScheduleShow({
     schedule,
+    sourceReceptionCase,
     canManage,
     returnTo,
     stockUsages,
@@ -110,6 +117,12 @@ export default function ConstructionScheduleShow({
                         </div>
                     )}
                 </div>
+
+                {sourceReceptionCase && (
+                    <ReceptionScheduleSourceBanner
+                        source={sourceReceptionCase}
+                    />
+                )}
 
                 <Card
                     className={cn(

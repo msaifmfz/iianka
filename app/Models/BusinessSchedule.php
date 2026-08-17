@@ -6,16 +6,20 @@ use Database\Factories\BusinessScheduleFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Carbon;
 use Override;
 
 /**
  * @property string|null $starts_at
+ * @property int|null $reception_case_id
  * @property string|null $ends_at
  * @property string|null $time_note
+ * @property-read ReceptionCase|null $receptionCase
  */
 #[Fillable([
+    'reception_case_id',
     'scheduled_on',
     'schedule_number',
     'starts_at',
@@ -42,6 +46,14 @@ class BusinessSchedule extends Model
         return [
             'scheduled_on' => 'date',
         ];
+    }
+
+    /**
+     * @return BelongsTo<ReceptionCase, $this>
+     */
+    public function receptionCase(): BelongsTo
+    {
+        return $this->belongsTo(ReceptionCase::class);
     }
 
     /**

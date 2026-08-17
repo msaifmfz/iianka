@@ -11,6 +11,7 @@ type Visitable = Parameters<typeof router.visit>[0];
  */
 const returnToLabels: ReadonlyArray<[prefix: string, label: string]> = [
     ['/admin/stocks', '在庫管理へ戻る'],
+    ['/reception/cases/', '受付案件へ戻る'],
 ];
 
 export function returnToLabel(returnTo: string | null | undefined) {

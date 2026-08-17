@@ -29,6 +29,12 @@ class ReceptionCasePolicy
         return true;
     }
 
+    public function createSchedule(User $user, ReceptionCase $receptionCase): bool
+    {
+        return $user->canManageContent()
+            && $receptionCase->status !== ReceptionCaseStatus::Draft;
+    }
+
     public function update(User $user, ReceptionCase $receptionCase): bool
     {
         if ($receptionCase->status === ReceptionCaseStatus::Completed) {

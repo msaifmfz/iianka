@@ -70,8 +70,8 @@ export function scheduleDetailRows(event: ScheduleDetailEvent) {
     );
 }
 
-export function useScheduleDetailHold(
-    onOpenDetail: (event: ScheduleDetailEvent) => void,
+export function useScheduleDetailHold<T extends ScheduleDetailEvent>(
+    onOpenDetail: (event: T) => void,
 ) {
     const holdTimeoutRef = useRef<number | null>(null);
     const holdStartedAtRef = useRef<{ x: number; y: number } | null>(null);
@@ -96,7 +96,7 @@ export function useScheduleDetailHold(
 
     function startHold(
         pointerEvent: PointerEvent<HTMLElement>,
-        scheduleEvent: ScheduleDetailEvent,
+        scheduleEvent: T,
     ) {
         if (pointerEvent.button !== 0) {
             return;

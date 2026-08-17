@@ -165,6 +165,122 @@ test.describe('reception cases', () => {
         ).toHaveCount(0);
     });
 
+    test('creates construction and business schedules from reception with review and quick detail', async ({
+        page,
+    }) => {
+        test.setTimeout(60_000);
+
+        const uniqueSuffix = Date.now();
+        const companyName = `E2E 予定作成会社 ${uniqueSuffix}`;
+        const siteName = `E2E 予定作成現場 ${uniqueSuffix}`;
+        const receptionContent = `E2E 受付内容 ${uniqueSuffix}`;
+        const scheduledOn = '2026-08-20';
+
+        await login(page, editorLoginId);
+
+        await page.goto('/reception/cases/create');
+        await page.getByLabel('会社名').fill(companyName);
+        await page.getByLabel('現場名').fill(siteName);
+        await page.getByLabel('案件書類').selectOption({ label: '見積依頼' });
+        await page.getByLabel('受付内容').fill(receptionContent);
+        await page.getByLabel('期限').fill('2026-08-18');
+        await page.getByLabel('予定日').fill(scheduledOn);
+        await page.getByRole('button', { name: '受付完了' }).click();
+
+        await expect(
+            page
+                .getByRole('status')
+                .filter({ hasText: '受付を完了しました。' }),
+        ).toBeVisible();
+
+        await page.goto('/reception/cases');
+
+        const caseItem = page
+            .locator('[data-reception-case-item="true"]')
+            .filter({ hasText: companyName })
+            .first();
+
+        await caseItem.getByRole('link', { name: '開く' }).click();
+        await expect(page).toHaveURL(/\/reception\/cases\/\d+$/);
+        await expect(page.getByText('関連予定')).toBeVisible();
+        await expect(
+            page.getByText('この受付から作成した予定はまだありません。'),
+        ).toBeVisible();
+
+        await page.getByRole('link', { name: '工事予定を作成' }).click();
+        await expect(page).toHaveURL(
+            /\/construction-schedules\/create\?.*reception_case_id=/,
+        );
+        await expect(page.getByText('受付から作成')).toBeVisible();
+        await expect(page.getByLabel('日付')).toHaveValue(scheduledOn);
+        await expect(page.getByLabel('現場名')).toHaveValue(siteName);
+        await expect(page.getByLabel('ゼネコン会社')).toHaveValue(companyName);
+        await expect(page.getByLabel('内容（任意）')).toHaveText(
+            receptionContent,
+        );
+
+        await page.getByRole('button', { name: '工事予定を作成' }).click();
+        await expect(page).toHaveURL(/\/reception\/cases\/\d+$/);
+        await expect(
+            page
+                .getByRole('status')
+                .filter({ hasText: '工事予定を作成しました。' }),
+        ).toBeVisible();
+
+        const constructionRow = page
+            .locator('[data-reception-linked-schedule="true"]')
+            .filter({ hasText: siteName });
+
+        await expect(constructionRow).toBeVisible();
+        await constructionRow
+            .getByRole('button', { name: /工事.*をすぐ確認/ })
+            .click();
+        await expect(page.getByRole('dialog')).toContainText(siteName);
+        await expect(page.getByRole('dialog')).toContainText(receptionContent);
+        await page.getByRole('button', { name: 'Close' }).click();
+
+        const constructionLink = constructionRow.getByRole('link', {
+            name: /工事.*の詳細を開く/,
+        });
+        await constructionLink.dispatchEvent('pointerdown', {
+            button: 0,
+            clientX: 10,
+            clientY: 10,
+        });
+        await page.waitForTimeout(550);
+        await expect(page.getByRole('dialog')).toContainText(siteName);
+        await page.getByRole('button', { name: 'Close' }).click();
+
+        await page.getByRole('link', { name: '業務予定を作成' }).click();
+        await expect(page).toHaveURL(
+            /\/business-schedules\/create\?.*reception_case_id=/,
+        );
+        await expect(page.getByText('受付から作成')).toBeVisible();
+        await expect(page.getByLabel('日付')).toHaveValue(scheduledOn);
+        await expect(page.getByLabel('場所')).toHaveValue(siteName);
+        await expect(page.getByLabel('ゼネコン会社')).toHaveValue(companyName);
+        await expect(page.getByRole('combobox', { name: '内容' })).toHaveValue(
+            '見積依頼',
+        );
+        await expect(
+            page.getByRole('textbox', { name: 'メモ', exact: true }),
+        ).toHaveValue(receptionContent);
+
+        await page.getByRole('button', { name: '業務予定を作成' }).click();
+        await expect(page).toHaveURL(/\/reception\/cases\/\d+$/);
+        await expect(
+            page
+                .getByRole('status')
+                .filter({ hasText: '業務予定を作成しました。' }),
+        ).toBeVisible();
+        await expect(
+            page.locator('[data-reception-linked-schedule="true"]'),
+        ).toHaveCount(2);
+        await expect(page.getByText('予定作成', { exact: true })).toHaveCount(
+            2,
+        );
+    });
+
     test('archive keeps the same width when result list is empty on narrow screens', async ({
         page,
     }) => {

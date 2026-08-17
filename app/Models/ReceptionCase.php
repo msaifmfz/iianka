@@ -25,6 +25,8 @@ use Override;
  * @property ReceptionCaseStatus $status
  * @property CarbonImmutable|null $last_activity_at
  * @property-read Collection<int, ReceptionCaseSeenState> $seenStates
+ * @property-read Collection<int, ConstructionSchedule> $constructionSchedules
+ * @property-read Collection<int, BusinessSchedule> $businessSchedules
  */
 #[Fillable([
     'case_number',
@@ -181,6 +183,22 @@ class ReceptionCase extends Model
     public function attachments(): HasMany
     {
         return $this->hasMany(ReceptionCaseAttachment::class);
+    }
+
+    /**
+     * @return HasMany<ConstructionSchedule, $this>
+     */
+    public function constructionSchedules(): HasMany
+    {
+        return $this->hasMany(ConstructionSchedule::class);
+    }
+
+    /**
+     * @return HasMany<BusinessSchedule, $this>
+     */
+    public function businessSchedules(): HasMany
+    {
+        return $this->hasMany(BusinessSchedule::class);
     }
 
     /**

@@ -7,6 +7,7 @@ import {
 import { index as scheduleIndex } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
 import { FloatingBackButton } from '@/components/floating-back-button';
 import FormField from '@/components/form-field';
+import { ReceptionScheduleSourceBanner } from '@/components/reception-schedule-source-banner';
 import { ScheduleAvailabilityPanel } from '@/components/schedule-availability-panel';
 import { ScheduleStaffPicker } from '@/components/schedule-staff-picker';
 import { Button } from '@/components/ui/button';
@@ -28,6 +29,7 @@ import type {
     AttendanceLeaveRecord,
     BusinessSchedule,
     ConstructionUser,
+    ReceptionScheduleSource,
     ScheduleAvailability,
 } from '@/types';
 
@@ -38,6 +40,11 @@ type Props = {
     initialStartsAt?: string | null;
     initialEndsAt?: string | null;
     initialAssignedUserIds?: number[];
+    initialLocation?: string | null;
+    initialGeneralContractor?: string | null;
+    initialContent?: string | null;
+    initialMemo?: string | null;
+    sourceReceptionCase?: ReceptionScheduleSource | null;
     users: ConstructionUser[];
     generalContractorOptions: string[];
     contentOptions: string[];
@@ -47,6 +54,7 @@ type Props = {
 
 type BusinessScheduleForm = {
     _method: 'put' | '';
+    reception_case_id: number | null;
     scheduled_on: string;
     schedule_number: string;
     starts_at: string;
@@ -121,6 +129,11 @@ export default function BusinessScheduleForm({
     initialStartsAt,
     initialEndsAt,
     initialAssignedUserIds = [],
+    initialLocation,
+    initialGeneralContractor,
+    initialContent,
+    initialMemo,
+    sourceReceptionCase,
     users,
     generalContractorOptions,
     contentOptions,
@@ -131,6 +144,7 @@ export default function BusinessScheduleForm({
     const { data, setData, post, processing, errors } =
         useForm<BusinessScheduleForm>({
             _method: schedule ? 'put' : '',
+            reception_case_id: sourceReceptionCase?.id ?? null,
             scheduled_on:
                 schedule?.scheduled_on ??
                 initialScheduledOn ??
@@ -141,11 +155,12 @@ export default function BusinessScheduleForm({
             ends_at: schedule?.ends_at?.slice(0, 5) ?? initialEndsAt ?? '',
             time_note: schedule?.time_note ?? '',
             personnel: schedule?.personnel ?? '',
-            location: schedule?.location ?? '',
-            general_contractor: schedule?.general_contractor ?? '',
+            location: schedule?.location ?? initialLocation ?? '',
+            general_contractor:
+                schedule?.general_contractor ?? initialGeneralContractor ?? '',
             person_in_charge: schedule?.person_in_charge ?? '',
-            content: schedule?.content ?? '',
-            memo: schedule?.memo ?? '',
+            content: schedule?.content ?? initialContent ?? '',
+            memo: schedule?.memo ?? initialMemo ?? '',
             assigned_user_ids:
                 schedule?.assigned_users.map((user) => user.id) ??
                 initialAssignedUserIds,
@@ -240,6 +255,17 @@ export default function BusinessScheduleForm({
                         </h1>
                     </div>
                 </div>
+
+                {sourceReceptionCase && (
+                    <ReceptionScheduleSourceBanner
+                        source={sourceReceptionCase}
+                    />
+                )}
+                {errors.reception_case_id && (
+                    <p className="text-sm font-medium text-destructive">
+                        {errors.reception_case_id}
+                    </p>
+                )}
 
                 <form
                     onSubmit={submit}

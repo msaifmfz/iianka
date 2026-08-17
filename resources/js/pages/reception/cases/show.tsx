@@ -1,14 +1,30 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
     ArrowLeft,
+    BriefcaseBusiness,
+    CalendarDays,
     CheckCircle2,
     ClipboardCheck,
+    Eye,
     Handshake,
+    Hammer,
+    Pencil,
     Play,
     Save,
     Trash2,
     UserRound,
 } from 'lucide-react';
+import { useState } from 'react';
+import {
+    create as createBusinessSchedule,
+    edit as editBusinessSchedule,
+    show as showBusinessSchedule,
+} from '@/actions/App/Http/Controllers/BusinessScheduleController';
+import {
+    create as createConstructionSchedule,
+    edit as editConstructionSchedule,
+    show as showConstructionSchedule,
+} from '@/actions/App/Http/Controllers/ConstructionScheduleController';
 import { index as receptionArchiveIndex } from '@/actions/App/Http/Controllers/ReceptionArchiveController';
 import {
     assign as receptionAssign,
@@ -26,6 +42,11 @@ import receptionWorkMemo from '@/actions/App/Http/Controllers/ReceptionCaseWorkM
 import { index as receptionHome } from '@/actions/App/Http/Controllers/ReceptionHomeController';
 import FormField from '@/components/form-field';
 import ReceptionAttachmentPanel from '@/components/reception-attachment-panel';
+import {
+    ScheduleDetailDialog,
+    useScheduleDetailHold,
+} from '@/components/schedule-detail-dialog';
+import type { ScheduleDetailEvent } from '@/components/schedule-detail-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,6 +60,8 @@ import {
     ReceptionStatusBadge,
     useReceptionMeta,
 } from '@/lib/reception';
+import { formatScheduleDate } from '@/lib/schedule-index';
+import { scheduleTypeDescriptors } from '@/lib/schedule-types';
 import type {
     ReceptionAttachmentConstraints,
     ReceptionCase,
@@ -49,8 +72,17 @@ import type {
 } from '@/types';
 import type { QueryParams } from '@/wayfinder';
 
+/** A {@link ScheduleDetailEvent} narrowed to what the schedule tables carry. */
+type ReceptionLinkedSchedule = ScheduleDetailEvent & {
+    type: 'construction' | 'business';
+    scheduled_on: string;
+    location: string;
+};
+
 type Props = {
     caseData: ReceptionCase;
+    linkedSchedules: ReceptionLinkedSchedule[];
+    canManageSchedules: boolean;
     documentTypes: ReceptionDocumentType[];
     assigneeOptions: ReceptionUser[];
     attachmentConstraints: ReceptionAttachmentConstraints;
@@ -87,6 +119,7 @@ const activityLabels: Record<ReceptionCaseActivity['type'], string> = {
     started: '対応開始',
     handover_requested: '引継ぎ依頼',
     completed: '完了',
+    schedule_created: '予定作成',
     attachment_added: '添付追加',
     attachment_deleted: '添付削除',
 };
@@ -419,6 +452,254 @@ function TaskActionPanel({ caseData }: { caseData: ReceptionCase }) {
     );
 }
 
+function linkedScheduleShowRoute(
+    schedule: ReceptionLinkedSchedule,
+    returnTo: string,
+) {
+    const options = { query: { return_to: returnTo } };
+
+    return schedule.type === 'construction'
+        ? showConstructionSchedule(schedule.id, options)
+        : showBusinessSchedule(schedule.id, options);
+}
+
+function linkedScheduleEditRoute(
+    schedule: ReceptionLinkedSchedule,
+    returnTo: string,
+) {
+    const options = { query: { return_to: returnTo } };
+
+    return schedule.type === 'construction'
+        ? editConstructionSchedule(schedule.id, options)
+        : editBusinessSchedule(schedule.id, options);
+}
+
+function LinkedSchedulesPanel({
+    caseData,
+    linkedSchedules,
+    canManageSchedules,
+}: {
+    caseData: ReceptionCase;
+    linkedSchedules: ReceptionLinkedSchedule[];
+    canManageSchedules: boolean;
+}) {
+    const { url } = usePage();
+    const [detailSchedule, setDetailSchedule] =
+        useState<ReceptionLinkedSchedule | null>(null);
+    const detailHold =
+        useScheduleDetailHold<ReceptionLinkedSchedule>(setDetailSchedule);
+    const createOptions = {
+        query: {
+            reception_case_id: caseData.id,
+            return_to: url,
+        },
+    };
+
+    return (
+        <>
+            <Card>
+                <CardHeader className="gap-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <CardTitle>関連予定</CardTitle>
+                                <Badge variant="secondary">
+                                    {linkedSchedules.length}件
+                                </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                                この受付から作成した予定です。長押しまたは確認ボタンで内容をすぐ確認できます。
+                            </p>
+                        </div>
+                        {caseData.can.create_schedule && (
+                            <div className="grid shrink-0 gap-2 sm:grid-cols-2">
+                                <Button asChild variant="outline">
+                                    <Link
+                                        href={createConstructionSchedule(
+                                            createOptions,
+                                        )}
+                                    >
+                                        <Hammer className="size-4" />
+                                        工事予定を作成
+                                    </Link>
+                                </Button>
+                                <Button asChild variant="outline">
+                                    <Link
+                                        href={createBusinessSchedule(
+                                            createOptions,
+                                        )}
+                                    >
+                                        <BriefcaseBusiness className="size-4" />
+                                        業務予定を作成
+                                    </Link>
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    {linkedSchedules.length === 0 ? (
+                        <div className="grid justify-items-center gap-2 rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+                            <CalendarDays className="size-6" />
+                            <p>この受付から作成した予定はまだありません。</p>
+                        </div>
+                    ) : (
+                        <div className="grid gap-3">
+                            {linkedSchedules.map((schedule) => {
+                                const descriptor =
+                                    scheduleTypeDescriptors[schedule.type];
+                                const ScheduleIcon = descriptor.icon;
+                                const scheduleLabel = `${descriptor.label} ${schedule.title}`;
+
+                                return (
+                                    <div
+                                        key={`${schedule.type}-${schedule.id}`}
+                                        data-reception-linked-schedule="true"
+                                        className="flex items-stretch gap-2 rounded-xl border bg-background p-2 transition hover:border-amber-300 dark:hover:border-amber-700"
+                                    >
+                                        <Link
+                                            href={linkedScheduleShowRoute(
+                                                schedule,
+                                                url,
+                                            )}
+                                            draggable={false}
+                                            className="flex min-w-0 flex-1 touch-manipulation items-center gap-3 rounded-lg p-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                                            aria-label={`${scheduleLabel} の詳細を開く`}
+                                            onContextMenu={(event) =>
+                                                event.preventDefault()
+                                            }
+                                            onPointerDown={(event) =>
+                                                detailHold.startHold(
+                                                    event,
+                                                    schedule,
+                                                )
+                                            }
+                                            onPointerMove={
+                                                detailHold.updateHold
+                                            }
+                                            onPointerUp={detailHold.finishHold}
+                                            onPointerCancel={
+                                                detailHold.finishHold
+                                            }
+                                            onPointerLeave={
+                                                detailHold.finishHold
+                                            }
+                                            onClick={(event) => {
+                                                if (
+                                                    detailHold.consumeClickAfterHold()
+                                                ) {
+                                                    event.preventDefault();
+                                                }
+                                            }}
+                                        >
+                                            <span
+                                                className={`flex size-10 shrink-0 items-center justify-center rounded-lg border ${descriptor.chipClasses}`}
+                                            >
+                                                <ScheduleIcon className="size-4" />
+                                            </span>
+                                            <span className="min-w-0 flex-1">
+                                                <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                                    <span className="font-semibold break-words">
+                                                        {schedule.title}
+                                                    </span>
+                                                    <span className="text-xs text-muted-foreground">
+                                                        #
+                                                        {schedule.schedule_number ??
+                                                            '?'}
+                                                    </span>
+                                                </span>
+                                                <span className="mt-1 block text-sm text-muted-foreground">
+                                                    {formatScheduleDate(
+                                                        schedule.scheduled_on,
+                                                    )}{' '}
+                                                    / {schedule.time}
+                                                    {schedule.assigned_users
+                                                        .length > 0 &&
+                                                        ` / ${schedule.assigned_users.map((user) => user.name).join('、')}`}
+                                                </span>
+                                            </span>
+                                        </Link>
+                                        <div className="flex shrink-0 items-center gap-1">
+                                            <Button
+                                                type="button"
+                                                size="icon"
+                                                variant="ghost"
+                                                aria-label={`${scheduleLabel} をすぐ確認`}
+                                                title="すぐ確認"
+                                                onClick={() =>
+                                                    setDetailSchedule(schedule)
+                                                }
+                                            >
+                                                <Eye className="size-4" />
+                                            </Button>
+                                            {canManageSchedules && (
+                                                <Button
+                                                    asChild
+                                                    size="icon"
+                                                    variant="ghost"
+                                                >
+                                                    <Link
+                                                        href={linkedScheduleEditRoute(
+                                                            schedule,
+                                                            url,
+                                                        )}
+                                                        aria-label={`${scheduleLabel} を編集`}
+                                                        title="編集"
+                                                    >
+                                                        <Pencil className="size-4" />
+                                                    </Link>
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+            <ScheduleDetailDialog
+                event={detailSchedule}
+                open={detailSchedule !== null}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setDetailSchedule(null);
+                    }
+                }}
+                description={`${caseData.case_number} から作成された予定です。`}
+            >
+                {detailSchedule && (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                        <Button asChild variant="outline">
+                            <Link
+                                href={linkedScheduleShowRoute(
+                                    detailSchedule,
+                                    url,
+                                )}
+                            >
+                                詳細ページへ
+                            </Link>
+                        </Button>
+                        {canManageSchedules && (
+                            <Button asChild>
+                                <Link
+                                    href={linkedScheduleEditRoute(
+                                        detailSchedule,
+                                        url,
+                                    )}
+                                >
+                                    <Pencil className="size-4" />
+                                    編集ページへ
+                                </Link>
+                            </Button>
+                        )}
+                    </div>
+                )}
+            </ScheduleDetailDialog>
+        </>
+    );
+}
+
 function assignedUserLabel(caseData: ReceptionCase): string {
     if (caseData.assigned_user_handover_chain.length > 1) {
         return caseData.assigned_user_handover_chain
@@ -466,6 +747,8 @@ function compactArchiveFilters(
 
 export default function ReceptionCaseShow({
     caseData,
+    linkedSchedules,
+    canManageSchedules,
     documentTypes,
     assigneeOptions,
     attachmentConstraints,
@@ -752,6 +1035,12 @@ export default function ReceptionCaseShow({
                                 </form>
                             </CardContent>
                         </Card>
+
+                        <LinkedSchedulesPanel
+                            caseData={caseData}
+                            linkedSchedules={linkedSchedules}
+                            canManageSchedules={canManageSchedules}
+                        />
 
                         <ReceptionAttachmentPanel
                             caseId={caseData.id}
