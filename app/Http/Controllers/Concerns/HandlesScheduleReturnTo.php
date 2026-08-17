@@ -46,11 +46,15 @@ trait HandlesScheduleReturnTo
      * The trailing slash on the reception prefix is deliberate: schedules are
      * only ever reached from a case detail page, never from the case index.
      *
+     * `/construction-sites` is the guide library, which links out to the
+     * schedules using a guide file; it does not collide with the
+     * `/construction-schedules` prefix above.
+     *
      * @return list<string>
      */
     protected function allowedReturnToPrefixes(): array
     {
-        return ['/construction-schedules', '/schedule-overview', '/admin/stocks', '/reception/cases/'];
+        return ['/construction-schedules', '/construction-sites', '/schedule-overview', '/admin/stocks', '/reception/cases/'];
     }
 
     /**

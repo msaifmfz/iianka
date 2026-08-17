@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\EscapesLikeWildcards;
 use App\Http\Presenters\Schedule\ScheduleDetailPresenter;
 use App\Http\Requests\SearchSchedulesRequest;
 use App\Models\BusinessSchedule;
@@ -16,6 +17,8 @@ use Inertia\Response;
 
 class ScheduleSearchController extends Controller
 {
+    use EscapesLikeWildcards;
+
     private const int PER_PAGE = 20;
 
     public function __construct(private readonly ScheduleDetailPresenter $scheduleDetail) {}
@@ -80,14 +83,6 @@ class ScheduleSearchController extends Controller
                 ->whereRaw("general_contractor like ? escape '\\'", ['%'.$this->escapeLike((string) $filters['general_contractor']).'%']))
             ->when($filters['content'] !== null, fn (QueryBuilder $query): QueryBuilder => $query
                 ->whereRaw("content like ? escape '\\'", ['%'.$this->escapeLike((string) $filters['content']).'%']));
-    }
-
-    /**
-     * Escape LIKE wildcards so a literal % or _ in the query is matched verbatim.
-     */
-    private function escapeLike(string $value): string
-    {
-        return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value);
     }
 
     /**

@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\EscapesLikeWildcards;
+use App\Http\Presenters\SiteGuide\GuideFileSchedulePreviews;
 use App\Http\Requests\StoreConstructionSiteRequest;
 use App\Http\Requests\UpdateConstructionSiteRequest;
 use App\Models\SiteGuideFile;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -16,14 +19,29 @@ use Inertia\Response;
 
 class ConstructionSiteController extends Controller
 {
-    public function index(Request $request): Response
+    use EscapesLikeWildcards;
+
+    public function index(Request $request, GuideFileSchedulePreviews $schedulePreviews): Response
     {
-        $guideFiles = SiteGuideFile::query()
-            ->orderBy('name')
-            ->get();
+        $search = $request->string('search')->trim()->toString();
 
         return Inertia::render('construction-sites/index', [
-            'guideFiles' => $this->guideFilePayload($guideFiles),
+            // Closures, so the partial reload that fetches the previews below
+            // does not rebuild the listing and throw it away.
+            'guideFiles' => fn (): array => $this->guideFilePayload(
+                $this->guideFileQuery($search)->withCount('constructionSchedules')->get()
+            ),
+            'filters' => [
+                'search' => $search,
+            ],
+            // The unfiltered size of the library, so the count tile can say
+            // "shown / total" rather than silently reporting the filtered count.
+            'totalCount' => fn (): int => SiteGuideFile::query()->count(),
+            // Requested by the page the first time a card is held; most visits
+            // never open one.
+            'usageSchedules' => Inertia::optional(fn (): array => $schedulePreviews->forGuideFiles(
+                $this->guideFileQuery($search)->pluck('id')
+            )),
             'canManage' => $request->user()?->canManageContent() === true,
         ]);
     }
@@ -67,11 +85,16 @@ class ConstructionSiteController extends Controller
             ->route('construction-sites.index');
     }
 
-    public function show(SiteGuideFile $siteGuideFile): Response
+    public function show(Request $request, SiteGuideFile $siteGuideFile, GuideFileSchedulePreviews $schedulePreviews): Response
     {
+        $siteGuideFile->loadCount('constructionSchedules');
+
         return Inertia::render('construction-sites/show', [
-            'guideFile' => $this->guideFilePayload(collect([$siteGuideFile]))->first(),
-            'canManage' => request()->user()?->canManageContent() === true,
+            'guideFile' => $this->singleGuideFilePayload($siteGuideFile),
+            // One file's usage list is the page's reason to exist, so it ships
+            // with it rather than behind the optional prop the index uses.
+            'usageSchedules' => $schedulePreviews->forGuideFile($siteGuideFile),
+            'canManage' => $request->user()?->canManageContent() === true,
         ]);
     }
 
@@ -79,8 +102,12 @@ class ConstructionSiteController extends Controller
     {
         Gate::authorize('manage-content');
 
+        // Loaded here too: replacing the file behind a guide changes every
+        // schedule using it, so the form has to be able to say how many.
+        $siteGuideFile->loadCount('constructionSchedules');
+
         return Inertia::render('construction-sites/form', [
-            'guideFile' => $this->guideFilePayload(collect([$siteGuideFile]))->first(),
+            'guideFile' => $this->singleGuideFilePayload($siteGuideFile),
         ]);
     }
 
@@ -142,16 +169,40 @@ class ConstructionSiteController extends Controller
     }
 
     /**
-     * @param  Collection<int, SiteGuideFile>  $files
-     * @return Collection<int, array<string, mixed>>
+     * @return Builder<SiteGuideFile>
      */
-    private function guideFilePayload(Collection $files): Collection
+    private function guideFileQuery(string $search): Builder
+    {
+        return SiteGuideFile::query()
+            ->when($search !== '', fn (Builder $query): Builder => $query
+                ->whereRaw("name like ? escape '\\'", ['%'.$this->escapeLike($search).'%']))
+            ->orderBy('name');
+    }
+
+    /**
+     * Every caller loads the count first — via `withCount` on the listing or
+     * `loadCount` on a single record. The null coalesce only covers the create
+     * form, which has no guide file to count at all.
+     *
+     * @param  Collection<int, SiteGuideFile>  $files
+     * @return list<array{id: int, name: string, url: string, mime_type: string|null, schedules_count: int}>
+     */
+    private function guideFilePayload(Collection $files): array
     {
         return $files->map(fn (SiteGuideFile $file): array => [
             'id' => $file->id,
             'name' => $file->name,
             'url' => $file->url(),
             'mime_type' => $file->mime_type,
-        ])->values();
+            'schedules_count' => (int) ($file->construction_schedules_count ?? 0),
+        ])->values()->all();
+    }
+
+    /**
+     * @return array{id: int, name: string, url: string, mime_type: string|null, schedules_count: int}
+     */
+    private function singleGuideFilePayload(SiteGuideFile $file): array
+    {
+        return $this->guideFilePayload(collect([$file]))[0];
     }
 }

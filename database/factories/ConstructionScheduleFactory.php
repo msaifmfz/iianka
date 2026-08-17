@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\ConstructionSchedule;
+use App\Models\SiteGuideFile;
 use App\Services\BusinessDate;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -40,5 +41,19 @@ class ConstructionScheduleFactory extends Factory
         return $this->state(fn (array $attributes): array => [
             'scheduled_on' => BusinessDate::today()->toDateString(),
         ]);
+    }
+
+    public function scheduledOn(string $date): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'scheduled_on' => $date,
+        ]);
+    }
+
+    public function usingGuideFile(SiteGuideFile ...$guideFiles): static
+    {
+        return $this->afterCreating(function (ConstructionSchedule $schedule) use ($guideFiles): void {
+            $schedule->selectedGuideFiles()->attach(collect($guideFiles)->pluck('id'));
+        });
     }
 }

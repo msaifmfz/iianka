@@ -2,11 +2,34 @@
 
 declare(strict_types=1);
 
+use App\Models\ConstructionSchedule;
 use App\Models\SiteGuideFile;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
 use Inertia\Testing\AssertableInertia as Assert;
+
+/**
+ * Headers for the follow-up request the library makes the first time a card is
+ * held. `usageSchedules` is an optional prop, so it stays out of the payload
+ * until a partial reload asks for it by name; that reload answers with JSON,
+ * hence the assertJsonPath() assertions on it below.
+ *
+ * Inertia only knows the asset version once it has answered a request, so the
+ * callers below load the page first — which is what the browser does anyway.
+ *
+ * @return array<string, string>
+ */
+function usageScheduleHeaders(): array
+{
+    return [
+        'X-Inertia' => 'true',
+        'X-Inertia-Version' => (string) Inertia::getVersion(),
+        'X-Inertia-Partial-Component' => 'construction-sites/index',
+        'X-Inertia-Partial-Data' => 'usageSchedules',
+    ];
+}
 
 test('site guide library index shows all guide files without site grouping', function (): void {
     $admin = User::factory()->admin()->create();
@@ -25,10 +48,183 @@ test('site guide library index shows all guide files without site grouping', fun
         ->assertInertia(fn (Assert $page): Assert => $page
             ->component('construction-sites/index')
             ->where('canManage', true)
+            ->where('filters.search', '')
+            ->where('totalCount', 2)
             ->has('guideFiles', 2)
             ->where('guideFiles.0.name', '新宿ビル_搬入口.pdf')
             ->where('guideFiles.1.name', '渋谷駅前_集合場所.png')
+            ->missing('usageSchedules')
         );
+});
+
+test('site guide library index filters guide files by name', function (): void {
+    $admin = User::factory()->admin()->create();
+
+    SiteGuideFile::factory()->create(['name' => '新宿ビル_搬入口.pdf']);
+    SiteGuideFile::factory()->create(['name' => '渋谷駅前_集合場所.png']);
+
+    $this->actingAs($admin)
+        ->get(route('construction-sites.index', ['search' => '渋谷']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->component('construction-sites/index')
+            ->where('filters.search', '渋谷')
+            // The unfiltered library size, so the count tile can say "1 / 2".
+            ->where('totalCount', 2)
+            ->has('guideFiles', 1)
+            ->where('guideFiles.0.name', '渋谷駅前_集合場所.png')
+        );
+});
+
+test('site guide library search matches like wildcards verbatim', function (): void {
+    $admin = User::factory()->admin()->create();
+
+    SiteGuideFile::factory()->create(['name' => '進捗100%_案内図.pdf']);
+    SiteGuideFile::factory()->create(['name' => '別の案内図.pdf']);
+
+    $this->actingAs($admin)
+        ->get(route('construction-sites.index', ['search' => '100%_案内']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->has('guideFiles', 1)
+            ->where('guideFiles.0.name', '進捗100%_案内図.pdf')
+        );
+
+    // A bare % is a literal too: it matches only the name that contains one,
+    // rather than acting as a wildcard and matching everything.
+    $this->actingAs($admin)
+        ->get(route('construction-sites.index', ['search' => '%']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->has('guideFiles', 1)
+            ->where('guideFiles.0.name', '進捗100%_案内図.pdf')
+        );
+});
+
+test('site guide library index counts the schedules using each guide file', function (): void {
+    $admin = User::factory()->admin()->create();
+    $usedGuideFile = SiteGuideFile::factory()->create(['name' => 'A_使用中.pdf']);
+    $unusedGuideFile = SiteGuideFile::factory()->create(['name' => 'B_未使用.pdf']);
+
+    ConstructionSchedule::factory()->count(2)->usingGuideFile($usedGuideFile)->create();
+
+    $this->actingAs($admin)
+        ->get(route('construction-sites.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->where('guideFiles.0.id', $usedGuideFile->id)
+            ->where('guideFiles.0.schedules_count', 2)
+            ->where('guideFiles.1.id', $unusedGuideFile->id)
+            ->where('guideFiles.1.schedules_count', 0)
+        );
+});
+
+test('site guide usage schedules are returned newest first on a partial reload', function (): void {
+    $admin = User::factory()->admin()->create();
+    $guideFile = SiteGuideFile::factory()->create(['name' => '案内図.pdf']);
+
+    $older = ConstructionSchedule::factory()
+        ->scheduledOn('2026-05-01')
+        ->usingGuideFile($guideFile)
+        ->create(['location' => '古い現場']);
+    $newer = ConstructionSchedule::factory()
+        ->scheduledOn('2026-06-01')
+        ->usingGuideFile($guideFile)
+        ->create(['location' => '新しい現場']);
+
+    $usage = "props.usageSchedules.{$guideFile->id}";
+
+    $this->actingAs($admin)->get(route('construction-sites.index'))->assertOk();
+
+    $this->actingAs($admin)
+        ->get(route('construction-sites.index'), usageScheduleHeaders())
+        ->assertOk()
+        ->assertJsonPath("{$usage}.0.id", $newer->id)
+        ->assertJsonPath("{$usage}.0.type", 'construction')
+        ->assertJsonPath("{$usage}.0.title", '新しい現場')
+        ->assertJsonPath("{$usage}.0.scheduled_on", '2026-06-01')
+        ->assertJsonPath("{$usage}.0.status", ConstructionSchedule::STATUS_SCHEDULED)
+        ->assertJsonPath("{$usage}.1.id", $older->id)
+        ->assertJsonPath("{$usage}.1.scheduled_on", '2026-05-01');
+});
+
+test('site guide usage schedules only cover the filtered guide files', function (): void {
+    $admin = User::factory()->admin()->create();
+    $matching = SiteGuideFile::factory()->create(['name' => '渋谷_案内図.pdf']);
+    $other = SiteGuideFile::factory()->create(['name' => '新宿_案内図.pdf']);
+
+    ConstructionSchedule::factory()->usingGuideFile($matching)->create();
+    ConstructionSchedule::factory()->usingGuideFile($other)->create();
+
+    $this->actingAs($admin)->get(route('construction-sites.index'))->assertOk();
+
+    $this->actingAs($admin)
+        ->get(route('construction-sites.index', ['search' => '渋谷']), usageScheduleHeaders())
+        ->assertOk()
+        ->assertJsonCount(1, "props.usageSchedules.{$matching->id}")
+        ->assertJsonMissingPath("props.usageSchedules.{$other->id}");
+});
+
+test('site guide usage schedules list a shared schedule under every guide file it uses', function (): void {
+    $admin = User::factory()->admin()->create();
+    $first = SiteGuideFile::factory()->create(['name' => 'A_案内図.pdf']);
+    $second = SiteGuideFile::factory()->create(['name' => 'B_案内図.pdf']);
+
+    // The eager load is constrained to the guide files being asked about, so a
+    // schedule spanning two of them has to surface under both keys.
+    $shared = ConstructionSchedule::factory()->usingGuideFile($first, $second)->create();
+
+    $this->actingAs($admin)->get(route('construction-sites.index'))->assertOk();
+
+    $this->actingAs($admin)
+        ->get(route('construction-sites.index'), usageScheduleHeaders())
+        ->assertOk()
+        ->assertJsonPath("props.usageSchedules.{$first->id}.0.id", $shared->id)
+        ->assertJsonPath("props.usageSchedules.{$second->id}.0.id", $shared->id);
+});
+
+test('the usage schedule reload does not rebuild the listing props', function (): void {
+    $admin = User::factory()->admin()->create();
+    $guideFile = SiteGuideFile::factory()->create();
+
+    ConstructionSchedule::factory()->usingGuideFile($guideFile)->create();
+
+    $this->actingAs($admin)->get(route('construction-sites.index'))->assertOk();
+
+    // guideFiles and totalCount are closures precisely so this reload skips
+    // them; asserting their absence is what keeps them closures.
+    $this->actingAs($admin)
+        ->get(route('construction-sites.index'), usageScheduleHeaders())
+        ->assertOk()
+        ->assertJsonCount(1, "props.usageSchedules.{$guideFile->id}")
+        ->assertJsonMissingPath('props.guideFiles')
+        ->assertJsonMissingPath('props.totalCount')
+        ->assertJsonMissingPath('props.filters');
+});
+
+test('site guide usage schedules hide assignees hidden from workers', function (): void {
+    $admin = User::factory()->admin()->create();
+    $visibleUser = User::factory()->create(['name' => '表示される担当者']);
+    $hiddenUser = User::factory()->create([
+        'name' => '隠れた担当者',
+        'is_hidden_from_workers' => true,
+    ]);
+    $guideFile = SiteGuideFile::factory()->create();
+
+    $schedule = ConstructionSchedule::factory()->usingGuideFile($guideFile)->create();
+    $schedule->assignedUsers()->attach([$visibleUser->id, $hiddenUser->id]);
+
+    $this->actingAs($admin)->get(route('construction-sites.index'))->assertOk();
+
+    $response = $this->actingAs($admin)
+        ->get(route('construction-sites.index'), usageScheduleHeaders())
+        ->assertOk();
+
+    $assignedNames = collect($response->json("props.usageSchedules.{$guideFile->id}.0.assigned_users"))
+        ->pluck('name');
+
+    expect($assignedNames)->toContain('表示される担当者')
+        ->and($assignedNames)->not->toContain('隠れた担当者');
 });
 
 test('site guide detail shows a single guide file', function (): void {
@@ -46,7 +242,55 @@ test('site guide detail shows a single guide file', function (): void {
             ->where('guideFile.id', $guideFile->id)
             ->where('guideFile.name', '案内図A.pdf')
             ->where('guideFile.url', route('site-guide-files.show', $guideFile))
+            ->where('guideFile.schedules_count', 0)
+            ->has('usageSchedules', 0)
         );
+});
+
+test('site guide detail lists the schedules using the guide file', function (): void {
+    $user = User::factory()->create();
+    $guideFile = SiteGuideFile::factory()->create();
+    $schedule = ConstructionSchedule::factory()
+        ->scheduledOn('2026-06-01')
+        ->usingGuideFile($guideFile)
+        ->create(['location' => '品川タワー']);
+
+    // A schedule that uses a different guide file must not leak in.
+    ConstructionSchedule::factory()->usingGuideFile(SiteGuideFile::factory()->create())->create();
+
+    $this->actingAs($user)
+        ->get(route('construction-sites.show', $guideFile))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->where('guideFile.schedules_count', 1)
+            ->has('usageSchedules', 1)
+            ->where('usageSchedules.0.id', $schedule->id)
+            ->where('usageSchedules.0.title', '品川タワー')
+            ->where('usageSchedules.0.scheduled_on', '2026-06-01')
+        );
+});
+
+test('the site guide library is an accepted return target for a schedule edit', function (): void {
+    $admin = User::factory()->admin()->create();
+    $guideFile = SiteGuideFile::factory()->create();
+    $schedule = ConstructionSchedule::factory()->usingGuideFile($guideFile)->create();
+    $returnTo = '/construction-sites?search='.rawurlencode('渋谷');
+
+    // The dialog's 編集ページへ button carries the library URL through, so the
+    // edit page has to both echo it back and honour it on save.
+    $this->actingAs($admin)
+        ->get(route('construction-schedules.edit', [$schedule, 'return_to' => $returnTo]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page): Assert => $page->where('returnTo', $returnTo));
+
+    $this->actingAs($admin)
+        ->put(route('construction-schedules.update', [$schedule, 'return_to' => $returnTo]), [
+            ...$schedule->only([
+                'scheduled_on', 'starts_at', 'ends_at', 'status', 'meeting_place',
+                'personnel', 'location', 'general_contractor', 'person_in_charge', 'content',
+            ]),
+        ])
+        ->assertRedirect($returnTo);
 });
 
 test('admins can open the site guide create form', function (): void {
@@ -88,6 +332,10 @@ test('admins can open the site guide edit form', function (): void {
         'mime_type' => 'image/png',
     ]);
 
+    // Replacing the file behind a guide changes every schedule using it, so
+    // the edit form is given the real count rather than a zero placeholder.
+    ConstructionSchedule::factory()->count(2)->usingGuideFile($guideFile)->create();
+
     $this->actingAs($admin)
         ->get(route('construction-sites.edit', $guideFile))
         ->assertOk()
@@ -95,6 +343,7 @@ test('admins can open the site guide edit form', function (): void {
             ->component('construction-sites/form')
             ->where('guideFile.id', $guideFile->id)
             ->where('guideFile.name', '案内図B.png')
+            ->where('guideFile.schedules_count', 2)
         );
 });
 

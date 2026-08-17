@@ -1,5 +1,4 @@
-import { useEffect, useRef } from 'react';
-import type { PointerEvent, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import {
     Dialog,
     DialogContent,
@@ -7,6 +6,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { useHoldToPreview } from '@/hooks/use-hold-to-preview';
 import { scheduleTypeLabel } from '@/lib/schedule-types';
 import type { ConstructionUser } from '@/types';
 
@@ -30,9 +30,6 @@ export type ScheduleDetailEvent = {
     time_note: string | null;
     assigned_users: ConstructionUser[];
 };
-
-const scheduleDetailHoldDelay = 500;
-const touchScrollTolerance = 10;
 
 export function eventTypeLabel(type: ScheduleDetailEventType) {
     return scheduleTypeLabel(type);
@@ -70,87 +67,14 @@ export function scheduleDetailRows(event: ScheduleDetailEvent) {
     );
 }
 
+/**
+ * Hold a schedule row to preview it in ScheduleDetailDialog. The mechanics are
+ * shared with every other hold surface; this only narrows the payload.
+ */
 export function useScheduleDetailHold<T extends ScheduleDetailEvent>(
     onOpenDetail: (event: T) => void,
 ) {
-    const holdTimeoutRef = useRef<number | null>(null);
-    const holdStartedAtRef = useRef<{ x: number; y: number } | null>(null);
-    const didOpenDetailRef = useRef(false);
-
-    function clearHoldTimeout() {
-        if (holdTimeoutRef.current === null) {
-            return;
-        }
-
-        window.clearTimeout(holdTimeoutRef.current);
-        holdTimeoutRef.current = null;
-    }
-
-    useEffect(() => {
-        return () => {
-            if (holdTimeoutRef.current !== null) {
-                window.clearTimeout(holdTimeoutRef.current);
-            }
-        };
-    }, []);
-
-    function startHold(
-        pointerEvent: PointerEvent<HTMLElement>,
-        scheduleEvent: T,
-    ) {
-        if (pointerEvent.button !== 0) {
-            return;
-        }
-
-        clearHoldTimeout();
-        didOpenDetailRef.current = false;
-        holdStartedAtRef.current = {
-            x: pointerEvent.clientX,
-            y: pointerEvent.clientY,
-        };
-        holdTimeoutRef.current = window.setTimeout(() => {
-            didOpenDetailRef.current = true;
-            holdTimeoutRef.current = null;
-            onOpenDetail(scheduleEvent);
-        }, scheduleDetailHoldDelay);
-    }
-
-    function updateHold(pointerEvent: PointerEvent<HTMLElement>) {
-        const start = holdStartedAtRef.current;
-
-        if (start === null || holdTimeoutRef.current === null) {
-            return;
-        }
-
-        const movedX = Math.abs(pointerEvent.clientX - start.x);
-        const movedY = Math.abs(pointerEvent.clientY - start.y);
-
-        if (movedX > touchScrollTolerance || movedY > touchScrollTolerance) {
-            clearHoldTimeout();
-        }
-    }
-
-    function finishHold() {
-        clearHoldTimeout();
-        holdStartedAtRef.current = null;
-    }
-
-    function consumeClickAfterHold() {
-        if (!didOpenDetailRef.current) {
-            return false;
-        }
-
-        didOpenDetailRef.current = false;
-
-        return true;
-    }
-
-    return {
-        startHold,
-        updateHold,
-        finishHold,
-        consumeClickAfterHold,
-    };
+    return useHoldToPreview<T>(onOpenDetail);
 }
 
 type ScheduleDetailDialogProps = {

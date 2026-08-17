@@ -8,24 +8,13 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
+import { guideFileTypeLabel } from '@/lib/site-guide';
 import { cn, toggleNumber } from '@/lib/utils';
 import { fieldError } from '@/lib/validation';
 import type { SiteGuideFile } from '@/types';
 
 const guideFileAccept =
     'application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif';
-
-function guideFileTypeLabel(file: SiteGuideFile) {
-    if (file.mime_type?.includes('pdf')) {
-        return 'PDF';
-    }
-
-    if (file.mime_type?.startsWith('image/')) {
-        return '画像';
-    }
-
-    return 'ファイル';
-}
 
 function defaultGuideFileName(file: File) {
     const nameWithoutExtension = file.name.replace(/\.[^/.]+$/, '').trim();

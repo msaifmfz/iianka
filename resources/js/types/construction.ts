@@ -18,6 +18,14 @@ export type SiteGuideFile = {
     mime_type: string | null;
 };
 
+/**
+ * A guide file as the library lists it. `schedules_count` is only loaded there,
+ * so the schedule form's picker keeps using the bare SiteGuideFile.
+ */
+export type SiteGuideFileSummary = SiteGuideFile & {
+    schedules_count: number;
+};
+
 export type ConstructionScheduleStatus =
     | 'scheduled'
     | 'confirmed'

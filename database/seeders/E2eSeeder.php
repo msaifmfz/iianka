@@ -10,6 +10,7 @@ use App\Models\BusinessSchedule;
 use App\Models\ConstructionSchedule;
 use App\Models\ReceptionCase;
 use App\Models\ReceptionDocumentType;
+use App\Models\SiteGuideFile;
 use App\Models\Stock;
 use App\Models\User;
 use App\Services\BusinessDate;
@@ -95,6 +96,8 @@ class E2eSeeder extends Seeder
         ]);
         $usageSchedule->assignedUsers()->attach($worker);
         app(ScheduleStockReconciliationService::class)->reconcile($usageSchedule, $admin);
+
+        $this->seedSiteGuideLibrary($worker);
 
         ReceptionCase::create([
             'case_number' => 'WJA-C-20260703-9001',
@@ -203,6 +206,89 @@ class E2eSeeder extends Seeder
         ] as $date => $count) {
             $this->createHeatLevelSchedules($date, $count);
         }
+    }
+
+    /**
+     * One guide file used by two future schedules and a past one, and one that
+     * no schedule references — so the library can be exercised for search,
+     * usage counts, the unused state, and the upcoming/past split. Two future
+     * schedules rather than one because the upcoming group is ordered
+     * soonest-first, which a single row cannot demonstrate.
+     *
+     * The rows point at PDFs that are never written to disk: the specs only open
+     * the dialog, and a PDF renders an icon rather than an <img> that would 404.
+     */
+    private function seedSiteGuideLibrary(User $worker): void
+    {
+        $usedGuideFile = SiteGuideFile::create([
+            'name' => 'E2E案内図_使用中',
+            'disk' => 'local',
+            'path' => 'site-guides/e2e-used.pdf',
+            'mime_type' => 'application/pdf',
+            'size' => 1024,
+        ]);
+
+        SiteGuideFile::create([
+            'name' => 'E2E案内図_未使用',
+            'disk' => 'local',
+            'path' => 'site-guides/e2e-unused.pdf',
+            'mime_type' => 'application/pdf',
+            'size' => 1024,
+        ]);
+
+        $upcoming = ConstructionSchedule::create([
+            'scheduled_on' => BusinessDate::today()->addDays(7)->toDateString(),
+            'schedule_number' => 9101,
+            'starts_at' => '09:00',
+            'ends_at' => '12:00',
+            'status' => ConstructionSchedule::STATUS_CONFIRMED,
+            'meeting_place' => 'E2E Meeting Place',
+            'personnel' => '3名',
+            'location' => 'E2E 案内図 今後の現場',
+            'general_contractor' => 'E2E Guide Contractor',
+            'person_in_charge' => 'E2E Person',
+            'content' => '案内図の使用予定フィクスチャ',
+            'carry_out_note' => 'E2E 案内図 持ち出し',
+            'navigation_address' => 'Tokyo',
+        ]);
+        $upcoming->assignedUsers()->attach($worker);
+        $upcoming->selectedGuideFiles()->attach($usedGuideFile);
+
+        // Further out than the one above, so the sooner schedule has to sort
+        // ahead of it despite arriving second from the newest-first server.
+        $laterUpcoming = ConstructionSchedule::create([
+            'scheduled_on' => BusinessDate::today()->addDays(21)->toDateString(),
+            'schedule_number' => 9103,
+            'starts_at' => '09:00',
+            'ends_at' => '12:00',
+            'status' => ConstructionSchedule::STATUS_CONFIRMED,
+            'meeting_place' => 'E2E Meeting Place',
+            'personnel' => '3名',
+            'location' => 'E2E 案内図 先の現場',
+            'general_contractor' => 'E2E Guide Contractor',
+            'person_in_charge' => 'E2E Person',
+            'content' => '案内図の使用予定フィクスチャ（先）',
+            'navigation_address' => 'Tokyo',
+        ]);
+        $laterUpcoming->assignedUsers()->attach($worker);
+        $laterUpcoming->selectedGuideFiles()->attach($usedGuideFile);
+
+        $past = ConstructionSchedule::create([
+            'scheduled_on' => BusinessDate::today()->subDays(30)->toDateString(),
+            'schedule_number' => 9102,
+            'starts_at' => '13:00',
+            'ends_at' => '15:00',
+            'status' => ConstructionSchedule::STATUS_SCHEDULED,
+            'meeting_place' => 'E2E Meeting Place',
+            'personnel' => '2名',
+            'location' => 'E2E 案内図 過去の現場',
+            'general_contractor' => 'E2E Guide Contractor',
+            'person_in_charge' => 'E2E Person',
+            'content' => '案内図の使用履歴フィクスチャ',
+            'navigation_address' => 'Tokyo',
+        ]);
+        $past->assignedUsers()->attach($worker);
+        $past->selectedGuideFiles()->attach($usedGuideFile);
     }
 
     private function createHeatLevelSchedules(string $date, int $count): void
