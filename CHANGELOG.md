@@ -5,6 +5,17 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Only final releases are listed; `-rc.N` pre-releases fold into their final version.
 
+## [0.4.8](https://github.com/msaifmfz/iianka/compare/v0.4.7...v0.4.8) - 2026-08-03
+
+### Added
+
+- From reception can create construction/business schedule
+- Add search and link to site uploads
+
+### Changed
+
+- Change branding
+
 ## [0.4.7](https://github.com/msaifmfz/iianka/compare/v0.4.6...v0.4.7) - 2026-08-03
 
 ### Changed
