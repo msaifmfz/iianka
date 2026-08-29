@@ -99,8 +99,10 @@ current roles receive `view-all-content`.
 
 ### Attendance
 
-There is at most one attendance row per user and work date. Supported statuses are `working` and
-`leave`. Attendance leave data is also used when building schedule availability.
+There is at most one attendance row per user and work date. Supported statuses are `working`,
+`early` and `leave`. `early` (早出) marks an early start; it is still a worked day, so it counts
+toward the per-user working-day total alongside `working`, and only `leave` is treated as absence.
+Attendance leave data is also used when building schedule availability.
 
 ### Business date
 

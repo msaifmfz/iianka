@@ -48,8 +48,10 @@ class AttendanceRecordController extends Controller
             'days' => $days,
             'users' => $users,
             'records' => $this->recordPayload($records),
+            'userTotals' => $this->userTotals($records),
             'stats' => [
                 'working' => $records->where('status', AttendanceRecord::STATUS_WORKING)->count(),
+                'early' => $records->where('status', AttendanceRecord::STATUS_EARLY)->count(),
                 'leave' => $records->where('status', AttendanceRecord::STATUS_LEAVE)->count(),
                 'unmarked' => max(0, ($users->count() * $days->count()) - $records->count()),
             ],
@@ -154,6 +156,41 @@ class AttendanceRecordController extends Controller
                     'is_today' => $date->toDateString() === $today,
                 ];
             });
+    }
+
+    /**
+     * Per-user 出勤日数 and 早出 counts for the month.
+     *
+     * Derived here rather than in the page because which statuses count as a
+     * worked day is a payroll rule, not a presentation one: keeping it beside
+     * AttendanceRecord::WORKED_DAY_STATUSES gives it one home and lets a feature
+     * test prove it, which nothing on the client currently can.
+     *
+     * @param  Collection<int, AttendanceRecord>  $records
+     * @return list<array{user_id: int, worked_days: int, early_days: int}>
+     */
+    private function userTotals(Collection $records): array
+    {
+        $totals = [];
+
+        foreach ($records as $record) {
+            $userId = (int) $record->user_id;
+            $totals[$userId] ??= [
+                'user_id' => $userId,
+                'worked_days' => 0,
+                'early_days' => 0,
+            ];
+
+            if ($record->countsAsWorkedDay()) {
+                $totals[$userId]['worked_days']++;
+            }
+
+            if ($record->status === AttendanceRecord::STATUS_EARLY) {
+                $totals[$userId]['early_days']++;
+            }
+        }
+
+        return array_values($totals);
     }
 
     /**

@@ -21,10 +21,7 @@ class AttendanceRecordFactory extends Factory
         return [
             'user_id' => User::factory(),
             'work_date' => fake()->dateTimeBetween('-1 week', '+1 month')->format('Y-m-d'),
-            'status' => fake()->randomElement([
-                AttendanceRecord::STATUS_WORKING,
-                AttendanceRecord::STATUS_LEAVE,
-            ]),
+            'status' => fake()->randomElement(AttendanceRecord::STATUSES),
             'note' => fake()->optional()->sentence(),
         ];
     }
@@ -33,6 +30,13 @@ class AttendanceRecordFactory extends Factory
     {
         return $this->state(fn (array $attributes): array => [
             'status' => AttendanceRecord::STATUS_WORKING,
+        ]);
+    }
+
+    public function early(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'status' => AttendanceRecord::STATUS_EARLY,
         ]);
     }
 

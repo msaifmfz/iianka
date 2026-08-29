@@ -20,6 +20,11 @@ test('users can view attendance records', function (): void {
         'user_id' => $worker->id,
         'work_date' => '2026-04-20',
     ]);
+    AttendanceRecord::factory()->early()->create([
+        'user_id' => $worker->id,
+        'work_date' => '2026-05-07',
+        'note' => '6時集合',
+    ]);
     AttendanceRecord::factory()->working()->create([
         'user_id' => $worker->id,
         'work_date' => '2026-05-21',
@@ -43,10 +48,19 @@ test('users can view attendance records', function (): void {
             ->where('days.0.date', '2026-04-21')
             ->where('days.29.date', '2026-05-20')
             ->has('users', 2)
-            ->has('records', 1)
+            ->has('records', 2)
             ->where('records.0.user.name', '山田 太郎')
             ->where('records.0.status', AttendanceRecord::STATUS_LEAVE)
             ->where('records.0.note', '有給')
+            ->where('records.1.status', AttendanceRecord::STATUS_EARLY)
+            ->where('records.1.note', '6時集合')
+            ->where('stats.working', 0)
+            ->where('stats.early', 1)
+            ->where('stats.leave', 1)
+            ->has('userTotals', 1)
+            ->where('userTotals.0.user_id', $worker->id)
+            ->where('userTotals.0.worked_days', 1)
+            ->where('userTotals.0.early_days', 1)
             ->where('users', fn ($users): bool => ! collect($users)->contains(
                 fn (array $user): bool => $user['id'] === $hiddenUser->id || $user['name'] === '非表示 管理者'
             ))
@@ -211,6 +225,98 @@ test('editors can mark attendance records', function (): void {
         ->whereDate('work_date', '2026-05-04')
         ->where('status', AttendanceRecord::STATUS_WORKING)
         ->exists())->toBeTrue();
+});
+
+test('admins can mark an early attendance record', function (): void {
+    $admin = User::factory()->admin()->create();
+    $worker = User::factory()->create();
+
+    $this->actingAs($admin)
+        ->post(route('attendance-records.store'), [
+            'user_id' => $worker->id,
+            'work_date' => '2026-05-04',
+            'status' => AttendanceRecord::STATUS_EARLY,
+            'note' => '6時集合',
+        ])
+        ->assertRedirect();
+
+    $record = AttendanceRecord::query()->sole();
+
+    expect($record->status)->toBe(AttendanceRecord::STATUS_EARLY)
+        ->and($record->note)->toBe('6時集合');
+
+    $this->actingAs($admin)
+        ->post(route('attendance-records.store'), [
+            'user_id' => $worker->id,
+            'work_date' => '2026-05-04',
+            'status' => AttendanceRecord::STATUS_WORKING,
+        ])
+        ->assertRedirect();
+
+    expect(AttendanceRecord::query()->count())->toBe(1);
+
+    $record->refresh();
+
+    expect($record->status)->toBe(AttendanceRecord::STATUS_WORKING);
+});
+
+test('attendance records reject an unknown status', function (): void {
+    $admin = User::factory()->admin()->create();
+    $worker = User::factory()->create();
+
+    $this->actingAs($admin)
+        ->post(route('attendance-records.store'), [
+            'user_id' => $worker->id,
+            'work_date' => '2026-05-04',
+            'status' => 'sick',
+        ])
+        ->assertInvalid(['status']);
+
+    expect(AttendanceRecord::query()->exists())->toBeFalse();
+});
+
+test('early attendance counts as a worked day without becoming a leave warning', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-05-01 09:00:00', 'Asia/Tokyo'));
+
+    try {
+        $admin = User::factory()->admin()->create();
+        $worker = User::factory()->create(['name' => '早出担当']);
+
+        AttendanceRecord::factory()->early()->create([
+            'user_id' => $worker->id,
+            'work_date' => '2026-05-07',
+        ]);
+        AttendanceRecord::factory()->working()->create([
+            'user_id' => $worker->id,
+            'work_date' => '2026-05-08',
+        ]);
+        AttendanceRecord::factory()->leave()->create([
+            'user_id' => $worker->id,
+            'work_date' => '2026-05-11',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('attendance-records.index', ['month' => '2026-04-01']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page): Assert => $page
+                ->component('attendance-records/index')
+                ->has('userTotals', 1)
+                ->where('userTotals.0.user_id', $worker->id)
+                ->where('userTotals.0.worked_days', 2)
+                ->where('userTotals.0.early_days', 1)
+            );
+
+        $this->actingAs($admin)
+            ->get(route('construction-schedules.create'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page): Assert => $page
+                ->component('construction-schedules/form')
+                ->has('attendanceLeaveRecords', 1)
+                ->where('attendanceLeaveRecords.0.work_date', '2026-05-11')
+            );
+    } finally {
+        Carbon::setTestNow();
+    }
 });
 
 test('viewers cannot edit attendance records', function (): void {

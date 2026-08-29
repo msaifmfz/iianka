@@ -175,7 +175,7 @@ export type ScheduleAvailability = {
     user_names: string[];
 };
 
-export type AttendanceStatus = 'working' | 'leave';
+export type AttendanceStatus = 'working' | 'early' | 'leave';
 
 export type AttendanceRecord = {
     id: number;

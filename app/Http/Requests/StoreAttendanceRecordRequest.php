@@ -30,10 +30,7 @@ class StoreAttendanceRecordRequest extends FormRequest
         return [
             'user_id' => ['required', 'integer', 'exists:users,id'],
             'work_date' => ['required', 'date'],
-            'status' => ['required', Rule::in([
-                AttendanceRecord::STATUS_WORKING,
-                AttendanceRecord::STATUS_LEAVE,
-            ])],
+            'status' => ['required', Rule::in(AttendanceRecord::STATUSES)],
             'note' => ['nullable', 'string', 'max:500'],
         ];
     }
