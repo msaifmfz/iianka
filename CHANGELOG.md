@@ -5,6 +5,12 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Only final releases are listed; `-rc.N` pre-releases fold into their final version.
 
+## [0.4.10](https://github.com/msaifmfz/iianka/compare/v0.4.9...v0.4.10) - 2026-08-30
+
+### Fixed
+
+- Correct early attendance status to early-out
+
 ## [0.4.9](https://github.com/msaifmfz/iianka/compare/v0.4.8...v0.4.9) - 2026-08-29
 
 ### Added
