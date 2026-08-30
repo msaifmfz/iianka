@@ -9,7 +9,7 @@ Only final releases are listed; `-rc.N` pre-releases fold into their final versi
 
 ### Added
 
-- Add early attendance status
+- Add early-out attendance status
 
 ## [0.4.8](https://github.com/msaifmfz/iianka/compare/v0.4.7...v0.4.8) - 2026-08-03
 

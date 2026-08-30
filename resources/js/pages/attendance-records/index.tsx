@@ -25,8 +25,8 @@ import {
 import {
     attendanceStatusBadgeClasses,
     attendanceStatusCellClasses,
-    attendanceStatusIcon,
     attendanceStatusLabel,
+    attendanceStatusPanelClasses,
     attendanceStatuses,
     unmarkedAttendanceBadgeClasses,
     unmarkedAttendanceLabel,
@@ -63,11 +63,11 @@ type Props = {
     userTotals: {
         user_id: number;
         worked_days: number;
-        early_days: number;
+        early_out_days: number;
     }[];
     stats: {
         working: number;
-        early: number;
+        early_out: number;
         leave: number;
         unmarked: number;
     };
@@ -194,9 +194,6 @@ function AttendanceCell({
     const statusLabel = record
         ? attendanceStatusLabel(record.status)
         : unmarkedAttendanceLabel;
-    const statusIcon = record
-        ? attendanceStatusIcon(record.status, 'size-3 shrink-0')
-        : null;
     const cellLabel = `${user.name} ${fullDateLabel} ${statusLabel}${record?.note ? ` (${record.note})` : ''}`;
     const content = (
         <>
@@ -206,10 +203,7 @@ function AttendanceCell({
                     {day.is_today ? '今日' : japaneseWeekdayName(day)}
                 </span>
             ) : null}
-            <span className="flex items-center gap-0.5 text-[11px] whitespace-nowrap">
-                {statusIcon}
-                {statusLabel}
-            </span>
+            <span className="text-[11px] whitespace-nowrap">{statusLabel}</span>
         </>
     );
 
@@ -316,9 +310,9 @@ export default function AttendanceRecordIndex({
             userTotals.map((total) => [total.user_id, total.worked_days]),
         );
     }, [userTotals]);
-    const earlyCountByUser = useMemo(() => {
+    const earlyOutCountByUser = useMemo(() => {
         return new Map(
-            userTotals.map((total) => [total.user_id, total.early_days]),
+            userTotals.map((total) => [total.user_id, total.early_out_days]),
         );
     }, [userTotals]);
     const fullDateLabels = useMemo(() => {
@@ -327,15 +321,15 @@ export default function AttendanceRecordIndex({
         );
     }, [days]);
     const today = businessDateString();
-    const earlyToday = visibleRecords.filter(
-        (record) => record.status === 'early' && record.work_date === today,
+    const earlyOutToday = visibleRecords.filter(
+        (record) => record.status === 'early_out' && record.work_date === today,
     );
     const leaveToday = visibleRecords.filter(
         (record) => record.status === 'leave' && record.work_date === today,
     );
     const statusCounts: Record<AttendanceStatus, number> = {
         working: stats.working,
-        early: stats.early,
+        early_out: stats.early_out,
         leave: stats.leave,
     };
     const periodLabel = attendancePeriodLabel(days);
@@ -434,14 +428,16 @@ export default function AttendanceRecordIndex({
                     </div>
                 </section>
 
-                {earlyToday.length > 0 ? (
-                    <section className="rounded-lg border border-sky-200 bg-sky-50 p-4 text-sky-900 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-100">
-                        <div className="flex items-center gap-2 font-semibold">
-                            {attendanceStatusIcon('early', 'size-4')}
-                            今日早出
-                        </div>
+                {earlyOutToday.length > 0 ? (
+                    <section
+                        className={cn(
+                            'rounded-lg border p-4',
+                            attendanceStatusPanelClasses('early_out'),
+                        )}
+                    >
+                        <div className="font-semibold">今日早退</div>
                         <div className="mt-3 flex flex-wrap gap-2">
-                            {earlyToday.map((record) => (
+                            {earlyOutToday.map((record) => (
                                 <Badge
                                     key={record.id}
                                     variant="outline"
@@ -456,7 +452,12 @@ export default function AttendanceRecordIndex({
                 ) : null}
 
                 {leaveToday.length > 0 ? (
-                    <section className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-rose-900 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-100">
+                    <section
+                        className={cn(
+                            'rounded-lg border p-4',
+                            attendanceStatusPanelClasses('leave'),
+                        )}
+                    >
                         <div className="flex items-center gap-2 font-semibold">
                             <Plane className="size-4" />
                             今日休み
@@ -481,7 +482,7 @@ export default function AttendanceRecordIndex({
                         <h2 className="font-semibold">月間カレンダー</h2>
                         <p className="mt-1 text-sm text-muted-foreground">
                             {canManage
-                                ? '日付を選択して出勤・早出・休みを更新できます。'
+                                ? '日付を選択して出勤・早退・休みを更新できます。'
                                 : '管理者以外は閲覧のみです。'}
                         </p>
                         <ul className="mt-3 flex flex-wrap gap-2">
@@ -495,7 +496,6 @@ export default function AttendanceRecordIndex({
                                             ),
                                         )}
                                     >
-                                        {attendanceStatusIcon(status, 'size-3')}
                                         {attendanceStatusLabel(status)}
                                         <span className="font-semibold tabular-nums">
                                             {statusCounts[status]}
@@ -583,23 +583,21 @@ export default function AttendanceRecordIndex({
                                             ) ?? 0}
                                             日
                                         </Badge>
-                                        {(earlyCountByUser.get(user.id) ?? 0) >
-                                        0 ? (
+                                        {(earlyOutCountByUser.get(user.id) ??
+                                            0) > 0 ? (
                                             <Badge
                                                 variant="outline"
                                                 className={cn(
-                                                    'gap-1 px-1.5',
+                                                    'px-1.5',
                                                     attendanceStatusBadgeClasses(
-                                                        'early',
+                                                        'early_out',
                                                     ),
                                                 )}
-                                                aria-label={`早出 ${earlyCountByUser.get(user.id)}日`}
+                                                aria-label={`早退 ${earlyOutCountByUser.get(user.id)}日`}
                                             >
-                                                {attendanceStatusIcon(
-                                                    'early',
-                                                    'size-3',
+                                                {earlyOutCountByUser.get(
+                                                    user.id,
                                                 )}
-                                                {earlyCountByUser.get(user.id)}
                                             </Badge>
                                         ) : null}
                                     </div>
@@ -653,23 +651,16 @@ export default function AttendanceRecordIndex({
                                         {workedDayCountByUser.get(user.id) ?? 0}
                                         日
                                     </Badge>
-                                    {(earlyCountByUser.get(user.id) ?? 0) >
+                                    {(earlyOutCountByUser.get(user.id) ?? 0) >
                                     0 ? (
                                         <Badge
                                             variant="outline"
-                                            className={cn(
-                                                'gap-1',
-                                                attendanceStatusBadgeClasses(
-                                                    'early',
-                                                ),
+                                            className={attendanceStatusBadgeClasses(
+                                                'early_out',
                                             )}
                                         >
-                                            {attendanceStatusIcon(
-                                                'early',
-                                                'size-3',
-                                            )}
-                                            早出 {earlyCountByUser.get(user.id)}
-                                            日
+                                            早退
+                                            {earlyOutCountByUser.get(user.id)}日
                                         </Badge>
                                     ) : null}
                                 </div>
@@ -752,10 +743,6 @@ export default function AttendanceRecordIndex({
                                                 setData('status', status)
                                             }
                                         >
-                                            {attendanceStatusIcon(
-                                                status,
-                                                'size-4 shrink-0',
-                                            )}
                                             {attendanceStatusLabel(status)}
                                         </button>
                                     );
@@ -774,7 +761,7 @@ export default function AttendanceRecordIndex({
                                     onChange={(event) =>
                                         setData('note', event.target.value)
                                     }
-                                    placeholder="例: 有給、午前休、6時集合"
+                                    placeholder="例: 有給、午前休、通院で早退"
                                 />
                                 {errors.note ? (
                                     <span className="text-xs text-destructive">

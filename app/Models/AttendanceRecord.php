@@ -20,7 +20,7 @@ class AttendanceRecord extends Model
 
     public const STATUS_WORKING = 'working';
 
-    public const STATUS_EARLY = 'early';
+    public const STATUS_EARLY_OUT = 'early_out';
 
     public const STATUS_LEAVE = 'leave';
 
@@ -31,20 +31,21 @@ class AttendanceRecord extends Model
      */
     public const STATUSES = [
         self::STATUS_WORKING,
-        self::STATUS_EARLY,
+        self::STATUS_EARLY_OUT,
         self::STATUS_LEAVE,
     ];
 
     /**
      * Statuses that put the worker on site, so the day counts toward the user's
-     * 出勤日数 total. 早出 is an early start to a working day rather than a kind
-     * of absence, so it counts exactly like 出勤.
+     * 出勤日数 total. 早退 means the worker came in and left before the end of the
+     * day rather than staying away, so the day is worked and counts like 出勤;
+     * only 休み is absence.
      *
      * @var list<string>
      */
     public const WORKED_DAY_STATUSES = [
         self::STATUS_WORKING,
-        self::STATUS_EARLY,
+        self::STATUS_EARLY_OUT,
     ];
 
     /**

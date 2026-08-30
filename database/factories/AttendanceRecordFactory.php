@@ -33,10 +33,10 @@ class AttendanceRecordFactory extends Factory
         ]);
     }
 
-    public function early(): static
+    public function earlyOut(): static
     {
         return $this->state(fn (array $attributes): array => [
-            'status' => AttendanceRecord::STATUS_EARLY,
+            'status' => AttendanceRecord::STATUS_EARLY_OUT,
         ]);
     }
 

@@ -325,7 +325,7 @@ primary application database.
 | `internal_notice_user`                  | Notice audience                                        | Composite primary key; both FKs cascade                                                       |
 | `cleaning_duty_rules`                   | Recurring weekday duty                                 | Weekday and active indexes                                                                    |
 | `cleaning_duty_rule_user`               | Assigned users                                         | Composite primary key; both FKs cascade                                                       |
-| `attendance_records`                    | Per-user working/early/leave status                    | Unique `(user_id, work_date)`                                                                 |
+| `attendance_records`                    | Per-user working/early-out/leave status                | Unique `(user_id, work_date)`                                                                 |
 | `general_contractors`                   | Unique contractor-name suggestion catalog              | No FK from schedules                                                                          |
 
 ### Reception
@@ -373,7 +373,7 @@ enforce them.
 | `users.role`                                     | `admin`, `editor`, `viewer`                                                                               |
 | `construction_schedules.status`                  | `scheduled`, `confirmed`, `postponed`, `canceled`                                                         |
 | `construction_schedules.stock_extraction_status` | `not_processed`, `processed`, `processed_with_ignored_text`, `failed`                                     |
-| `attendance_records.status`                      | `working`, `early`, `leave`                                                                               |
+| `attendance_records.status`                      | `working`, `early_out`, `leave`                                                                           |
 | `reception_cases.status`                         | `draft`, `received`, `in_progress`, `handover`, `completed`                                               |
 | `reception_cases.priority`                       | `normal`, `middle`, `high`                                                                                |
 | `reception_case_activities.type`                 | See `ReceptionCaseActivityType`                                                                           |

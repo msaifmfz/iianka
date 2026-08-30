@@ -1,5 +1,3 @@
-import { Sunrise } from 'lucide-react';
-import type { ReactNode } from 'react';
 import type { AttendanceStatus } from '@/types';
 
 type AttendanceStatusDescriptor = {
@@ -9,26 +7,29 @@ type AttendanceStatusDescriptor = {
     /** Filled pill for legend chips and the per-user counters. */
     badgeClasses: string;
     /**
-     * Shape hint for the exceptional status, so a dense grid never leans on hue
-     * alone. Only 早出 carries one: 出勤 and 休み are the baseline that colour and
-     * the cell's own text label already communicate.
-     *
-     * Held as an element factory rather than a component reference because
-     * react-hooks/static-components rejects pulling a component out of a map
-     * during render.
+     * Surface for the "today" callout panels above the calendar. Optional
+     * because a panel only exists for the statuses worth interrupting the page
+     * over: 出勤 is the expected state and never earns one.
      */
-    renderIcon?: (className: string) => ReactNode;
+    panelClasses?: string;
 };
 
 /**
  * Single source of truth for attendance status presentation, so the month grid,
- * the legend, the per-user counters and the editor cannot label or colour the
- * same status differently. Mirrors constructionScheduleStatusDescriptors in
- * schedule-status.ts.
+ * the legend, the per-user counters, the today panels and the editor cannot
+ * label or colour the same status differently. Mirrors
+ * constructionScheduleStatusDescriptors in schedule-status.ts.
  *
- * 早出 uses sky rather than amber because the grid already spends amber on
- * "today" (the cell ring and the column header), and emerald/sky separates far
- * better than emerald/amber for red-green colour blindness.
+ * 早退 is orange. That does sit beside the amber the grid spends on "today"
+ * (the cell's ring and the column header), but the two never compete: "today"
+ * is an outline held off the cell by ring-offset-2, while a status is the
+ * filled surface inside it.
+ *
+ * The closer call is orange 早退 against rose 休み — both warm, the pair a
+ * red-green colour blind operator is most likely to confuse at cell size. What
+ * settles it is text, not hue: every cell renders its status label beside the
+ * day number and repeats it in the cell's aria-label, so the two are legible
+ * with hue discarded entirely.
  */
 export const attendanceStatusDescriptors: Record<
     AttendanceStatus,
@@ -41,15 +42,14 @@ export const attendanceStatusDescriptors: Record<
         badgeClasses:
             'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100',
     },
-    early: {
-        label: '早出',
+    early_out: {
+        label: '早退',
         cellClasses:
-            'border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-100',
+            'border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100 dark:border-orange-900 dark:bg-orange-950/40 dark:text-orange-100',
         badgeClasses:
-            'border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-100',
-        renderIcon: (className) => (
-            <Sunrise className={className} aria-hidden />
-        ),
+            'border-orange-200 bg-orange-50 text-orange-800 dark:border-orange-900 dark:bg-orange-950/40 dark:text-orange-100',
+        panelClasses:
+            'border-orange-200 bg-orange-50 text-orange-900 dark:border-orange-900 dark:bg-orange-950/40 dark:text-orange-100',
     },
     leave: {
         label: '休み',
@@ -57,6 +57,8 @@ export const attendanceStatusDescriptors: Record<
             'border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-100',
         badgeClasses:
             'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-100',
+        panelClasses:
+            'border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-100',
     },
 };
 
@@ -79,7 +81,7 @@ export const unmarkedAttendanceBadgeClasses =
 
 /**
  * `status` is an unconstrained varchar the server hands over as JSON, so a row
- * written before 早出 existed — or edited straight in the database — can carry a
+ * written before 早退 existed — or edited straight in the database — can carry a
  * value the union type says is impossible. Indexing the map directly would
  * throw on `.label` and blank the whole month, so every accessor goes through
  * this lookup: the map stays exhaustive for `attendanceStatuses`, while a
@@ -121,9 +123,17 @@ export function attendanceStatusBadgeClasses(status: AttendanceStatus) {
     );
 }
 
-export function attendanceStatusIcon(
-    status: AttendanceStatus,
-    className: string,
-) {
-    return attendanceStatusDescriptor(status)?.renderIcon?.(className) ?? null;
+/**
+ * Falls back to the badge surface rather than to nothing: an empty class string
+ * would render the panel unstyled and transparent, which reads as a layout bug
+ * rather than as a status the map has not described.
+ */
+export function attendanceStatusPanelClasses(status: AttendanceStatus) {
+    const descriptor = attendanceStatusDescriptor(status);
+
+    return (
+        descriptor?.panelClasses ??
+        descriptor?.badgeClasses ??
+        unmarkedAttendanceBadgeClasses
+    );
 }
