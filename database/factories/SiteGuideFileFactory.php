@@ -20,7 +20,7 @@ class SiteGuideFileFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => fake()->words(2, true).'.pdf',
+            'name' => fake()->unique()->words(2, true).'.pdf',
             'disk' => 'local',
             'path' => 'site-guides/'.fake()->uuid().'.pdf',
             'mime_type' => 'application/pdf',
