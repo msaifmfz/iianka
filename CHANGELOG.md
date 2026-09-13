@@ -14,6 +14,7 @@ Only final releases are listed; `-rc.N` pre-releases fold into their final versi
 ### Fixed
 
 - Resolve npm audit vulnerabilities in browserslist deps ([#54](https://github.com/msaifmfz/iianka/issues/54))
+- Dedupe SiteGuideFile factory names to stop flaky UNIQUE violations ([#56](https://github.com/msaifmfz/iianka/issues/56))
 
 ## [0.4.10](https://github.com/msaifmfz/iianka/compare/v0.4.9...v0.4.10) - 2026-08-30
 
