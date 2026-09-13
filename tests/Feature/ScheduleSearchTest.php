@@ -191,6 +191,35 @@ test('schedule search hides assignees that are hidden from workers', function ()
     expect(collect($assignedNames)->pluck('name')->all())->not->toContain('非表示担当者');
 });
 
+test('schedule search exposes voucher confirmation state on construction results only', function (): void {
+    $user = User::factory()->create();
+    $checkedSchedule = ConstructionSchedule::factory()->create([
+        'voucher_checked_at' => now(),
+        'voucher_checked_by_user_id' => $user->id,
+    ]);
+    $uncheckedSchedule = ConstructionSchedule::factory()->create([
+        'voucher_checked_at' => null,
+    ]);
+    $canceledSchedule = ConstructionSchedule::factory()->create([
+        'status' => ConstructionSchedule::STATUS_CANCELED,
+        'voucher_checked_at' => null,
+    ]);
+    $businessSchedule = BusinessSchedule::factory()->create();
+
+    $response = $this->actingAs($user)
+        ->get(route('schedule-search.index'))
+        ->assertOk();
+
+    $results = collect($response->inertiaProps('results.data'));
+    $resultFor = fn (string $type, int $id): array => $results
+        ->first(fn (array $result): bool => $result['type'] === $type && $result['id'] === $id);
+
+    expect($resultFor('construction', $checkedSchedule->id)['voucher_checked'])->toBeTrue();
+    expect($resultFor('construction', $uncheckedSchedule->id)['voucher_checked'])->toBeFalse();
+    expect($resultFor('construction', $canceledSchedule->id)['voucher_checked'])->toBeFalse();
+    expect($resultFor('business', $businessSchedule->id))->not->toHaveKey('voucher_checked');
+});
+
 test('schedule search ignores invalid share query values', function (): void {
     $user = User::factory()->create();
 

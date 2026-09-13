@@ -144,6 +144,8 @@ class ScheduleSearchController extends Controller
      *
      * Assignees are filtered to users visible to workers, mirroring the
      * schedule overview so hidden staff are not exposed through search.
+     * Construction results also carry the voucher confirmation flag shown
+     * beside the type chip on each search card.
      *
      * @param  Collection<int, int>  $visibleUserIds
      * @return array<string, mixed>
@@ -151,7 +153,10 @@ class ScheduleSearchController extends Controller
     private function schedulePayload(ConstructionSchedule|BusinessSchedule $schedule, Collection $visibleUserIds): array
     {
         return $schedule instanceof ConstructionSchedule
-            ? $this->scheduleDetail->construction($schedule, $visibleUserIds)
+            ? [
+                ...$this->scheduleDetail->construction($schedule, $visibleUserIds),
+                'voucher_checked' => $schedule->voucher_checked_at !== null,
+            ]
             : $this->scheduleDetail->business($schedule, $visibleUserIds);
     }
 }

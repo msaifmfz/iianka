@@ -4,7 +4,9 @@ import {
     ArrowUpAZ,
     BriefcaseBusiness,
     CalendarDays,
+    Check,
     Hammer,
+    X,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -58,6 +60,8 @@ type SearchSchedule = {
     content: string | null;
     carry_out_note: string | null;
     assigned_users: ConstructionUser[];
+    /** Construction schedules only. */
+    voucher_checked?: boolean;
 };
 
 type ScrollResults<T> = {
@@ -249,6 +253,29 @@ function filtersFromForm(form: SearchForm): Filters {
     };
 }
 
+function VoucherBadge({ checked }: { checked: boolean }) {
+    const StatusIcon = checked ? Check : X;
+
+    return (
+        <span
+            title={checked ? '伝票確認済み' : '伝票未確認'}
+            className={`inline-flex items-center gap-1 rounded-full border border-transparent px-2 py-1 text-xs font-semibold ${
+                checked
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
+                    : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200'
+            }`}
+        >
+            <StatusIcon
+                className="size-3.5"
+                strokeWidth={3}
+                aria-hidden="true"
+            />
+            伝票
+            <span className="sr-only">{checked ? '確認済み' : '未確認'}</span>
+        </span>
+    );
+}
+
 function SearchResultItem({
     schedule,
     isSelected,
@@ -302,6 +329,9 @@ function SearchResultItem({
                             <TypeIcon className="size-3.5" />
                             {typeLabel(schedule.type)}
                         </span>
+                        {schedule.voucher_checked !== undefined && (
+                            <VoucherBadge checked={schedule.voucher_checked} />
+                        )}
                     </div>
 
                     <div className="space-y-1">
