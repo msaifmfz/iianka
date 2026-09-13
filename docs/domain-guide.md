@@ -97,6 +97,10 @@ provide today's combined schedule count, pending voucher count, and internal-not
 without all-content permission would be limited through their assignments, though all three
 current roles receive `view-all-content`.
 
+Construction search result cards show a 伝票 badge driven only by `voucher_checked_at` (green when
+checked, amber when not). It does not apply voucher eligibility, so `postponed` and `canceled`
+schedules also show their raw flag.
+
 ### Attendance
 
 There is at most one attendance row per user and work date. Supported statuses are `working`,
