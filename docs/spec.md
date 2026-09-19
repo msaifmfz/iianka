@@ -4,6 +4,11 @@ This document is the implementation-ready specification for the new `受付`
 workflow. It is based on `agentic_code_docs/reception.txt`, repository
 inspection, and the product decisions confirmed during planning.
 
+The separate CRM map feature is specified in [`../agentic_code_docs/crm-map.md`](../agentic_code_docs/crm-map.md).
+Its implemented behavior and storage contract are maintained in
+[`domain-guide.md`](domain-guide.md#crm-client-relationships) and
+[`database-erd.md`](database-erd.md#crm); it does not link clients to reception cases or schedules.
+
 ## 0. Decisions Confirmed During Review
 
 These were resolved against the real codebase and take precedence over any

@@ -113,6 +113,22 @@ erDiagram
 Construction and business schedules store the contractor as a denormalized string; there is no
 foreign key to the catalog.
 
+## CRM
+
+| Table | Relationships and delete behavior | Key data |
+| --- | --- | --- |
+| `clients` | Optional creator → users (`SET NULL`); client deletion is soft | Name, 1–3 character label, hex color, note, `deleted_at` |
+| `client_contacts` | Client → clients (`CASCADE`) | Name, title, phone, email, note |
+| `client_places` | Client → clients (`CASCADE`); optional creator → users (`SET NULL`) | Kind, address, coordinates, `archived_at`, `last_logged_at` |
+| `client_place_logs` | Place → places (`CASCADE`); author → users and contact → contacts (`SET NULL`) | Type, UTC occurrence time, summary, optional reaction |
+| `client_place_log_attachments` | Log → logs (`CASCADE`); uploader → users (`SET NULL`) | Private disk/path, kind, MIME type, extension, size, audio duration |
+
+The migrations beginning `2026_09_19_100000` define these five tables. The log timeline has a
+composite index on place and occurrence time. `last_logged_at` is denormalized from the latest log.
+Database cascades remove rows; `PlaceLogRecorder` handles corresponding filesystem cleanup for
+application log/place deletions. Client soft deletion retains rows and files for recovery, while
+CRM middleware blocks access to its child resources.
+
 ## Reception
 
 ```mermaid

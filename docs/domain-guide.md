@@ -121,6 +121,60 @@ Use the business date for:
 
 Do not replace it with a bare UTC `today()` call.
 
+## CRM client relationships
+
+Each client has a name, a short label, a color, contacts, and places. Each place belongs to one
+client and owns a timeline of visits, meetings, calls, or other activity. An office is a square
+pin; other places use round pins. Multiple clients at one site have separate pins and clustering
+separates overlapping locations. Reaction ratings appear only in history. Opening a place shows
+the client's combined timeline, newest first (including archived places), without merging the
+underlying place threads. Every entry names its original place; other-place entries are slightly
+dimmed and their `別地点` action centers that pin (enabling archived places when needed). Current-place
+entries have a subtle blue background. Creating a log targets the selected place, while edits retain the entry's original place
+and author. Staff authors are labeled `担当者(社)` and client contacts `担当者(客)`.
+
+Every signed-in user can view and add history. Content managers manage clients, contacts, and
+places; log authors and admins can edit or delete history and its attachments. Soft-deleting a
+client retains its history but makes all its resources inaccessible through CRM routes. Archiving
+a place hides it by default while preserving history and allowing restoration.
+
+Log times are entered and displayed in Tokyo time and persisted in UTC. Future times are rejected.
+`PlaceLogRecorder` recomputes `last_logged_at` after creating, updating, or deleting a log. Freshness
+uses the thresholds in `resources/js/lib/crm.ts`; color continues to identify the client. Focus mode
+dims other clients, and the legend lists clients in the current map bounds. Old or unvisited pins
+remain fully visible; only recent activity adds a green dot.
+
+Each log supports up to 10 private photo/voice attachments, 50 MB per file, and 10-minute voice
+recordings. The browser validates file count and size before upload; the server validates content
+types and excludes SVG even when renamed as an accepted photo extension. Deleting a place or log
+cleans up its attachment files. CRM remains independent of schedule and contractor records.
+
+OpenStreetMap is the default base layer; users can switch to GSI maps. The client list and detail
+pages offer a return-to-map link that restores the viewport, layer, client focus, search, selected
+place, and archive visibility for that user in the same browser tab. Their separate `地図で表示` links
+frame the chosen client's places, including archived places. The current-location action requests
+permission explicitly and shows a blue point, accuracy circle, and acquisition time; it does not track
+movement or send coordinates to the application server. Users refresh after moving or clear the point.
+Up to three active places within 5 km are listed by straight-line distance, not driving distance or time;
+the mobile candidate list is collapsible. Question marks sit visually
+inside their action buttons, but use separate interactive targets so help never performs the action.
+Desktop hover/focus shows a tooltip; mobile and touch devices open a dialog on tap. Cancel,
+history submit, and history edit/delete actions have no question marks. Client detail pages emphasize the client's name,
+badge, and color. History reactions include emoji as well as text.
+
+Stopping a voice recording stages a playable attachment; submitting the history uploads it with
+the required summary. Microphone permissions and recording preparation have distinct busy states.
+Content managers can register a contact from the history form without losing their draft; the new
+contact is selected automatically.
+
+For optional fictional Kansai-area demo data, run
+`php artisan db:seed --class=CrmDemoSeeder --no-interaction`. This adds nine clearly marked demo
+clients with contacts, active/archived/empty places, distinct office and event histories, named and
+deleted-author examples, overlapping pins, and photo/voice attachments. It is safe to repeat without
+overwriting existing records; re-running also removes only the exact repeated history rows created by
+the previous demo-seeder version. The seeder refuses every environment except `local`, `testing`, and
+`staging`, even with `--force`, and is not included in the normal database seed.
+
 ## Reception workflow
 
 ### Case identity

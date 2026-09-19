@@ -129,6 +129,25 @@ Laravel's configured timezone is UTC. Date-only business decisions must use `Bus
 
 ## Request and page flow
 
+### CRM map
+
+`app/Domain/Crm` owns the place, log, reaction, and attachment enums. Eloquent CRM models stay
+in `app/Models`; `app/Application/Crm/PlaceLogRecorder` coordinates transactional history writes,
+freshness updates, upload rollback cleanup, and file cleanup after deleting a log or place.
+`GeocodeAddress` proxies the GSI address search with a timeout and validated coordinates.
+
+`CrmMapController` serves lightweight pins and loads the selected place's history on demand via
+an Inertia partial visit. The `place` and `archived` query parameters support deep links. Partial
+visits that change archive visibility must request `filters` as well as the affected map data.
+`EnsureCrmClientIsActive` prevents child resource URLs from exposing soft-deleted clients.
+
+The Leaflet components are lazy-loaded behind `ClientOnly` for SSR safety. Vite explicitly
+prebundles Leaflet and both React adapters together to prevent duplicate Leaflet instances when
+the first map visit discovers dependencies. GSI pale/standard tiles and an OSM fallback are
+selectable. Mobile history uses an expandable bottom sheet; desktop uses a floating panel.
+
+### Shared request lifecycle
+
 1. The `web` middleware stack establishes the session and CSRF protection.
 2. `AssignAuditRequestContext` attaches a request ID.
 3. `HandleAppearance` reads the appearance cookie.

@@ -5,8 +5,12 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Application\Stock\ScheduleStockReconciliationService;
+use App\Domain\Crm\Enums\ClientPlaceKind;
+use App\Domain\Crm\Enums\ClientPlaceLogType;
+use App\Domain\Crm\Enums\ClientReaction;
 use App\Domain\Reception\Enums\ReceptionCaseStatus;
 use App\Models\BusinessSchedule;
+use App\Models\Client;
 use App\Models\ConstructionSchedule;
 use App\Models\ReceptionCase;
 use App\Models\ReceptionDocumentType;
@@ -98,6 +102,7 @@ class E2eSeeder extends Seeder
         app(ScheduleStockReconciliationService::class)->reconcile($usageSchedule, $admin);
 
         $this->seedSiteGuideLibrary($worker);
+        $this->seedCrm($worker);
 
         ReceptionCase::create([
             'case_number' => 'WJA-C-20260703-9001',
@@ -206,6 +211,67 @@ class E2eSeeder extends Seeder
         ] as $date => $count) {
             $this->createHeatLevelSchedules($date, $count);
         }
+    }
+
+    /**
+     * One CRM client with an office in Osaka and a site in Kobe — far enough
+     * apart that they never cluster — and one history entry, so the map can be
+     * exercised for pins, the panel and logging. The client takes red, so the
+     * new-client form should suggest the next palette color.
+     */
+    private function seedCrm(User $worker): void
+    {
+        $client = Client::create([
+            'name' => 'E2E 西日本商事',
+            'short_label' => '西',
+            'color' => '#dc2626',
+        ]);
+
+        $contact = $client->contacts()->create(['name' => '山田 太郎', 'title' => '部長']);
+
+        $office = $client->places()->create([
+            'kind' => ClientPlaceKind::Office,
+            'name' => 'E2E 本社',
+            'address' => '大阪府大阪市北区梅田1-1',
+            'lat' => 34.7025,
+            'lng' => 135.4959,
+        ]);
+
+        $client->places()->create([
+            'kind' => ClientPlaceKind::Site,
+            'name' => 'E2E 神戸現場',
+            'lat' => 34.6901,
+            'lng' => 135.1955,
+        ]);
+
+        $office->logs()->create([
+            'user_id' => $worker->id,
+            'client_contact_id' => $contact->id,
+            'type' => ClientPlaceLogType::Visit,
+            'occurred_at' => now()->subDays(3),
+            'summary' => 'E2E 初回訪問。見積もりを依頼された。',
+            'reaction' => ClientReaction::Positive,
+        ]);
+        $office->refreshLastLoggedAt();
+
+        $client->places()->create([
+            'kind' => ClientPlaceKind::Site,
+            'name' => 'E2E 完了現場',
+            'lat' => 34.55,
+            'lng' => 135.45,
+            'archived_at' => now(),
+        ]);
+
+        Client::create([
+            'name' => 'E2E 東大阪工業',
+            'short_label' => '東',
+            'color' => '#2563eb',
+        ])->places()->create([
+            'kind' => ClientPlaceKind::Office,
+            'name' => 'E2E 東大阪事務所',
+            'lat' => 34.68,
+            'lng' => 135.60,
+        ]);
     }
 
     /**

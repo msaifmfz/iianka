@@ -1,0 +1,109 @@
+.crm-pin-wrapper {
+    background: transparent;
+    border: 0;
+}
+
+.crm-pin {
+    position: relative;
+    display: flex;
+    width: 36px;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+    background: var(--pin-color);
+    border: 2px solid #fff;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 0.35);
+    transition:
+        opacity 150ms,
+        transform 150ms,
+        filter 150ms;
+}
+
+.crm-pin--place {
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+}
+
+.crm-pin--place .crm-pin__label {
+    transform: rotate(45deg);
+}
+
+.crm-pin--office {
+    border-radius: 6px;
+    outline: 2px solid var(--pin-color);
+    outline-offset: 1px;
+}
+
+.crm-pin__label {
+    color: var(--pin-label-color, #fff);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.crm-pin__recent {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 11px;
+    height: 11px;
+    border-radius: 9999px;
+    background: #22c55e;
+    border: 2px solid #fff;
+}
+
+.crm-pin--place .crm-pin__recent {
+    top: -2px;
+    right: auto;
+    left: 50%;
+    transform: rotate(45deg);
+}
+
+.crm-pin--muted {
+    opacity: 0.45;
+}
+
+.crm-pin--dimmed {
+    opacity: 0.2;
+    filter: grayscale(1);
+}
+
+.crm-pin--selected {
+    z-index: 1;
+    box-shadow:
+        0 0 0 4px rgb(255 255 255 / 0.9),
+        0 0 0 7px var(--pin-color),
+        0 4px 10px rgb(0 0 0 / 0.4);
+}
+
+.crm-pin--place.crm-pin--selected {
+    transform: rotate(-45deg) scale(1.15);
+}
+
+.crm-pin--office.crm-pin--selected {
+    transform: scale(1.15);
+}
+
+.crm-cluster {
+    display: flex;
+    width: 44px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 0.35);
+}
+
+.crm-cluster span {
+    display: flex;
+    width: 30px;
+    height: 30px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: #fff;
+    color: #111827;
+    font-size: 12px;
+    font-weight: 700;
+}

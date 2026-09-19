@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-export type RecordingState = 'idle' | 'recording' | 'saving';
+export type RecordingState = 'idle' | 'requesting' | 'recording' | 'saving';
 
 type UseAudioRecorderOptions = {
     maxRecordingSeconds: number;
@@ -73,6 +73,7 @@ export function useAudioRecorder({
     const shouldSaveRecordingRef = useRef(true);
     const recordingTimerRef = useRef<number | null>(null);
     const isUnmountingRef = useRef(false);
+    const isBusyRef = useRef(false);
 
     // Keep the latest callbacks/config without re-binding the recorder listeners.
     const onSaveRef = useRef(onSave);
@@ -102,12 +103,21 @@ export function useAudioRecorder({
         const recorder = recorderRef.current;
 
         if (recorder && recorder.state !== 'inactive') {
+            if (!isUnmountingRef.current) {
+                setRecordingState('saving');
+            }
+
             recorder.stop();
         }
     }, []);
 
     const saveStoppedRecording = useCallback(
         async (recorder: MediaRecorder) => {
+            if (recordingTimerRef.current !== null) {
+                window.clearInterval(recordingTimerRef.current);
+                recordingTimerRef.current = null;
+            }
+
             const shouldSave = shouldSaveRecordingRef.current;
             const durationSeconds = Math.min(
                 maxRecordingSecondsRef.current,
@@ -123,6 +133,7 @@ export function useAudioRecorder({
 
             if (!shouldSave || isUnmountingRef.current) {
                 chunksRef.current = [];
+                isBusyRef.current = false;
 
                 if (!isUnmountingRef.current) {
                     setRecordingSeconds(0);
@@ -140,6 +151,11 @@ export function useAudioRecorder({
                 const blob = new Blob(chunksRef.current, {
                     type: mimeType || 'audio/webm',
                 });
+
+                if (blob.size === 0) {
+                    throw new Error('The recording is empty.');
+                }
+
                 // Avoid the ja-JP "/" date separator so the name is a valid filename.
                 const recordedAt = new Intl.DateTimeFormat('ja-JP', {
                     year: 'numeric',
@@ -166,14 +182,22 @@ export function useAudioRecorder({
                 onErrorRef.current('録音の保存に失敗しました。');
             } finally {
                 chunksRef.current = [];
-                setRecordingSeconds(0);
-                setRecordingState('idle');
+                isBusyRef.current = false;
+
+                if (!isUnmountingRef.current) {
+                    setRecordingSeconds(0);
+                    setRecordingState('idle');
+                }
             }
         },
         [stopRecordingStream],
     );
 
     const startRecording = useCallback(async () => {
+        if (isBusyRef.current || isUnmountingRef.current) {
+            return;
+        }
+
         if (
             typeof navigator === 'undefined' ||
             !navigator.mediaDevices?.getUserMedia ||
@@ -184,16 +208,27 @@ export function useAudioRecorder({
             return;
         }
 
+        isBusyRef.current = true;
+        setRecordingState('requesting');
+
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
                 audio: true,
             });
+
+            if (isUnmountingRef.current) {
+                stream.getTracks().forEach((track) => track.stop());
+                isBusyRef.current = false;
+
+                return;
+            }
+
+            streamRef.current = stream;
             const mimeType = preferredRecordingMimeType();
             const recorder = mimeType
                 ? new MediaRecorder(stream, { mimeType })
                 : new MediaRecorder(stream);
 
-            streamRef.current = stream;
             recorderRef.current = recorder;
             chunksRef.current = [];
             shouldSaveRecordingRef.current = true;
@@ -205,8 +240,19 @@ export function useAudioRecorder({
                 }
             });
 
-            recorder.addEventListener('stop', () => {
-                void saveStoppedRecording(recorder);
+            recorder.addEventListener(
+                'stop',
+                () => {
+                    void saveStoppedRecording(recorder);
+                },
+                { once: true },
+            );
+
+            recorder.addEventListener('error', () => {
+                onErrorRef.current(
+                    '録音が中断されました。マイクを確認して再度お試しください。',
+                );
+                stopRecording(false);
             });
 
             recorder.start();
@@ -228,12 +274,21 @@ export function useAudioRecorder({
             }, 500);
         } catch {
             stopRecordingStream();
-            setRecordingState('idle');
-            onErrorRef.current('マイクの使用が許可されませんでした。');
+            isBusyRef.current = false;
+
+            if (!isUnmountingRef.current) {
+                setRecordingState('idle');
+                onErrorRef.current(
+                    '録音を開始できませんでした。マイクの使用許可と接続を確認してください。',
+                );
+            }
         }
     }, [saveStoppedRecording, stopRecording, stopRecordingStream]);
 
     useEffect(() => {
+        // Strict Mode re-runs setup after its development-only cleanup.
+        isUnmountingRef.current = false;
+
         return () => {
             isUnmountingRef.current = true;
             stopRecording(false);
