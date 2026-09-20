@@ -11,9 +11,7 @@ import { scheduleTypeLabel } from '@/lib/schedule-types';
 import type { ConstructionUser } from '@/types';
 
 export type ScheduleDetailEventType =
-    | 'construction'
-    | 'business'
-    | 'internal_notice';
+    'construction' | 'business' | 'internal_notice';
 
 export type ScheduleDetailEvent = {
     id: number;

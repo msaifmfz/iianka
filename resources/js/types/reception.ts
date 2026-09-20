@@ -1,9 +1,5 @@
 export type ReceptionCaseStatus =
-    | 'draft'
-    | 'received'
-    | 'in_progress'
-    | 'handover'
-    | 'completed';
+    'draft' | 'received' | 'in_progress' | 'handover' | 'completed';
 
 export type ReceptionCasePriority = 'normal' | 'middle' | 'high';
 
@@ -19,19 +15,12 @@ export type ReceptionMeta = {
 };
 
 export type ReceptionCaseAttachmentKind =
-    | 'document'
-    | 'image'
-    | 'audio'
-    | 'video';
+    'document' | 'image' | 'audio' | 'video';
 
 export type ReceptionCaseAttachmentSource = 'upload' | 'capture' | 'recording';
 
 export type ReceptionCaseAttachmentPreviewMode =
-    | 'image'
-    | 'pdf'
-    | 'audio'
-    | 'video'
-    | 'download';
+    'image' | 'pdf' | 'audio' | 'video' | 'download';
 
 export type ReceptionUser = {
     id: number;
