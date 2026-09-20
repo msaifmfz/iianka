@@ -5,6 +5,13 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Only final releases are listed; `-rc.N` pre-releases fold into their final version.
 
+## [0.5.0](https://github.com/msaifmfz/iianka/compare/v0.4.11...v0.5.0) - 2026-09-20
+
+### Added
+
+- Add CRM clients, places and interactive client map ([#62](https://github.com/msaifmfz/iianka/issues/62))
+- Add client map and client list to menu ([#63](https://github.com/msaifmfz/iianka/issues/63))
+
 ## [0.4.11](https://github.com/msaifmfz/iianka/compare/v0.4.10...v0.4.11) - 2026-09-13
 
 ### Added
