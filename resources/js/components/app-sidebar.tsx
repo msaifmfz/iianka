@@ -5,6 +5,8 @@ import {
     ClipboardList,
     ClipboardCheck,
     Archive,
+    Contact,
+    Map as MapIcon,
     FileSearch,
     FileStack,
     FileText,
@@ -20,9 +22,11 @@ import { index as adminStockIndex } from '@/actions/App/Http/Controllers/Admin/S
 import { index as adminUserIndex } from '@/actions/App/Http/Controllers/Admin/UserController';
 import { index as attendanceRecordIndex } from '@/actions/App/Http/Controllers/AttendanceRecordController';
 import { index as cleaningDutyRuleIndex } from '@/actions/App/Http/Controllers/CleaningDutyRuleController';
+import { index as clientIndex } from '@/actions/App/Http/Controllers/ClientController';
 import { index as scheduleIndex } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
 import { index as voucherIndex } from '@/actions/App/Http/Controllers/ConstructionScheduleVoucherController';
 import { index as siteIndex } from '@/actions/App/Http/Controllers/ConstructionSiteController';
+import crmMap from '@/actions/App/Http/Controllers/CrmMapController';
 import { index as receptionArchiveIndex } from '@/actions/App/Http/Controllers/ReceptionArchiveController';
 import {
     create as receptionCreate,
@@ -67,6 +71,16 @@ const mainNavItems: NavItem[] = [
         title: '現場案内図',
         href: siteIndex(),
         icon: FileText,
+    },
+    {
+        title: '顧客マップ',
+        href: crmMap(),
+        icon: MapIcon,
+    },
+    {
+        title: '顧客',
+        href: clientIndex(),
+        icon: Contact,
     },
 ];
 

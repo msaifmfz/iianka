@@ -25,6 +25,12 @@ export default defineConfig(({ mode }) => {
     ].filter((host): host is string => Boolean(host));
 
     return {
+        // The CRM map loads Leaflet lazily. Discovered mid-session, Vite would
+        // re-bundle it and load a second Leaflet copy, replacing the global
+        // `L` that leaflet.markercluster registers its classes on.
+        optimizeDeps: {
+            include: ['leaflet', 'react-leaflet', 'react-leaflet-cluster'],
+        },
         server: {
             host: devServerHost,
             port: devServerPort,

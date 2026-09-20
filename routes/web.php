@@ -12,10 +12,18 @@ use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\AttendanceRecordController;
 use App\Http\Controllers\BusinessScheduleController;
 use App\Http\Controllers\CleaningDutyRuleController;
+use App\Http\Controllers\ClientContactController;
+use App\Http\Controllers\ClientController;
+use App\Http\Controllers\ClientPlaceArchiveController;
+use App\Http\Controllers\ClientPlaceController;
+use App\Http\Controllers\ClientPlaceLogAttachmentController;
+use App\Http\Controllers\ClientPlaceLogController;
 use App\Http\Controllers\ConstructionScheduleController;
 use App\Http\Controllers\ConstructionScheduleVoucherController;
 use App\Http\Controllers\ConstructionSiteController;
 use App\Http\Controllers\ConstructionSubcontractorController;
+use App\Http\Controllers\CrmGeocodeController;
+use App\Http\Controllers\CrmMapController;
 use App\Http\Controllers\InternalNoticeController;
 use App\Http\Controllers\ReceptionArchiveController;
 use App\Http\Controllers\ReceptionCaseAssignmentController;
@@ -32,6 +40,7 @@ use App\Http\Controllers\ReceptionHomeController;
 use App\Http\Controllers\ScheduleOverviewController;
 use App\Http\Controllers\ScheduleSearchController;
 use App\Http\Controllers\SiteGuideFileController;
+use App\Http\Middleware\EnsureCrmClientIsActive;
 use Illuminate\Contracts\Routing\ResponseFactory;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -73,6 +82,43 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::resource('cleaning-duty-rules', CleaningDutyRuleController::class);
     Route::resource('construction-sites', ConstructionSiteController::class)
         ->parameters(['construction-sites' => 'site_guide_file']);
+    Route::prefix('crm')->name('crm.')->middleware(EnsureCrmClientIsActive::class)->group(function (): void {
+        Route::resource('clients', ClientController::class);
+        Route::post('clients/{client}/contacts', [ClientContactController::class, 'store'])
+            ->name('clients.contacts.store');
+        Route::patch('contacts/{client_contact}', [ClientContactController::class, 'update'])
+            ->name('contacts.update');
+        Route::delete('contacts/{client_contact}', [ClientContactController::class, 'destroy'])
+            ->name('contacts.destroy');
+        Route::get('map', CrmMapController::class)->name('map');
+        Route::get('geocode', CrmGeocodeController::class)
+            ->middleware('throttle:30,1')
+            ->name('geocode');
+        Route::get('clients/{client}/places/create', [ClientPlaceController::class, 'create'])
+            ->name('clients.places.create');
+        Route::post('clients/{client}/places', [ClientPlaceController::class, 'store'])
+            ->name('clients.places.store');
+        Route::get('places/{client_place}/edit', [ClientPlaceController::class, 'edit'])
+            ->name('places.edit');
+        Route::patch('places/{client_place}', [ClientPlaceController::class, 'update'])
+            ->name('places.update');
+        Route::delete('places/{client_place}', [ClientPlaceController::class, 'destroy'])
+            ->name('places.destroy');
+        Route::post('places/{client_place}/archive', [ClientPlaceArchiveController::class, 'store'])
+            ->name('places.archive');
+        Route::delete('places/{client_place}/archive', [ClientPlaceArchiveController::class, 'destroy'])
+            ->name('places.unarchive');
+        Route::post('places/{client_place}/logs', [ClientPlaceLogController::class, 'store'])
+            ->name('places.logs.store');
+        Route::patch('logs/{client_place_log}', [ClientPlaceLogController::class, 'update'])
+            ->name('logs.update');
+        Route::delete('logs/{client_place_log}', [ClientPlaceLogController::class, 'destroy'])
+            ->name('logs.destroy');
+        Route::get('attachments/{client_place_log_attachment}', [ClientPlaceLogAttachmentController::class, 'show'])
+            ->name('attachments.show');
+        Route::delete('attachments/{client_place_log_attachment}', [ClientPlaceLogAttachmentController::class, 'destroy'])
+            ->name('attachments.destroy');
+    });
     Route::prefix('reception')->name('reception.')->group(function (): void {
         Route::get('/', [ReceptionHomeController::class, 'index'])
             ->name('home');
