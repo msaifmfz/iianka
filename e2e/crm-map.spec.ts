@@ -70,6 +70,22 @@ test.describe('CRM map', () => {
         expect(errors.map((error) => error.message)).toEqual([]);
     });
 
+    for (const userLoginId of ['e2e-login', 'e2e-editor', 'e2e-admin']) {
+        test(`the menu links to the client map and client list for ${userLoginId}`, async ({
+            page,
+        }) => {
+            await login(page, userLoginId);
+
+            await page
+                .getByRole('link', { name: '顧客マップ', exact: true })
+                .click();
+            await expect(page).toHaveURL(/\/crm\/map(?:\?.*)?$/);
+
+            await page.getByRole('link', { name: '顧客', exact: true }).click();
+            await expect(page).toHaveURL(/\/crm\/clients(?:\?.*)?$/);
+        });
+    }
+
     test('an admin adds a client, drops a place on the map and logs a visit', async ({
         page,
     }) => {
