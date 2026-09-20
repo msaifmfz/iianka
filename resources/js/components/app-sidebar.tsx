@@ -109,6 +109,8 @@ export function AppSidebar() {
         },
         mainNavItems[3],
         mainNavItems[4],
+        mainNavItems[5],
+        mainNavItems[6],
         {
             title: '出勤管理',
             href: attendanceRecordIndex(),
