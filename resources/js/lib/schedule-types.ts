@@ -8,10 +8,7 @@ import type { LucideIcon } from 'lucide-react';
 import type { FlashResourceType } from '@/types/ui';
 
 export type ScheduleType =
-    | 'construction'
-    | 'business'
-    | 'internal_notice'
-    | 'cleaning_duty';
+    'construction' | 'business' | 'internal_notice' | 'cleaning_duty';
 
 type ScheduleTypeDescriptor = {
     label: string;

@@ -1,22 +1,10 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:visibleToWorkers\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Controllers/AttendanceRecordController.php
-
-		-
 			message: '#^Method App\\Http\\Controllers\\AttendanceRecordController\:\:recordPayload\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, user_id\: int, work_date\: string, status\: string, note\: string\|null, user\: array\{id\: int, name\: string, email\: string\|null, is_hidden_from_workers\: bool\}\}\>\.$#'
 			identifier: return.type
 			count: 1
 			path: app/Http/Controllers/AttendanceRecordController.php
-
-		-
-			message: '#^Anonymous function should return array\{id\: int, type\: ''business'', scheduled_on\: string, schedule_number\: int\<0, max\>\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, \.\.\.\} but returns array\{id\: int, type\: ''business'', scheduled_on\: string, schedule_number\: int\<0, max\>\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, \.\.\.\}\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/BusinessScheduleController.php
 
 		-
 			message: '#^Method App\\Http\\Controllers\\BusinessScheduleController\:\:schedulePayload\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, type\: string, scheduled_on\: string, schedule_number\: int\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, \.\.\.\}\>\.$#'
@@ -25,52 +13,10 @@ parameters:
 			path: app/Http/Controllers/BusinessScheduleController.php
 
 		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\BusinessSchedule\>\:\:map\(\) expects callable\(App\\Models\\BusinessSchedule, int\)\: array\{id\: int, type\: ''business'', scheduled_on\: string, schedule_number\: int\<0, max\>\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, personnel\: string\|null, location\: string, general_contractor\: string\|null, person_in_charge\: string\|null, content\: string, memo\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\}, Closure\(App\\Models\\BusinessSchedule\)\: array\{id\: int, type\: ''business'', scheduled_on\: string, schedule_number\: int\<0, max\>\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, personnel\: string\|null, location\: string, general_contractor\: string\|null, person_in_charge\: string\|null, content\: string, memo\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\} given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/BusinessScheduleController.php
-
-		-
-			message: '#^Anonymous function should return array\{id\: int, weekday\: int, weekday_label\: string, label\: string, location\: string\|null, notes\: string\|null, is_active\: bool, sort_order\: int, \.\.\.\} but returns array\{id\: int, weekday\: int, weekday_label\: string, label\: string, location\: string\|null, notes\: string\|null, is_active\: bool, sort_order\: int, \.\.\.\}\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/CleaningDutyRuleController.php
-
-		-
 			message: '#^Method App\\Http\\Controllers\\CleaningDutyRuleController\:\:rulePayload\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, weekday\: int, weekday_label\: string, label\: string, location\: string\|null, notes\: string\|null, is_active\: bool, sort_order\: int, \.\.\.\}\>\.$#'
 			identifier: return.type
 			count: 1
 			path: app/Http/Controllers/CleaningDutyRuleController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\CleaningDutyRule\>\:\:map\(\) expects callable\(App\\Models\\CleaningDutyRule, int\)\: array\{id\: int, weekday\: int, weekday_label\: string, label\: string, location\: string\|null, notes\: string\|null, is_active\: bool, sort_order\: int, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\}, Closure\(App\\Models\\CleaningDutyRule\)\: array\{id\: int, weekday\: int, weekday_label\: string, label\: string, location\: string\|null, notes\: string\|null, is_active\: bool, sort_order\: int, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\} given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/CleaningDutyRuleController.php
-
-		-
-			message: '#^Anonymous function should return array\{id\: int, type\: ''business'', scheduled_on\: string, schedule_number\: int\<0, max\>\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, \.\.\.\} but returns array\{id\: int, type\: ''business'', scheduled_on\: string, schedule_number\: int\<0, max\>\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, \.\.\.\}\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/ConstructionScheduleController.php
-
-		-
-			message: '#^Anonymous function should return array\{id\: int, type\: ''construction'', scheduled_on\: string, schedule_number\: int\<0, max\>\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, \.\.\.\} but returns array\{id\: int, type\: ''construction'', scheduled_on\: string, schedule_number\: int\<0, max\>\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, \.\.\.\}\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/ConstructionScheduleController.php
-
-		-
-			message: '#^Anonymous function should return array\{id\: int, type\: ''internal_notice'', scheduled_on\: string, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, title\: string, \.\.\.\} but returns array\{id\: int, type\: ''internal_notice'', scheduled_on\: string, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, title\: string, \.\.\.\}\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/ConstructionScheduleController.php
-
-		-
-			message: '#^Anonymous function should return array\{id\: mixed, type\: ''cleaning_duty'', scheduled_on\: mixed, time\: ''終日'', starts_at\: null, ends_at\: null, time_note\: ''終日'', title\: mixed, \.\.\.\} but returns array\{id\: mixed, type\: ''cleaning_duty'', scheduled_on\: mixed, time\: ''終日'', starts_at\: null, ends_at\: null, time_note\: ''終日'', title\: mixed, \.\.\.\}\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/ConstructionScheduleController.php
 
 		-
 			message: '#^Method App\\Http\\Controllers\\ConstructionScheduleController\:\:businessSchedulePayload\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, type\: string, scheduled_on\: string, schedule_number\: int\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, \.\.\.\}\>\.$#'
@@ -115,30 +61,6 @@ parameters:
 			path: app/Http/Controllers/ConstructionScheduleController.php
 
 		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\BusinessSchedule\>\:\:map\(\) expects callable\(App\\Models\\BusinessSchedule, int\)\: array\{id\: int, type\: ''business'', scheduled_on\: string, schedule_number\: int\<0, max\>\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, personnel\: string\|null, location\: string, general_contractor\: string\|null, person_in_charge\: string\|null, content\: string, memo\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\}, Closure\(App\\Models\\BusinessSchedule\)\: array\{id\: int, type\: ''business'', scheduled_on\: string, schedule_number\: int\<0, max\>\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, personnel\: string\|null, location\: string, general_contractor\: string\|null, person_in_charge\: string\|null, content\: string, memo\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\} given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/ConstructionScheduleController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\ConstructionSchedule\>\:\:map\(\) expects callable\(App\\Models\\ConstructionSchedule, int\)\: array\{id\: int, type\: ''construction'', scheduled_on\: string, schedule_number\: int\<0, max\>\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, status\: string, meeting_place\: string\|null, personnel\: string\|null, location\: string, site_region\: string\|null, general_contractor\: string\|null, person_in_charge\: string\|null, content\: string\|null, content_version\: int, carry_out_note\: string\|null, navigation_address\: string\|null, google_maps_url\: string\|null, voucher_checked\: bool, voucher_checked_at\: string\|null, voucher_checked_by\: array\{id\: int, name\: string, email\: string\|null\}\|null, voucher_note\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>, subcontractors\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, phone\: string\}\>, guide_files\: Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>, selected_site_guide_file_ids\: Illuminate\\Support\\Collection\<int, mixed\>\}, Closure\(App\\Models\\ConstructionSchedule\)\: array\{id\: int, type\: ''construction'', scheduled_on\: string, schedule_number\: int\<0, max\>\|null, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, status\: string, meeting_place\: string\|null, personnel\: string\|null, location\: string, site_region\: string\|null, general_contractor\: string\|null, person_in_charge\: string\|null, content\: string\|null, content_version\: int, carry_out_note\: string\|null, navigation_address\: string\|null, google_maps_url\: string\|null, voucher_checked\: bool, voucher_checked_at\: string\|null, voucher_checked_by\: array\{id\: int, name\: string, email\: string\|null\}\|null, voucher_note\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>, subcontractors\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, phone\: string\}\>, guide_files\: Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>, selected_site_guide_file_ids\: Illuminate\\Support\\Collection\<int, mixed\>\} given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/ConstructionScheduleController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\InternalNotice\>\:\:map\(\) expects callable\(App\\Models\\InternalNotice, int\)\: array\{id\: int, type\: ''internal_notice'', scheduled_on\: string, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, title\: string, location\: string\|null, content\: string, memo\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\}, Closure\(App\\Models\\InternalNotice\)\: array\{id\: int, type\: ''internal_notice'', scheduled_on\: string, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, title\: string, location\: string\|null, content\: string, memo\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\} given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/ConstructionScheduleController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:map\(\) expects callable\(array\<string, mixed\>, int\)\: array\{id\: mixed, type\: ''cleaning_duty'', scheduled_on\: mixed, time\: ''終日'', starts_at\: null, ends_at\: null, time_note\: ''終日'', title\: mixed, location\: mixed, content\: mixed, memo\: mixed, rule_id\: mixed, weekday\: mixed, weekday_label\: mixed, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\}, Closure\(array\)\: array\{id\: mixed, type\: ''cleaning_duty'', scheduled_on\: mixed, time\: ''終日'', starts_at\: null, ends_at\: null, time_note\: ''終日'', title\: mixed, location\: mixed, content\: mixed, memo\: mixed, rule_id\: mixed, weekday\: mixed, weekday_label\: mixed, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\} given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/ConstructionScheduleController.php
-
-		-
 			message: '#^Unable to resolve the template type TKey in call to function collect$#'
 			identifier: argument.templateType
 			count: 2
@@ -151,20 +73,8 @@ parameters:
 			path: app/Http/Controllers/ConstructionScheduleController.php
 
 		-
-			message: '#^Anonymous function should return array\{id\: int, scheduled_on\: string, time\: string, starts_at\: string\|null, location\: string, general_contractor\: string\|null, person_in_charge\: string\|null, content\: string\|null, \.\.\.\} but returns array\{id\: int, scheduled_on\: string, time\: string, starts_at\: string\|null, location\: string, general_contractor\: string\|null, person_in_charge\: string\|null, content\: string\|null, \.\.\.\}\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/ConstructionScheduleVoucherController.php
-
-		-
 			message: '#^Method App\\Http\\Controllers\\ConstructionScheduleVoucherController\:\:schedulePayload\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, scheduled_on\: string, time\: string, starts_at\: string\|null, location\: string, general_contractor\: string\|null, person_in_charge\: string\|null, content\: string\|null, \.\.\.\}\>\.$#'
 			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/ConstructionScheduleVoucherController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\ConstructionSchedule\>\:\:map\(\) expects callable\(App\\Models\\ConstructionSchedule, int\)\: array\{id\: int, scheduled_on\: string, time\: string, starts_at\: string\|null, location\: string, general_contractor\: string\|null, person_in_charge\: string\|null, content\: string\|null, voucher_checked\: bool, voucher_checked_at\: string\|null, voucher_checked_by\: array\{id\: int, name\: string, email\: string\|null\}\|null, voucher_note\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\}, Closure\(App\\Models\\ConstructionSchedule\)\: array\{id\: int, scheduled_on\: string, time\: string, starts_at\: string\|null, location\: string, general_contractor\: string\|null, person_in_charge\: string\|null, content\: string\|null, voucher_checked\: bool, voucher_checked_at\: string\|null, voucher_checked_by\: array\{id\: int, name\: string, email\: string\|null\}\|null, voucher_note\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\} given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Http/Controllers/ConstructionScheduleVoucherController.php
 
@@ -175,28 +85,10 @@ parameters:
 			path: app/Http/Controllers/ConstructionSiteController.php
 
 		-
-			message: '#^Anonymous function should return array\{id\: int, type\: ''internal_notice'', scheduled_on\: string, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, title\: string, \.\.\.\} but returns array\{id\: int, type\: ''internal_notice'', scheduled_on\: string, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, title\: string, \.\.\.\}\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/InternalNoticeController.php
-
-		-
 			message: '#^Method App\\Http\\Controllers\\InternalNoticeController\:\:noticePayload\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, type\: string, scheduled_on\: string, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, title\: string, \.\.\.\}\>\.$#'
 			identifier: return.type
 			count: 1
 			path: app/Http/Controllers/InternalNoticeController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\InternalNotice\>\:\:map\(\) expects callable\(App\\Models\\InternalNotice, int\)\: array\{id\: int, type\: ''internal_notice'', scheduled_on\: string, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, title\: string, location\: string\|null, content\: string, memo\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\}, Closure\(App\\Models\\InternalNotice\)\: array\{id\: int, type\: ''internal_notice'', scheduled_on\: string, time\: string, starts_at\: string\|null, ends_at\: string\|null, time_note\: string\|null, title\: string, location\: string\|null, content\: string, memo\: string\|null, assigned_users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\} given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/InternalNoticeController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\ScheduleOverviewController\:\:selectedDayTimeline\(\) should return array\{users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>, events\: Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>, attendanceLeaveRecords\: Illuminate\\Support\\Collection\<int, array\{id\: int, user_id\: int, user_name\: string, work_date\: string, note\: string\|null\}\>\} but returns array\{users\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>, events\: Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>, attendanceLeaveRecords\: Illuminate\\Support\\Collection\<int, array\{id\: int, user_id\: int, user_name\: string, work_date\: string, note\: string\|null\}\>\}\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/ScheduleOverviewController.php
 
 		-
 			message: '#^Parameter \#1 \$calendarDays of method App\\Http\\Controllers\\ScheduleOverviewController\:\:monthSummary\(\) expects Illuminate\\Support\\Collection\<int, array\{date\: string, construction_count\: int, business_count\: int, internal_notice_count\: int, carry_out_count\: int, unconfirmed_voucher_count\: int, schedule_count\: int\}\>, Illuminate\\Support\\Collection\<int, array\{date\: string, construction_count\: int, business_count\: int, internal_notice_count\: int, carry_out_count\: int, voucher_confirmation_count\: int, unconfirmed_voucher_count\: int, schedule_count\: int\}\> given\.$#'
@@ -307,19 +199,7 @@ parameters:
 			path: app/Providers/AppServiceProvider.php
 
 		-
-			message: '#^Method App\\Services\\ScheduleFormOptionsService\:\:attendanceLeaveRecords\(\) should return Illuminate\\Support\\Collection\<int, array\{id\: int, user_id\: int, user_name\: string, work_date\: string, note\: string\|null\}\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, user_id\: int, user_name\: string, work_date\: string, note\: string\|null\}\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/ScheduleFormOptionsService.php
-
-		-
 			message: '#^Method App\\Services\\ScheduleFormOptionsService\:\:scheduleAvailability\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, type\: string, title\: string, scheduled_on\: string, starts_at\: string\|null, ends_at\: string\|null, time\: string, user_ids\: Illuminate\\Support\\Collection\<int, mixed\>, \.\.\.\}\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/ScheduleFormOptionsService.php
-
-		-
-			message: '#^Method App\\Services\\ScheduleFormOptionsService\:\:userPayload\(\) should return Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, email\: string\|null\}\>\.$#'
 			identifier: return.type
 			count: 1
 			path: app/Services/ScheduleFormOptionsService.php

@@ -32,9 +32,7 @@ class CreateAdminUser extends Command
         $email = $this->option('email');
         $password = $this->option('password') ?: $this->secret('Password');
 
-        if ($email === null) {
-            $email = $this->ask('Email address (optional)');
-        }
+        $email ??= $this->ask('Email address (optional)');
 
         $data = [
             'name' => $name,

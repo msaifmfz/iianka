@@ -27,10 +27,7 @@ export type SiteGuideFileSummary = SiteGuideFile & {
 };
 
 export type ConstructionScheduleStatus =
-    | 'scheduled'
-    | 'confirmed'
-    | 'postponed'
-    | 'canceled';
+    'scheduled' | 'confirmed' | 'postponed' | 'canceled';
 
 export type ConstructionSchedule = {
     id: number;
