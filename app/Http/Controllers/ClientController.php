@@ -45,7 +45,6 @@ class ClientController extends Controller
 
         return Inertia::render('clients/form', [
             'client' => null,
-            'usedColors' => $this->usedColors(),
         ]);
     }
 
@@ -53,6 +52,7 @@ class ClientController extends Controller
     {
         $client = Client::query()->create([
             ...$request->validated(),
+            'color' => '#6b7280',
             'created_by_user_id' => $request->user()?->id,
         ]);
 
@@ -95,7 +95,6 @@ class ClientController extends Controller
 
         return Inertia::render('clients/form', [
             'client' => [...$presenter->summary($client), 'note' => $client->note],
-            'usedColors' => $this->usedColors($client),
         ]);
     }
 
@@ -128,20 +127,5 @@ class ClientController extends Controller
         $this->flashToast('顧客を削除しました。');
 
         return to_route('crm.clients.index');
-    }
-
-    /**
-     * Colors other clients already use, so the form can suggest one that
-     * stands apart on the map.
-     *
-     * @return list<string>
-     */
-    private function usedColors(?Client $except = null): array
-    {
-        return Client::query()
-            ->when($except instanceof Client, fn ($query) => $query->whereKeyNot($except?->id))
-            ->pluck('color')
-            ->values()
-            ->all();
     }
 }

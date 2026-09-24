@@ -20,13 +20,13 @@ import {
 import { edit as placeEdit } from '@/actions/App/Http/Controllers/ClientPlaceController';
 import { destroy as attachmentDestroy } from '@/actions/App/Http/Controllers/ClientPlaceLogAttachmentController';
 import { destroy as logDestroy } from '@/actions/App/Http/Controllers/ClientPlaceLogController';
-import ClientBadge from '@/components/client-badge';
 import { HelpButton as Button } from '@/components/crm-map/action-help';
 import { Badge } from '@/components/ui/badge';
 import { Button as PlainButton } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { formatCrmDateTime, googleMapsDirectionsUrl } from '@/lib/crm';
+import { sortedStaff, staffColor, staffName } from '@/lib/crm-staff';
 import { formatMinutesSeconds } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type {
@@ -268,6 +268,7 @@ function LogEntry({
  */
 export default function PlacePanel({
     selected,
+    staffId,
     canManage,
     logTypes,
     reactions,
@@ -279,6 +280,7 @@ export default function PlacePanel({
 }: {
     /** `null` while the tapped pin's history is loading. */
     selected: SelectedPlace | null;
+    staffId: number | null;
     canManage: boolean;
     logTypes: CrmOption[];
     reactions: CrmOption[];
@@ -379,7 +381,6 @@ export default function PlacePanel({
 
     const title = (
         <div className="flex items-center gap-3">
-            <ClientBadge client={client} />
             <div className="min-w-0">
                 <Link
                     href={clientShow(client.id)}
@@ -406,6 +407,58 @@ export default function PlacePanel({
         <PanelShell title={title} onClose={onClose} expand={editing !== null}>
             {dialog}
             <div className="space-y-4">
+                <section
+                    aria-label="担当者の活動サマリー"
+                    className="rounded-lg border bg-muted/50 p-3 text-sm"
+                >
+                    <p className="mb-1 text-xs text-muted-foreground">
+                        この地点に関わった担当者(社)・最終記録
+                    </p>
+                    {selected.staff_activities.length === 0 ? (
+                        <p>記録なし</p>
+                    ) : (
+                        <ul className="space-y-2">
+                            {sortedStaff(selected.staff_activities).map(
+                                (activity) => (
+                                    <li
+                                        key={activity.user?.id ?? 'unknown'}
+                                        className="flex items-start gap-2"
+                                    >
+                                        <span
+                                            aria-hidden="true"
+                                            className="mt-1 size-3 shrink-0 rounded-full"
+                                            style={{
+                                                backgroundColor: staffColor(
+                                                    activity.user?.id ?? null,
+                                                ),
+                                            }}
+                                        />
+                                        <div className="min-w-0">
+                                            <p className="font-medium wrap-anywhere">
+                                                {staffName(activity)}
+                                                {staffId !== null &&
+                                                    activity.user?.id ===
+                                                        staffId && (
+                                                        <Badge
+                                                            variant="outline"
+                                                            className="ml-2"
+                                                        >
+                                                            選択中
+                                                        </Badge>
+                                                    )}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {formatCrmDateTime(
+                                                    activity.occurred_at,
+                                                )}
+                                            </p>
+                                        </div>
+                                    </li>
+                                ),
+                            )}
+                        </ul>
+                    )}
+                </section>
                 {place.address && (
                     <p className="text-sm text-muted-foreground">
                         {place.address}

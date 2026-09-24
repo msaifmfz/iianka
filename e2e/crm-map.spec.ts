@@ -88,28 +88,36 @@ test.describe('CRM map', () => {
 
     test('an admin adds a client, drops a place on the map and logs a visit', async ({
         page,
-    }) => {
+    }, testInfo) => {
         const clientName = `E2E 神戸物産 ${Date.now()}`;
 
         await login(page, 'e2e-admin');
         await page.goto('/crm/clients/create');
 
-        // The seeded client holds red, so the form suggests another color.
-        // (Which one depends on clients other browsers create in parallel.)
-        await expect(
-            page.getByRole('button', { name: '#dc2626（使用中）' }),
-        ).toHaveAttribute('aria-pressed', 'false');
-        await expect(
-            page.getByRole('button', { pressed: true, name: /^#/ }),
-        ).toHaveCount(1);
+        await expect(page.locator('input[type="color"]')).toHaveCount(0);
+        await expect(page.getByRole('button', { name: /^#/ })).toHaveCount(0);
 
         await page.getByLabel('顧客名').fill(clientName);
         await page.getByLabel(/略称/).fill('神');
-        await page.getByLabel('その他の色').fill('#ffffff');
+        await page.screenshot({ path: testInfo.outputPath('client-form.png') });
         await page
             .getByRole('button', { name: '顧客を追加', exact: true })
             .click();
         await expect(page).toHaveURL(/\/crm\/clients\/\d+$/);
+        await page.screenshot({
+            path: testInfo.outputPath('client-detail.png'),
+        });
+        await page
+            .getByRole('link', { name: '編集', exact: true })
+            .click();
+        await expect(page.locator('input[type="color"]')).toHaveCount(0);
+        await page.getByLabel('メモ').fill('色の選択なしで編集できます');
+        await page
+            .getByRole('button', { name: '顧客を編集', exact: true })
+            .click();
+        await expect(
+            page.getByText('色の選択なしで編集できます'),
+        ).toBeVisible();
 
         // Long-press (right-click on desktop) the map to add a place there.
         await page.goto('/crm/map');
@@ -133,8 +141,8 @@ test.describe('CRM map', () => {
         const panel = page.getByRole('complementary', { name: '地点の記録' });
         await expect(panel.getByText('E2E 三宮事務所').first()).toBeVisible();
         await expect(
-            page.locator('.crm-pin--selected .crm-pin__label'),
-        ).toHaveCSS('color', 'rgb(0, 0, 0)');
+            page.locator('.crm-pin--selected + .crm-pin__staff'),
+        ).toHaveText('記録なし');
         await expect(
             panel.getByText(
                 'まだ記録がありません。最初の記録を追加しましょう。',
@@ -185,7 +193,7 @@ test.describe('CRM map', () => {
         await page.goto('/crm/map');
 
         await expect(
-            page.locator('[title="E2E 東大阪工業 E2E 東大阪事務所"] .crm-pin'),
+            page.locator('[title*="E2E 東大阪工業 E2E 東大阪事務所"] .crm-pin'),
         ).toHaveCSS('opacity', '1');
 
         await page.getByPlaceholder('顧客を探す').fill('西日本');
@@ -200,11 +208,182 @@ test.describe('CRM map', () => {
             page.getByRole('button', { name: '絞り込みを解除', exact: true }),
         ).toBeVisible();
         await expect(
-            page.locator(`[title="${seededClient} ${seededOffice}"] .crm-pin`),
+            page.locator(`[title*="${seededClient} ${seededOffice}"] .crm-pin`),
         ).not.toHaveClass(/crm-pin--dimmed/);
         await expect(
-            page.locator('[title="E2E 東大阪工業 E2E 東大阪事務所"] .crm-pin'),
+            page.locator('[title*="E2E 東大阪工業 E2E 東大阪事務所"] .crm-pin'),
         ).toHaveClass(/crm-pin--dimmed/);
+    });
+
+    test('pins show all activity authors and staff filters preserve colleagues on desktop and mobile', async ({
+        page,
+        browser,
+    }, testInfo) => {
+        const clientName = `E2E 担当者別 ${Date.now()}`;
+        const placeName = 'E2E 担当者別訪問先';
+        const latestVisitorName = 'E2E <b>佐藤</b> & "訪問担当" 長いスタッフ名';
+        await login(page, 'e2e-admin');
+        await page.goto('/crm/clients/create');
+        await page.getByLabel('顧客名').fill(clientName);
+        await page.getByLabel(/略称/).fill('担');
+        await page
+            .getByRole('button', { name: '顧客を追加', exact: true })
+            .click();
+        await expect(page).toHaveURL(/\/crm\/clients\/\d+$/);
+        const clientId = new URL(page.url()).pathname.split('/').pop();
+        await page.goto(
+            `/crm/clients/${clientId}/places/create?lat=34.65&lng=135.30`,
+        );
+        await page.getByLabel('地点名').fill(placeName);
+        await page
+            .getByRole('button', { name: '地点を追加', exact: true })
+            .click();
+        await expect(page).toHaveURL(/\/crm\/map\?place=\d+/);
+        const mapUrl = page.url();
+        const panel = page.getByRole('complementary', { name: '地点の記録' });
+        await expect(
+            panel.getByRole('region', { name: '担当者の活動サマリー' }),
+        ).toContainText('記録なし');
+        await panel
+            .getByRole('button', { name: '記録を追加', exact: true })
+            .click();
+        await panel.getByLabel('日時').fill('2026-09-01T10:00');
+        await panel.getByLabel('種類').selectOption('call');
+        await panel.getByLabel('内容').fill('E2E 担当者別 以前の訪問');
+        await panel
+            .getByRole('button', { name: '記録する', exact: true })
+            .click();
+        await expect(
+            panel.getByRole('region', { name: '担当者の活動サマリー' }),
+        ).toContainText('E2E Admin User');
+
+        const visitorContext = await browser.newContext();
+
+        try {
+            const visitorPage = await visitorContext.newPage();
+            await blockMapTiles(visitorPage);
+            await login(visitorPage, 'e2e-crm-visitor');
+            await visitorPage.goto(mapUrl);
+            const visitorPanel = visitorPage.getByRole('complementary', {
+                name: '地点の記録',
+            });
+            await visitorPanel
+                .getByRole('button', { name: '記録を追加', exact: true })
+                .click();
+            await visitorPanel.getByLabel('日時').fill('2026-09-10T10:00');
+            await visitorPanel.getByLabel('種類').selectOption('meeting');
+            await visitorPanel
+                .getByLabel('内容')
+                .fill('E2E 担当者別 最新の訪問');
+            await visitorPanel
+                .getByRole('button', { name: '記録する', exact: true })
+                .click();
+            await expect(
+                visitorPanel.getByRole('region', {
+                    name: '担当者の活動サマリー',
+                }),
+            ).toContainText(latestVisitorName);
+        } finally {
+            await visitorContext.close();
+        }
+
+        await page.reload();
+        const pin = page.getByTitle(`${clientName} ${placeName}`);
+        const expectedNames = [latestVisitorName, 'E2E Admin User'].sort(
+            (a, b) => a.localeCompare(b, 'ja'),
+        );
+        await expect(pin.locator('.crm-pin__staff-name')).toHaveText(
+            expectedNames,
+        );
+        const staffBackground = await pin
+            .locator('.crm-pin')
+            .evaluate((element) => getComputedStyle(element).backgroundImage);
+        expect(staffBackground).toContain('conic-gradient');
+        await expect(pin.locator('.crm-pin__staff-name b')).toHaveCount(0);
+        expect(
+            await pin
+                .locator('.crm-pin__staff-name')
+                .filter({ hasText: latestVisitorName })
+                .evaluate(
+                    (element) => element.scrollWidth > element.clientWidth,
+                ),
+        ).toBe(true);
+        const selector = page.getByLabel('関わった担当者(社)');
+        await selector.selectOption({
+            label: '自分が関わった地点（E2E Admin User）',
+        });
+        await expect(pin.locator('.crm-pin__staff-name')).toHaveText(
+            expectedNames,
+        );
+        await expect(
+            pin.locator('.crm-pin__staff-chip--highlighted'),
+        ).toHaveText('E2E Admin User');
+        await expect(pin).toHaveAttribute('title', /2026\/09\/01/);
+        await expect(
+            panel.getByRole('region', { name: '担当者の活動サマリー' }),
+        ).toContainText('選択中');
+        await expect(
+            panel.getByRole('region', { name: '担当者の活動サマリー' }),
+        ).toContainText('2026/09/01');
+        await expect(panel.getByText('E2E 担当者別 最新の訪問')).toBeVisible();
+        await page.getByRole('link', { name: '一覧', exact: true }).click();
+        await page
+            .getByRole('link', { name: '地図に戻る', exact: true })
+            .click();
+        await expect(selector.locator('option:checked')).toHaveText(
+            '自分が関わった地点（E2E Admin User）',
+        );
+        await expect(pin.locator('.crm-pin__staff-name')).toHaveText(
+            expectedNames,
+        );
+        await expect(pin.locator('.crm-pin')).toHaveCSS(
+            'background-image',
+            staffBackground,
+        );
+        const desktopStaffBounds = await pin
+            .locator('.crm-pin__staff')
+            .boundingBox();
+        const desktopPanelBounds = await panel.boundingBox();
+        expect(desktopStaffBounds).not.toBeNull();
+        expect(desktopPanelBounds).not.toBeNull();
+        expect(
+            desktopStaffBounds!.x + desktopStaffBounds!.width,
+        ).toBeLessThanOrEqual(desktopPanelBounds!.x);
+        await page.screenshot({
+            path: testInfo.outputPath('staff-desktop.png'),
+        });
+
+        await page.setViewportSize({ width: 390, height: 844 });
+        await expect(selector).toBeVisible();
+        await expect(
+            panel.getByRole('region', { name: '担当者の活動サマリー' }),
+        ).toBeVisible();
+        await page.screenshot({
+            path: testInfo.outputPath('staff-mobile.png'),
+        });
+        await selector.selectOption('all');
+        await expect(pin.locator('.crm-pin__staff-name')).toHaveText(
+            expectedNames,
+        );
+        await expect(
+            pin.locator('.crm-pin__staff-chip--highlighted'),
+        ).toHaveCount(0);
+        await expect(pin.locator('.crm-pin')).toHaveCSS(
+            'background-image',
+            staffBackground,
+        );
+        await page.keyboard.press('Escape');
+        await pin.focus();
+        await expect(
+            page.getByRole('tooltip').filter({ hasText: placeName }),
+        ).toBeVisible();
+        await page.keyboard.press('Enter');
+        await expect(
+            panel.getByRole('region', { name: '担当者の活動サマリー' }),
+        ).toContainText(latestVisitorName);
+        await page.screenshot({
+            path: testInfo.outputPath('staff-long-name-mobile.png'),
+        });
     });
 
     test('archive visibility stays in sync when toggled on and off', async ({

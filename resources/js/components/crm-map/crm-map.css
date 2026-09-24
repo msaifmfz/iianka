@@ -10,7 +10,7 @@
     height: 36px;
     align-items: center;
     justify-content: center;
-    background: var(--pin-color);
+    background: var(--pin-background, var(--pin-color));
     border: 2px solid #fff;
     box-shadow: 0 2px 6px rgb(0 0 0 / 0.35);
     transition:
@@ -51,6 +51,74 @@
     border-radius: 9999px;
     background: #22c55e;
     border: 2px solid #fff;
+}
+
+.crm-pin__staff {
+    position: absolute;
+    top: 4px;
+    left: 42px;
+    display: flex;
+    width: max-content;
+    max-width: 140px;
+    flex-wrap: wrap;
+    gap: 3px;
+    padding: 4px;
+    border: 1px solid #d4d4d4;
+    border-radius: 6px;
+    background: #fff;
+    color: #171717;
+    box-shadow: 0 1px 4px rgb(0 0 0 / 0.2);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 16px;
+}
+
+.crm-pin__staff-chip {
+    display: flex;
+    min-width: 0;
+    max-width: 100%;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 3px;
+    border-radius: 3px;
+}
+
+@media (width < 768px) {
+    .crm-pin__staff {
+        max-width: 180px;
+    }
+}
+
+.crm-pin__staff-chip--highlighted {
+    outline: 1px solid currentColor;
+}
+
+.crm-pin__staff-dot {
+    width: 7px;
+    height: 7px;
+    flex-shrink: 0;
+    border-radius: 50%;
+}
+
+.crm-pin__staff-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dark .crm-pin__staff {
+    border-color: #525252;
+    background: #171717;
+    color: #fafafa;
+}
+
+.crm-pin--dimmed + .crm-pin__staff {
+    opacity: 0.2;
+}
+
+.crm-pin-wrapper:focus-visible .crm-pin__staff {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
 }
 
 .crm-pin--place .crm-pin__recent {

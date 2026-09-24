@@ -88,7 +88,7 @@ export default function LocationPicker({
                     interactive={false}
                     icon={pinIcon({
                         kind: pin.kind,
-                        color: client.color,
+                        color: '#6b7280',
                         label: client.short_label,
                         name: pin.name,
                         freshness: 'normal',
@@ -105,7 +105,7 @@ export default function LocationPicker({
                     zIndexOffset={1000}
                     icon={pinIcon({
                         kind,
-                        color: client.color,
+                        color: '#6b7280',
                         label: client.short_label,
                         freshness: 'normal',
                         dimmed: false,

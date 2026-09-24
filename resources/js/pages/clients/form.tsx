@@ -1,5 +1,5 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, Check } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import {
     index as clientIndex,
     show as clientShow,
@@ -7,35 +7,27 @@ import {
     update as clientUpdate,
 } from '@/actions/App/Http/Controllers/ClientController';
 import ClientBadge from '@/components/client-badge';
-import {
-    ActionHelp,
-    HelpButton as Button,
-} from '@/components/crm-map/action-help';
+import { HelpButton as Button } from '@/components/crm-map/action-help';
 import FormField from '@/components/form-field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { CLIENT_COLOR_PALETTE, pickClientColor } from '@/lib/crm-colors';
-import { cn } from '@/lib/utils';
 import type { ClientSummary } from '@/types';
 
 type Props = {
     client: (ClientSummary & { note: string | null }) | null;
-    usedColors: string[];
 };
 
 type ClientForm = {
     name: string;
     short_label: string;
-    color: string;
     note: string;
 };
 
-export default function ClientFormPage({ client, usedColors }: Props) {
+export default function ClientFormPage({ client }: Props) {
     const { data, setData, post, patch, processing, errors } =
         useForm<ClientForm>({
             name: client?.name ?? '',
             short_label: client?.short_label ?? '',
-            color: client?.color ?? pickClientColor(usedColors),
             note: client?.note ?? '',
         });
     const title = client ? '顧客を編集' : '顧客を追加';
@@ -91,7 +83,7 @@ export default function ClientFormPage({ client, usedColors }: Props) {
                     </FormField>
 
                     <FormField
-                        label="略称（地図のピンに表示・3文字まで）"
+                        label="略称（3文字まで）"
                         required
                         error={errors.short_label}
                     >
@@ -106,70 +98,14 @@ export default function ClientFormPage({ client, usedColors }: Props) {
                         />
                     </FormField>
 
-                    <FormField
-                        as="div"
-                        label={
-                            <span className="flex items-center gap-1">
-                                色（この顧客のピンすべてに使われます）
-                                <ActionHelp title="色を選ぶ">
-                                    丸い色ボタンを押すと、この顧客のピンの色になります。薄く表示された色は他の顧客が使用中です。「その他の色」から好きな色も選べます。
-                                </ActionHelp>
-                            </span>
-                        }
-                        required
-                        error={errors.color}
-                    >
-                        <div className="flex flex-wrap items-center gap-2">
-                            {CLIENT_COLOR_PALETTE.map((color) => {
-                                const isSelected = data.color === color;
-                                const isUsed = usedColors.includes(color);
-
-                                return (
-                                    <button
-                                        key={color}
-                                        type="button"
-                                        aria-label={`${color}${isUsed ? '（使用中）' : ''}`}
-                                        aria-pressed={isSelected}
-                                        onClick={() => setData('color', color)}
-                                        className={cn(
-                                            'relative inline-flex size-9 items-center justify-center rounded-full ring-offset-2 transition dark:ring-offset-neutral-950',
-                                            isSelected && 'ring-2 ring-ring',
-                                            isUsed &&
-                                                !isSelected &&
-                                                'opacity-40',
-                                        )}
-                                        style={{ backgroundColor: color }}
-                                    >
-                                        {isSelected && (
-                                            <Check className="size-4 text-white" />
-                                        )}
-                                    </button>
-                                );
-                            })}
-                            <Input
-                                type="color"
-                                aria-label="その他の色"
-                                className="h-9 w-14 cursor-pointer p-1"
-                                value={data.color}
-                                onChange={(event) =>
-                                    setData('color', event.target.value)
-                                }
-                            />
-                        </div>
-                        <p className="text-xs font-normal text-muted-foreground">
-                            薄く表示された色は他の顧客が使用中です。
-                        </p>
-                    </FormField>
-
                     <div className="flex items-center gap-3 rounded-2xl bg-neutral-50 p-4 text-sm dark:bg-neutral-900">
                         <ClientBadge
                             client={{
-                                color: data.color,
                                 short_label: data.short_label || '?',
                             }}
                         />
                         <span className="text-muted-foreground">
-                            地図ではこのように表示されます
+                            顧客一覧ではこのように表示されます
                         </span>
                     </div>
 
@@ -186,7 +122,7 @@ export default function ClientFormPage({ client, usedColors }: Props) {
                     <div className="flex justify-end">
                         <Button
                             helpTitle={title}
-                            help="顧客名・略称・地図の色・メモを保存します。"
+                            help="顧客名・略称・メモを保存します。"
                             type="submit"
                             disabled={processing}
                         >

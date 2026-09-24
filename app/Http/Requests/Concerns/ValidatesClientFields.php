@@ -18,7 +18,6 @@ trait ValidatesClientFields
         $this->merge([
             'name' => trim((string) $this->input('name', '')),
             'short_label' => trim((string) $this->input('short_label', '')),
-            'color' => strtolower(trim((string) $this->input('color', ''))),
             'note' => $this->nullableStringInput('note'),
         ]);
     }
@@ -31,7 +30,6 @@ trait ValidatesClientFields
         return [
             'name' => ['required', 'string', 'max:255'],
             'short_label' => ['required', 'string', 'max:3'],
-            'color' => ['required', 'string', 'regex:/^#[0-9a-f]{6}$/'],
             'note' => ['nullable', 'string', 'max:5000'],
         ];
     }
@@ -44,7 +42,6 @@ trait ValidatesClientFields
         return [
             'name' => '顧客名',
             'short_label' => '略称',
-            'color' => '色',
             'note' => 'メモ',
         ];
     }

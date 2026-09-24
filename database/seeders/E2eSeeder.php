@@ -221,6 +221,17 @@ class E2eSeeder extends Seeder
      */
     private function seedCrm(User $worker): void
     {
+        $visitor = new User;
+        $visitor->forceFill([
+            'name' => 'E2E <b>佐藤</b> & "訪問担当" 長いスタッフ名',
+            'login_id' => 'e2e-crm-visitor',
+            'email' => 'e2e-crm-visitor@example.test',
+            'email_verified_at' => now(),
+            'password' => 'password',
+            'role' => UserRole::Viewer,
+            'is_hidden_from_workers' => true,
+        ])->save();
+
         $client = Client::create([
             'name' => 'E2E 西日本商事',
             'short_label' => '西',

@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * A pin on the CRM map: a location where things happen with one client.
@@ -72,6 +73,31 @@ class ClientPlace extends Model
     public function logs(): HasMany
     {
         return $this->hasMany(ClientPlaceLog::class);
+    }
+
+    /**
+     * @return HasOne<ClientPlaceLog, $this>
+     */
+    public function latestActivity(): HasOne
+    {
+        return $this->hasOne(ClientPlaceLog::class)->ofMany([
+            'occurred_at' => 'max',
+            'id' => 'max',
+        ]);
+    }
+
+    /**
+     * Read-only summaries: one date per author across every activity type.
+     *
+     * @return HasMany<ClientPlaceLog, $this>
+     */
+    public function staffActivitySummaries(): HasMany
+    {
+        return $this->logs()
+            ->select(['client_place_id', 'user_id'])
+            ->selectRaw('MAX(occurred_at) as occurred_at')
+            ->groupBy('client_place_id', 'user_id')
+            ->orderBy('user_id');
     }
 
     /**

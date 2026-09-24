@@ -18,10 +18,16 @@ import {
 } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { pinFreshness } from '@/lib/crm';
+import { formatCrmDateTime, pinFreshness } from '@/lib/crm';
 import { MAP_LAYERS } from '@/lib/crm-map-memory';
 import type { MapLayer, MapViewport } from '@/lib/crm-map-memory';
-import type { ClientSummary, MapPin } from '@/types';
+import {
+    displayedActivity,
+    sortedStaff,
+    staffColor,
+    staffName,
+} from '@/lib/crm-staff';
+import type { ClientSummary, CrmMapPin } from '@/types';
 import { clusterIcon, pinIcon } from './pin-icons';
 
 /** Osaka: the fallback view before any place exists. */
@@ -79,12 +85,13 @@ export function BaseLayers({
 }
 
 type Props = {
-    pins: MapPin[];
+    pins: CrmMapPin[];
+    staffId: number | null;
     clientsById: Map<number, ClientSummary>;
     focusClientId: number | null;
     selectedPlaceId: number | null;
     onSelectPlace: (placeId: number) => void;
-    onVisibleClientsChange: (clientIds: number[]) => void;
+    onVisiblePlacesChange: (placeIds: number[]) => void;
     /** Long-press (or right-click) on empty map; only for content managers. */
     onPickLocation?: (lat: number, lng: number) => void;
     onReady: (map: L.Map) => void;
@@ -105,7 +112,7 @@ function InitialView({
     initialViewport,
     initialClientId,
 }: {
-    pins: MapPin[];
+    pins: CrmMapPin[];
     selectedPlaceId: number | null;
     initialViewport?: MapViewport | null;
     initialClientId: number | null;
@@ -163,7 +170,7 @@ function InitialView({
 
 function MapEvents({
     pins,
-    onVisibleClientsChange,
+    onVisiblePlacesChange,
     onPickLocation,
     onReady,
     initialViewport,
@@ -171,7 +178,7 @@ function MapEvents({
 }: Pick<
     Props,
     | 'pins'
-    | 'onVisibleClientsChange'
+    | 'onVisiblePlacesChange'
     | 'onPickLocation'
     | 'onReady'
     | 'initialViewport'
@@ -182,7 +189,7 @@ function MapEvents({
     );
     const map = useMapEvents({
         moveend: () => {
-            reportVisibleClients();
+            reportVisiblePlaces();
             reportViewport();
         },
         baselayerchange: (event) => {
@@ -207,22 +214,22 @@ function MapEvents({
         });
     }
 
-    function reportVisibleClients() {
+    function reportVisiblePlaces() {
         const bounds = map.getBounds();
-        const clientIds = new Set<number>();
+        const placeIds: number[] = [];
 
         for (const pin of pins) {
             if (bounds.contains([pin.lat, pin.lng])) {
-                clientIds.add(pin.client_id);
+                placeIds.push(pin.id);
             }
         }
 
-        onVisibleClientsChange([...clientIds]);
+        onVisiblePlacesChange(placeIds);
     }
 
     useEffect(() => {
         onReady(map);
-        reportVisibleClients();
+        reportVisiblePlaces();
         reportViewport();
         // Re-report when the pin set changes (e.g. archived toggled).
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -244,11 +251,6 @@ function SelectedView({
     const centeredPlaceId = useRef<number | null>(null);
 
     useEffect(() => {
-        if (restoredSelection.current === selectedPlaceId) {
-            return;
-        }
-
-        restoredSelection.current = undefined;
         const pin = pins.find((item) => item.id === selectedPlaceId);
 
         if (!pin) {
@@ -257,25 +259,49 @@ function SelectedView({
             return;
         }
 
-        if (centeredPlaceId.current !== selectedPlaceId) {
-            map.setView([pin.lat, pin.lng], Math.max(map.getZoom(), 15), {
+        function frameSelection() {
+            if (!pin) {
+                return;
+            }
+
+            if (centeredPlaceId.current !== selectedPlaceId) {
+                map.setView([pin.lat, pin.lng], Math.max(map.getZoom(), 15), {
+                    animate: false,
+                });
+                centeredPlaceId.current = selectedPlaceId;
+            }
+
+            const size = map.getSize();
+            map.panInside([pin.lat, pin.lng], {
+                paddingTopLeft: [
+                    isMobile ? 24 : Math.min(380, size.x * 0.35),
+                    isMobile ? 280 : 24,
+                ],
+                paddingBottomRight: [
+                    isMobile ? 230 : Math.min(650, size.x * 0.6),
+                    isMobile ? size.y * 0.55 + 24 : 24,
+                ],
                 animate: false,
             });
+        }
+
+        if (restoredSelection.current !== selectedPlaceId) {
+            restoredSelection.current = undefined;
+            frameSelection();
+        } else {
             centeredPlaceId.current = selectedPlaceId;
         }
 
-        const size = map.getSize();
-        map.panInside([pin.lat, pin.lng], {
-            paddingTopLeft: [
-                isMobile ? 24 : Math.min(380, size.x * 0.35),
-                isMobile ? 150 : 24,
-            ],
-            paddingBottomRight: [
-                isMobile ? 24 : Math.min(440, size.x * 0.45),
-                isMobile ? size.y * 0.55 + 24 : 24,
-            ],
-            animate: false,
-        });
+        function onResize() {
+            restoredSelection.current = undefined;
+            frameSelection();
+        }
+
+        map.on('resize', onResize);
+
+        return () => {
+            map.off('resize', onResize);
+        };
     }, [map, pins, selectedPlaceId, isMobile]);
 
     return null;
@@ -283,11 +309,12 @@ function SelectedView({
 
 export default function MapView({
     pins,
+    staffId,
     clientsById,
     focusClientId,
     selectedPlaceId,
     onSelectPlace,
-    onVisibleClientsChange,
+    onVisiblePlacesChange,
     onPickLocation,
     onReady,
     initialViewport,
@@ -359,13 +386,14 @@ export default function MapView({
             />
             <MapEvents
                 pins={pins}
-                onVisibleClientsChange={onVisibleClientsChange}
+                onVisiblePlacesChange={onVisiblePlacesChange}
                 onPickLocation={onPickLocation}
                 onReady={onReady}
                 initialViewport={initialViewport}
                 onViewportChange={onViewportChange}
             />
             <MarkerClusterGroup
+                key={staffId ?? 'all'}
                 iconCreateFunction={clusterIcon}
                 chunkedLoading
                 maxClusterRadius={40}
@@ -380,24 +408,52 @@ export default function MapView({
                     }
 
                     const isSelected = pin.id === selectedPlaceId;
+                    const activity = displayedActivity(pin, staffId);
+                    const authors = sortedStaff(pin.staff_activities);
+                    const staff =
+                        authors.length > 0
+                            ? authors.map((author) => ({
+                                  name: staffName(author),
+                                  color: staffColor(author.user?.id ?? null),
+                                  highlighted:
+                                      staffId !== null &&
+                                      author.user?.id === staffId,
+                              }))
+                            : [
+                                  {
+                                      name: staffName(null),
+                                      color: staffColor(null),
+                                      highlighted: false,
+                                  },
+                              ];
+                    const label = staff.map((person) => person.name).join('・');
+                    const color =
+                        staff.length === 1
+                            ? staff[0].color
+                            : staffColor(staffId);
+                    const accessibleName = `${label} ・ ${client.name} ${pin.name}${activity ? ` ・ ${formatCrmDateTime(activity.occurred_at)}` : ''}`;
                     // Leaflet passes unknown props through as marker
                     // options; the cluster icon reads the color back.
                     const clusterOptions: object = {
-                        clientColor: client.color,
+                        staffColors: staff.map((person) => person.color),
                     };
 
                     return (
                         <Marker
-                            key={pin.id}
+                            key={`${pin.id}:${label}:${activity?.occurred_at ?? ''}`}
                             position={[pin.lat, pin.lng]}
-                            title={`${client.name} ${pin.name}`}
+                            title={accessibleName}
+                            alt={accessibleName}
                             zIndexOffset={isSelected ? 1000 : 0}
                             icon={pinIcon({
                                 kind: pin.kind,
-                                color: client.color,
-                                label: client.short_label,
-                                name: `${client.name} ${pin.name}`,
-                                freshness: pinFreshness(pin.last_logged_at),
+                                color,
+                                label,
+                                staff,
+                                name: accessibleName,
+                                freshness: pinFreshness(
+                                    activity?.occurred_at ?? null,
+                                ),
                                 dimmed:
                                     focusClientId !== null &&
                                     focusClientId !== pin.client_id,
@@ -405,9 +461,35 @@ export default function MapView({
                             })}
                             eventHandlers={{
                                 click: () => onSelectPlace(pin.id),
+                                keydown: (event) => {
+                                    if (
+                                        event.originalEvent.key === 'Enter' ||
+                                        event.originalEvent.key === ' '
+                                    ) {
+                                        event.originalEvent.preventDefault();
+                                        onSelectPlace(pin.id);
+                                    }
+                                },
                             }}
                             {...clusterOptions}
-                        />
+                        >
+                            <Tooltip direction="top" offset={[0, -24]}>
+                                {authors.length === 0 && (
+                                    <span className="block">記録なし</span>
+                                )}
+                                {authors.map((author) => (
+                                    <span
+                                        key={author.user?.id ?? 'unknown'}
+                                        className="block"
+                                    >
+                                        {staffName(author)} ・ 最終記録:{' '}
+                                        {formatCrmDateTime(author.occurred_at)}
+                                    </span>
+                                ))}
+                                <span className="block">{client.name}</span>
+                                <span className="block">{pin.name}</span>
+                            </Tooltip>
+                        </Marker>
                     );
                 })}
             </MarkerClusterGroup>
