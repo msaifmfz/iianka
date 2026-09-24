@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\ClientContact;
+use App\Models\ClientDocument;
 use App\Models\ClientPlace;
 use App\Models\ClientPlaceLog;
 use App\Models\ClientPlaceLogAttachment;
@@ -22,10 +23,11 @@ class EnsureCrmClientIsActive
         $resource = $request->route('client_contact')
             ?? $request->route('client_place')
             ?? $request->route('client_place_log')
-            ?? $request->route('client_place_log_attachment');
+            ?? $request->route('client_place_log_attachment')
+            ?? $request->route('client_document');
 
         $hasActiveClient = match (true) {
-            $resource instanceof ClientContact, $resource instanceof ClientPlace => $resource->client()->exists(),
+            $resource instanceof ClientContact, $resource instanceof ClientPlace, $resource instanceof ClientDocument => $resource->client()->exists(),
             $resource instanceof ClientPlaceLog => $resource->place()->whereHas('client')->exists(),
             $resource instanceof ClientPlaceLogAttachment => $resource->log()->whereHas('place.client')->exists(),
             default => true,

@@ -2,6 +2,7 @@
 
 use App\Models\AuditLog;
 use App\Models\Client;
+use App\Models\ClientDocument;
 use App\Models\ClientPlaceLogAttachment;
 use Illuminate\Support\Facades\Storage;
 
@@ -47,6 +48,18 @@ test('long-deleted clients are purged with their files, recent ones and live one
 
     expect(Client::withTrashed()->count())->toBe(2)
         ->and(AuditLog::query()->where('event', 'clients.purged')->count())->toBe(1);
+});
+
+test('purging a client removes its documents and their files', function (): void {
+    $old = deletedClientWithAttachment('100 days');
+    $document = ClientDocument::factory()->for($old->log->place->client)->create();
+    Storage::disk(ClientDocument::DISK)->put($document->path, 'quote');
+
+    $this->artisan('crm:prune-deleted-clients', ['--days' => 90, '--force' => true])
+        ->assertSuccessful();
+
+    $this->assertModelMissing($document);
+    Storage::disk(ClientDocument::DISK)->assertMissing($document->path);
 });
 
 test('declining the confirmation removes nothing', function (): void {

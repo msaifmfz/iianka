@@ -8,6 +8,8 @@ use App\Http\Presenters\Crm\ClientPresenter;
 use App\Http\Requests\StoreClientRequest;
 use App\Http\Requests\UpdateClientRequest;
 use App\Models\Client;
+use App\Models\ClientDocument;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -73,9 +75,17 @@ class ClientController extends Controller
             'places' => fn ($query) => $query->orderByRaw('archived_at is not null')->orderBy('kind')->orderBy('name'),
         ]);
 
+        $viewer = $request->user();
+
+        abort_unless($viewer instanceof User, 403);
+
+        $documents = $client->documents()->with(['place', 'uploader'])->newestFirst()->get();
+
         return Inertia::render('clients/show', [
             'client' => $presenter->detail($client),
-            'canManage' => $request->user()?->canManageContent() === true,
+            'documents' => $documents->map(fn (ClientDocument $document): array => $presenter->document($document, $viewer))->values()->all(),
+            'documentLimits' => $presenter->documentLimits(),
+            'canManage' => $viewer->canManageContent(),
         ]);
     }
 

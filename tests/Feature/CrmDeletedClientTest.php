@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\ClientContact;
+use App\Models\ClientDocument;
 use App\Models\ClientPlaceLogAttachment;
 use App\Models\User;
 
@@ -10,6 +11,7 @@ test('a deleted client cannot be accessed through child resource URLs', function
     $place = $log->place;
     $client = $place->client;
     $contact = ClientContact::factory()->for($client)->create();
+    $document = ClientDocument::factory()->for($client)->create();
     $client->delete();
     $this->actingAs(User::factory()->admin()->create());
 
@@ -25,9 +27,13 @@ test('a deleted client cannot be accessed through child resource URLs', function
     $this->delete(route('crm.attachments.destroy', $attachment))->assertNotFound();
     $this->patch(route('crm.contacts.update', $contact), [])->assertNotFound();
     $this->delete(route('crm.contacts.destroy', $contact))->assertNotFound();
+    $this->post(route('crm.clients.documents.store', $client), [])->assertNotFound();
+    $this->get(route('crm.documents.show', $document))->assertNotFound();
+    $this->delete(route('crm.documents.destroy', $document))->assertNotFound();
 
     $this->assertModelExists($place);
     $this->assertModelExists($log);
     $this->assertModelExists($attachment);
     $this->assertModelExists($contact);
+    $this->assertModelExists($document);
 });

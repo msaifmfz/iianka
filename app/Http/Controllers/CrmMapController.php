@@ -8,6 +8,7 @@ use App\Domain\Crm\Enums\ClientPlaceLogType;
 use App\Domain\Crm\Enums\ClientReaction;
 use App\Http\Presenters\Crm\ClientPresenter;
 use App\Models\Client;
+use App\Models\ClientDocument;
 use App\Models\ClientPlace;
 use App\Models\ClientPlaceLog;
 use App\Models\User;
@@ -30,6 +31,11 @@ class CrmMapController extends Controller
      * pin and `?logs=all` fetches the rest on demand.
      */
     public const int RECENT_LOG_LIMIT = 100;
+
+    /**
+     * The panel lists only the newest documents; the client page has them all.
+     */
+    public const int RECENT_DOCUMENT_LIMIT = 5;
 
     public function __invoke(Request $request, ClientPresenter $presenter): Response
     {
@@ -98,6 +104,15 @@ class CrmMapController extends Controller
             ->when(! $showAllLogs, fn ($query) => $query->limit(self::RECENT_LOG_LIMIT))
             ->get();
 
-        return $presenter->placeDetail($place, $viewer, $logs, $total);
+        $documents = ClientDocument::query()->relevantTo($place);
+
+        return $presenter->placeDetail(
+            $place,
+            $viewer,
+            $logs,
+            $total,
+            $documents->clone()->with(['place', 'uploader'])->newestFirst()->limit(self::RECENT_DOCUMENT_LIMIT)->get(),
+            $documents->count(),
+        );
     }
 }

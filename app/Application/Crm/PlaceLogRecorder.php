@@ -111,15 +111,19 @@ final readonly class PlaceLogRecorder
      * Permanently remove a soft-deleted client with everything under it.
      *
      * A soft delete only hides the client — it never fires the database
-     * cascade — so its places, history and attachment files all survive it.
-     * This is the only path that reclaims them.
+     * cascade — so its places, history, documents and their files all
+     * survive it. This is the only path that reclaims them. Documents share
+     * the attachments' disk.
      */
     public function purgeClient(Client $client): void
     {
-        $paths = ClientPlaceLogAttachment::query()
-            ->whereHas('log.place', fn ($query) => $query->whereBelongsTo($client))
-            ->pluck('path')
-            ->all();
+        $paths = [
+            ...ClientPlaceLogAttachment::query()
+                ->whereHas('log.place', fn ($query) => $query->whereBelongsTo($client))
+                ->pluck('path')
+                ->all(),
+            ...$client->documents()->pluck('path')->all(),
+        ];
 
         DB::transaction(fn (): ?bool => $client->forceDelete());
 

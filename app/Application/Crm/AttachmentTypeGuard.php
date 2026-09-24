@@ -9,9 +9,9 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 
 /**
- * Decides whether an upload really is a photo or a voice memo, whatever its
- * name claims. Attachments are served inline from the app origin, so the
- * sniffed content — not the extension — has the final say.
+ * Decides whether an upload really is the photo, voice memo or document its
+ * name claims. Photos, audio and PDFs are served inline from the app origin,
+ * so the sniffed content — not the extension — has the final say.
  */
 final readonly class AttachmentTypeGuard
 {
@@ -38,6 +38,24 @@ final readonly class AttachmentTypeGuard
     private const array AUDIO_CONTAINER_MIME_TYPES = ['video/webm', 'video/mp4'];
 
     /**
+     * What libmagic reports for each document extension. Legacy Office files
+     * are often only recognised as a generic OLE compound document.
+     *
+     * @var array<string, list<string>>
+     */
+    private const array DOCUMENT_MIME_TYPES = [
+        'pdf' => ['application/pdf'],
+        'doc' => ['application/msword', 'application/vnd.ms-office', 'application/cdfv2'],
+        'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+        'xls' => ['application/vnd.ms-excel', 'application/vnd.ms-office', 'application/cdfv2'],
+        'xlsx' => ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+        'ppt' => ['application/vnd.ms-powerpoint', 'application/vnd.ms-office', 'application/cdfv2'],
+        'pptx' => ['application/vnd.openxmlformats-officedocument.presentationml.presentation'],
+        'txt' => ['text/plain'],
+        'csv' => ['text/csv', 'text/plain', 'application/csv'],
+    ];
+
+    /**
      * @var list<string>
      */
     private const array HEIF_EXTENSIONS = ['heic', 'heif'];
@@ -56,7 +74,7 @@ final readonly class AttachmentTypeGuard
     public function accepts(UploadedFile $file): bool
     {
         $extension = Str::lower($file->getClientOriginalExtension());
-        $mimeType = (string) $file->getMimeType();
+        $mimeType = Str::lower((string) $file->getMimeType());
 
         if (in_array($extension, ClientPlaceLogAttachment::IMAGE_EXTENSIONS, true)) {
             return in_array($mimeType, self::IMAGE_MIME_TYPES, true)
@@ -67,6 +85,10 @@ final readonly class AttachmentTypeGuard
         if (in_array($extension, ClientPlaceLogAttachment::AUDIO_EXTENSIONS, true)) {
             return Str::startsWith($mimeType, 'audio/')
                 || in_array($mimeType, self::AUDIO_CONTAINER_MIME_TYPES, true);
+        }
+
+        if (array_key_exists($extension, self::DOCUMENT_MIME_TYPES)) {
+            return in_array($mimeType, self::DOCUMENT_MIME_TYPES[$extension], true);
         }
 
         return false;

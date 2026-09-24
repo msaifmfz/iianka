@@ -10,6 +10,7 @@ use App\Domain\Crm\Enums\ClientPlaceLogType;
 use App\Domain\Crm\Enums\ClientReaction;
 use App\Models\Client;
 use App\Models\ClientContact;
+use App\Models\ClientDocument;
 use App\Models\ClientPlace;
 use App\Models\ClientPlaceLog;
 use App\Models\ClientPlaceLogAttachment;
@@ -203,6 +204,10 @@ class CrmDemoSeeder extends Seeder
 
             $place->refreshLastLoggedAt();
         }
+
+        foreach ($scenario['documents'] ?? [] as $document) {
+            $this->seedDocument($client, $authors, $document);
+        }
     }
 
     /**
@@ -219,9 +224,11 @@ class CrmDemoSeeder extends Seeder
      */
     private function seedAttachment(ClientPlaceLog $log, array $authors, array $attachment): void
     {
-        $contents = $attachment['kind'] === ClientPlaceLogAttachmentKind::Image
-            ? $this->demoImage($attachment['extension'])
-            : $this->demoWav();
+        $contents = match ($attachment['kind']) {
+            ClientPlaceLogAttachmentKind::Image => $this->demoImage($attachment['extension']),
+            ClientPlaceLogAttachmentKind::Audio => $this->demoWav(),
+            ClientPlaceLogAttachmentKind::Document => $this->demoDocument($attachment['extension'], $attachment['name']),
+        };
         $path = 'crm-attachments/'.$log->client_place_id.'/demo-'.$log->id.'-'.$attachment['name'].'.'.$attachment['extension'];
         $disk = Storage::disk(ClientPlaceLogAttachment::DISK);
 
@@ -245,6 +252,90 @@ class CrmDemoSeeder extends Seeder
                 'duration_seconds' => $attachment['duration_seconds'],
             ],
         );
+    }
+
+    /**
+     * @param  array{primary: User, secondary: User, viewer: User}  $authors
+     * @param  array{name: string, extension: string, mime_type: string, place: string|null, issued_days_ago: int|null, author: string|null}  $document
+     */
+    private function seedDocument(Client $client, array $authors, array $document): void
+    {
+        $contents = match ($document['extension']) {
+            'png', 'jpg', 'webp' => $this->demoImage($document['extension']),
+            default => $this->demoDocument($document['extension'], $document['name']),
+        };
+        $path = 'crm-documents/'.$client->id.'/demo-'.$document['name'].'.'.$document['extension'];
+        $disk = Storage::disk(ClientDocument::DISK);
+
+        // Same repair-but-keep rule as attachments.
+        if (! $disk->exists($path) && ! $disk->put($path, $contents)) {
+            throw new RuntimeException("Unable to write CRM demo document [{$path}].");
+        }
+
+        $place = $document['place'] === null
+            ? null
+            : $client->places()->where('name', $document['place'])->sole();
+
+        ClientDocument::query()->firstOrCreate(
+            ['path' => $path],
+            [
+                'client_id' => $client->id,
+                'client_place_id' => $place?->id,
+                'uploaded_by_user_id' => $document['author'] === null ? null : $authors[$document['author']]->id,
+                'name' => $document['name'],
+                'issued_on' => $document['issued_days_ago'] === null ? null : now()->subDays($document['issued_days_ago'])->toDateString(),
+                'disk' => ClientDocument::DISK,
+                'mime_type' => $document['mime_type'],
+                'extension' => $document['extension'],
+                'size' => strlen($contents),
+            ],
+        );
+    }
+
+    /**
+     * Text formats carry readable Japanese sample rows; anything else is a
+     * one-page PDF that browsers can actually open.
+     */
+    private function demoDocument(string $extension, string $name): string
+    {
+        return match ($extension) {
+            'csv' => "品目,数量,単位,単価\n養生シート,40,枚,1200\n仮設照明,6,台,8500\n",
+            'txt' => "【デモ】{$name}\n操作練習用の架空データです。\n",
+            default => $this->demoPdf(),
+        };
+    }
+
+    /**
+     * A minimal but well-formed PDF (valid xref offsets) with one line of
+     * ASCII text, so the built-in viewer renders a page instead of an error.
+     */
+    private function demoPdf(): string
+    {
+        $stream = 'BT /F1 18 Tf 72 720 Td (CRM demo document - fictional data) Tj ET';
+        $objects = [
+            '<< /Type /Catalog /Pages 2 0 R >>',
+            '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+            '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>',
+            '<< /Length '.strlen($stream)." >>\nstream\n{$stream}\nendstream",
+            '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+        ];
+
+        $pdf = "%PDF-1.4\n";
+        $offsets = [];
+
+        foreach ($objects as $index => $object) {
+            $offsets[] = strlen($pdf);
+            $pdf .= ($index + 1)." 0 obj\n{$object}\nendobj\n";
+        }
+
+        $xref = strlen($pdf);
+        $pdf .= 'xref'."\n".'0 '.(count($objects) + 1)."\n0000000000 65535 f \n";
+
+        foreach ($offsets as $offset) {
+            $pdf .= sprintf("%010d 00000 n \n", $offset);
+        }
+
+        return $pdf.'trailer'."\n".'<< /Size '.(count($objects) + 1).' /Root 1 0 R >>'."\nstartxref\n{$xref}\n%%EOF\n";
     }
 
     /**
@@ -274,9 +365,10 @@ class CrmDemoSeeder extends Seeder
 
     /**
      * These scenarios cover empty states, every enum value, named and deleted
-     * authors, archived-only places, overlapping pins, mixed attachments, and
-     * the layout extremes — a pale client color, a three-character label, long
-     * names, a multi-paragraph entry and two entries sharing a timestamp.
+     * authors, archived-only places, overlapping pins, mixed attachments,
+     * client documents (more than the panel lists), and the layout extremes —
+     * a pale client color, a three-character label, long names, a
+     * multi-paragraph entry and two entries sharing a timestamp.
      * Coordinates are fictional but clustered around Kansai.
      *
      * @return list<array<string, mixed>>
@@ -301,7 +393,7 @@ class CrmDemoSeeder extends Seeder
                     [
                         'name' => '中之島オフィス内装工事', 'kind' => ClientPlaceKind::Site, 'address' => '大阪府大阪市北区中之島3丁目', 'lat' => 34.7005, 'lng' => 135.5035, 'archived_days_ago' => null,
                         'logs' => [
-                            ['summary' => '着工前の現地確認。既存什器の移動範囲を記録した。', 'type' => ClientPlaceLogType::Visit, 'reaction' => ClientReaction::Neutral, 'contact' => 'site', 'author' => 'primary', 'days_ago' => 45, 'attachments' => [['name' => '現地写真', 'extension' => 'png', 'mime_type' => 'image/png', 'kind' => ClientPlaceLogAttachmentKind::Image, 'duration_seconds' => null], ['name' => '現地音声メモ', 'extension' => 'wav', 'mime_type' => 'audio/wav', 'kind' => ClientPlaceLogAttachmentKind::Audio, 'duration_seconds' => 1]]],
+                            ['summary' => '着工前の現地確認。既存什器の移動範囲を記録した。', 'type' => ClientPlaceLogType::Visit, 'reaction' => ClientReaction::Neutral, 'contact' => 'site', 'author' => 'primary', 'days_ago' => 45, 'attachments' => [['name' => '現地写真', 'extension' => 'png', 'mime_type' => 'image/png', 'kind' => ClientPlaceLogAttachmentKind::Image, 'duration_seconds' => null], ['name' => '現地音声メモ', 'extension' => 'wav', 'mime_type' => 'audio/wav', 'kind' => ClientPlaceLogAttachmentKind::Audio, 'duration_seconds' => 1], ['name' => '現地調査報告書', 'extension' => 'pdf', 'mime_type' => 'application/pdf', 'kind' => ClientPlaceLogAttachmentKind::Document, 'duration_seconds' => null], ['name' => '什器移動数量表', 'extension' => 'csv', 'mime_type' => 'text/csv', 'kind' => ClientPlaceLogAttachmentKind::Document, 'duration_seconds' => null]]],
                             ['summary' => '追加工事の相談。予算確認後に回答予定。', 'type' => ClientPlaceLogType::Other, 'reaction' => null, 'contact' => null, 'author' => 'viewer', 'days_ago' => 8, 'attachments' => [['name' => '音声メモ', 'extension' => 'wav', 'mime_type' => 'audio/wav', 'kind' => ClientPlaceLogAttachmentKind::Audio, 'duration_seconds' => 1]]],
                             ['summary' => '完了確認。是正箇所はなく、引き渡し日を確定した。', 'type' => ClientPlaceLogType::Meeting, 'reaction' => ClientReaction::Positive, 'contact' => 'sales', 'author' => null, 'days_ago' => 1],
                         ],
@@ -313,6 +405,17 @@ class CrmDemoSeeder extends Seeder
                     [
                         'name' => '旧資材置場', 'kind' => ClientPlaceKind::Site, 'address' => '大阪府大阪市港区', 'lat' => 34.6650, 'lng' => 135.4500, 'archived_days_ago' => 60, 'logs' => [],
                     ],
+                ],
+                // More than the panel shows, so it offers the full list; one
+                // undated, one from a deleted author, one scan, one text file.
+                'documents' => [
+                    ['name' => '中之島内装工事 見積書', 'extension' => 'pdf', 'mime_type' => 'application/pdf', 'place' => '中之島オフィス内装工事', 'issued_days_ago' => 40, 'author' => 'primary'],
+                    ['name' => '取引基本契約書', 'extension' => 'pdf', 'mime_type' => 'application/pdf', 'place' => null, 'issued_days_ago' => 400, 'author' => 'primary'],
+                    ['name' => '注文書（署名済みスキャン）', 'extension' => 'jpg', 'mime_type' => 'image/jpeg', 'place' => null, 'issued_days_ago' => 30, 'author' => 'secondary'],
+                    ['name' => '請求書 8月分', 'extension' => 'pdf', 'mime_type' => 'application/pdf', 'place' => null, 'issued_days_ago' => 20, 'author' => 'viewer'],
+                    ['name' => '年間修繕計画メモ', 'extension' => 'txt', 'mime_type' => 'text/plain', 'place' => null, 'issued_days_ago' => null, 'author' => null],
+                    ['name' => '資材数量一覧', 'extension' => 'csv', 'mime_type' => 'text/csv', 'place' => null, 'issued_days_ago' => 10, 'author' => 'primary'],
+                    ['name' => '本社事務所 平面図', 'extension' => 'pdf', 'mime_type' => 'application/pdf', 'place' => '本社事務所', 'issued_days_ago' => 200, 'author' => 'primary'],
                 ],
             ],
             [
@@ -402,6 +505,9 @@ class CrmDemoSeeder extends Seeder
                             ['summary' => '同時刻の記録B。別担当が同じ時刻に電話連絡を記録した。', 'type' => ClientPlaceLogType::Call, 'reaction' => ClientReaction::Neutral, 'contact' => 'site', 'author' => 'primary', 'days_ago' => 5, 'hour' => 8, 'minute' => 0],
                         ],
                     ],
+                ],
+                'documents' => [
+                    ['name' => '北港緑地第二工区 仮設計画図・搬入経路図・近隣説明資料一式（長い書類名の表示確認用）', 'extension' => 'pdf', 'mime_type' => 'application/pdf', 'place' => '此花区北港緑地第二工区 仮設事務所・資材ヤード併設現場（長い地点名の表示確認用）', 'issued_days_ago' => 3, 'author' => 'primary'],
                 ],
             ],
             [
