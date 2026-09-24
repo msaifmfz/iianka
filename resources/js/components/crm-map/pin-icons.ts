@@ -1,6 +1,6 @@
 import L from 'leaflet';
 import type { PinFreshness } from '@/lib/crm';
-import { clientLabelColor } from '@/lib/crm-colors';
+import { pinLabelColor } from '@/lib/crm-colors';
 import type { ClientPlaceKind } from '@/types';
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
@@ -12,7 +12,7 @@ function safeColor(color: string): string {
 
 /**
  * Leaflet builds markers from HTML strings, so anything user-entered (the
- * client's short label) must be escaped before it goes in.
+ * client's short label or staff name) must be escaped before it goes in.
  */
 function escapeHtml(value: string): string {
     return value
@@ -35,11 +35,13 @@ export type PinIconOptions = {
     /** Background context, not the subject: fade without greying out. */
     muted?: boolean;
     selected: boolean;
+    /** All activity authors; location pickers keep compact client labels. */
+    staff?: { name: string; color: string; highlighted: boolean }[];
 };
 
 /**
- * The client's color and short label on every pin, so a glance tells whose
- * pin it is. Offices are squares, every other place is a round teardrop.
+ * Staff names sit beside map pins; location pickers retain client labels.
+ * Offices are squares, every other place is a round teardrop.
  * Age never fades a pin; recent activity is indicated by a dot only.
  */
 export function pinIcon({
@@ -51,6 +53,7 @@ export function pinIcon({
     dimmed,
     muted = false,
     selected,
+    staff,
 }: PinIconOptions): L.DivIcon {
     const classes = [
         'crm-pin',
@@ -58,6 +61,7 @@ export function pinIcon({
         muted && 'crm-pin--muted',
         dimmed && 'crm-pin--dimmed',
         selected && 'crm-pin--selected',
+        staff && 'crm-pin--staff',
     ]
         .filter(Boolean)
         .join(' ');
@@ -66,22 +70,41 @@ export function pinIcon({
         freshness === 'recent'
             ? '<span class="crm-pin__recent" aria-hidden="true"></span>'
             : '';
+    const staffColors = staff?.map((person) => safeColor(person.color)) ?? [];
+    const background =
+        staffColors.length > 1
+            ? `conic-gradient(${colorSegments(staffColors)})`
+            : safeColor(color);
+    const staffLabels = staff
+        ? `<span class="crm-pin__staff" aria-hidden="true">${staff.map((person) => `<span class="crm-pin__staff-chip${person.highlighted ? ' crm-pin__staff-chip--highlighted' : ''}"><span class="crm-pin__staff-dot" style="background:${safeColor(person.color)}"></span><span class="crm-pin__staff-name">${escapeHtml(person.name)}</span></span>`).join('')}</span>`
+        : '';
 
     return L.divIcon({
         className: 'crm-pin-wrapper',
         // Leaflet puts `alt` on the wrapping div, where it means nothing to a
         // screen reader, so the icon carries its own name.
-        html: `<div class="${classes}" role="img" aria-label="${escapeHtml(name ?? label)}" style="--pin-color:${safeColor(color)};--pin-label-color:${clientLabelColor(color)}"><span class="crm-pin__label" aria-hidden="true">${escapeHtml(label)}</span>${recentDot}</div>`,
+        html: `<div class="${classes}" role="img" aria-label="${escapeHtml(name ?? label)}" style="--pin-color:${safeColor(color)};--pin-background:${background};--pin-label-color:${pinLabelColor(color)}"><span class="crm-pin__label" aria-hidden="true">${staff ? '' : escapeHtml(label)}</span>${recentDot}</div>${staffLabels}`,
         iconSize: [36, 36],
         iconAnchor: kind === 'office' ? [18, 18] : [18, 36],
     });
 }
 
-/** Leaflet marker options carry the client color so clusters can show it. */
-export type ClientMarkerOptions = L.MarkerOptions & { clientColor?: string };
+/** Leaflet marker options carry the displayed staff color into clusters. */
+export type StaffMarkerOptions = L.MarkerOptions & { staffColors?: string[] };
+
+function colorSegments(colors: string[]): string {
+    const step = 360 / colors.length;
+
+    return colors
+        .map(
+            (color, index) =>
+                `${color} ${index * step}deg ${(index + 1) * step}deg`,
+        )
+        .join(', ');
+}
 
 /**
- * A cluster ring split between the colors of the clients inside it (up to
+ * A cluster ring split between the colors of the staff inside it (up to
  * four), so a cluster still says whose pins it holds.
  */
 export function clusterIcon(cluster: L.MarkerCluster): L.DivIcon {
@@ -89,22 +112,17 @@ export function clusterIcon(cluster: L.MarkerCluster): L.DivIcon {
         ...new Set(
             cluster
                 .getAllChildMarkers()
-                .map((marker) =>
-                    safeColor(
-                        (marker.options as ClientMarkerOptions).clientColor ??
+                .flatMap((marker) =>
+                    (
+                        (marker.options as StaffMarkerOptions).staffColors ?? [
                             FALLBACK_COLOR,
-                    ),
+                        ]
+                    ).map(safeColor),
                 ),
         ),
     ].slice(0, 4);
 
-    const step = 360 / colors.length;
-    const gradient = colors
-        .map(
-            (color, index) =>
-                `${color} ${index * step}deg ${(index + 1) * step}deg`,
-        )
-        .join(', ');
+    const gradient = colorSegments(colors);
 
     return L.divIcon({
         className: 'crm-pin-wrapper',

@@ -1,12 +1,11 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import type L from 'leaflet';
 import { ChevronDown, Crosshair, List, Plus, Search, X } from 'lucide-react';
-import { lazy, useEffect, useRef, useState } from 'react';
+import { lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { index as clientIndex } from '@/actions/App/Http/Controllers/ClientController';
 import { create as clientCreate } from '@/actions/App/Http/Controllers/ClientController';
 import { create as placeCreate } from '@/actions/App/Http/Controllers/ClientPlaceController';
 import crmMap from '@/actions/App/Http/Controllers/CrmMapController';
-import ClientBadge from '@/components/client-badge';
 import { ActionHelp, HelpButton } from '@/components/crm-map/action-help';
 import ClientOnly from '@/components/crm-map/client-only';
 import PlacePanel from '@/components/crm-map/place-panel';
@@ -20,16 +19,18 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { NativeSelect } from '@/components/ui/native-select';
 import { formatDistance, nearbyPlaces } from '@/lib/crm-location';
 import type { CurrentLocation } from '@/lib/crm-location';
 import { readMapMemory, saveMapMemory } from '@/lib/crm-map-memory';
 import type { MapViewport } from '@/lib/crm-map-memory';
+import { displayedActivity, staffColor } from '@/lib/crm-staff';
 import { cn } from '@/lib/utils';
 import type {
     ClientSummary,
     CrmAttachmentLimits,
     CrmOption,
-    MapPin,
+    CrmMapPin,
     SelectedPlace,
 } from '@/types';
 
@@ -37,7 +38,7 @@ const MapView = lazy(() => import('@/components/crm-map/map-view'));
 
 type Props = {
     clients: ClientSummary[];
-    places: MapPin[];
+    places: CrmMapPin[];
     filters: { archived: boolean };
     selectedPlace: SelectedPlace | null;
     canManage: boolean;
@@ -111,7 +112,65 @@ function CrmMapContent({
                 ? (saved?.focusClientId ?? null)
                 : null),
     );
-    const [visibleClientIds, setVisibleClientIds] = useState<number[]>([]);
+    const [staffId, setStaffId] = useState<number | null>(() => {
+        const id = saved?.staffId ?? null;
+        const selectedPin = places.find((pin) => pin.id === selectedPlaceId);
+
+        if (
+            id === null ||
+            (selectedPin && displayedActivity(selectedPin, id) === null)
+        ) {
+            return null;
+        }
+
+        return id === auth.user.id ||
+            places.some((pin) => displayedActivity(pin, id) !== null)
+            ? id
+            : null;
+    });
+    const [previousPlaces, setPreviousPlaces] = useState(places);
+    const [visiblePlaceIds, setVisiblePlaceIds] = useState<number[]>([]);
+    const staff = useMemo(() => {
+        const users = new Map<number, { id: number; name: string }>();
+
+        for (const pin of places) {
+            for (const activity of pin.staff_activities) {
+                if (activity.user) {
+                    users.set(activity.user.id, activity.user);
+                }
+            }
+        }
+
+        return [...users.values()].sort((a, b) =>
+            a.name.localeCompare(b.name, 'ja'),
+        );
+    }, [places]);
+
+    if (previousPlaces !== places) {
+        setPreviousPlaces(places);
+        const selectedPin = places.find((pin) => pin.id === selectedPlaceId);
+
+        if (
+            staffId !== null &&
+            ((selectedPlaceId !== null &&
+                (!selectedPin ||
+                    displayedActivity(selectedPin, staffId) === null)) ||
+                (staffId !== auth.user.id &&
+                    !staff.some((user) => user.id === staffId)))
+        ) {
+            setStaffId(null);
+        }
+    }
+
+    const filteredPlaces = useMemo(
+        () =>
+            staffId === null
+                ? places
+                : places.filter(
+                      (pin) => displayedActivity(pin, staffId) !== null,
+                  ),
+        [places, staffId],
+    );
     const [search, setSearch] = useState(saved?.search ?? '');
     const [clientChoiceSearch, setClientChoiceSearch] = useState('');
     const [pickedLocation, setPickedLocation] = useState<{
@@ -145,6 +204,7 @@ function CrmMapContent({
                 viewport,
                 search,
                 focusClientId,
+                staffId,
                 selectedPlaceId: selectedPlace?.place.id ?? null,
                 archived: filters.archived,
             });
@@ -154,6 +214,7 @@ function CrmMapContent({
         viewport,
         search,
         focusClientId,
+        staffId,
         selectedPlace,
         filters.archived,
     ]);
@@ -166,18 +227,30 @@ function CrmMapContent({
         searchTerm === ''
             ? []
             : clients
-                  .filter((client) =>
-                      client.name.toLocaleLowerCase().includes(searchTerm),
+                  .filter(
+                      (client) =>
+                          client.name
+                              .toLocaleLowerCase()
+                              .includes(searchTerm) &&
+                          (staffId === null ||
+                              filteredPlaces.some(
+                                  (pin) => pin.client_id === client.id,
+                              )),
                   )
                   .slice(0, 8);
     const clientChoiceTerm = clientChoiceSearch.trim().toLocaleLowerCase();
     const clientChoices = clients.filter((client) =>
         client.name.toLocaleLowerCase().includes(clientChoiceTerm),
     );
-    const legendClients = visibleClientIds
-        .map((id) => clientsById.get(id))
-        .filter((client): client is ClientSummary => client !== undefined)
-        .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+    const visiblePlaces = new Set(visiblePlaceIds);
+    const visibleStaffIds = new Set(
+        filteredPlaces
+            .filter((pin) => visiblePlaces.has(pin.id))
+            .flatMap((pin) =>
+                pin.staff_activities.map((activity) => activity.user?.id),
+            ),
+    );
+    const legendStaff = staff.filter((user) => visibleStaffIds.has(user.id));
 
     /**
      * Opening a pin swaps only the `selectedPlace` prop; the URL carries
@@ -188,6 +261,16 @@ function CrmMapContent({
         archived = filters.archived,
         allLogs = false,
     ) {
+        const targetPin = places.find((pin) => pin.id === placeId);
+
+        if (
+            placeId !== null &&
+            staffId !== null &&
+            (!targetPin || displayedActivity(targetPin, staffId) === null)
+        ) {
+            setStaffId(null);
+        }
+
         const requestId = ++selectionRequestRef.current;
         setPendingPlaceId(placeId);
         setSelectionError(null);
@@ -238,12 +321,48 @@ function CrmMapContent({
         setFocusClientId(client.id);
         setSearch('');
 
-        const clientPins = places.filter((pin) => pin.client_id === client.id);
+        const clientPins = filteredPlaces.filter(
+            (pin) => pin.client_id === client.id,
+        );
 
         if (clientPins.length > 0) {
             mapRef.current?.fitBounds(
                 clientPins.map((pin) => [pin.lat, pin.lng] as [number, number]),
                 { padding: [60, 60], maxZoom: 15 },
+            );
+        }
+    }
+
+    function chooseStaff(id: number | null) {
+        setStaffId(id);
+        const matchingPins = places.filter(
+            (pin) =>
+                (id === null || displayedActivity(pin, id) !== null) &&
+                (focusClientId === null || pin.client_id === focusClientId),
+        );
+
+        if (matchingPins.some((pin) => pin.id === selectedPlaceId)) {
+            return;
+        }
+
+        if (
+            selectedPlaceId !== null &&
+            !matchingPins.some((pin) => pin.id === selectedPlaceId)
+        ) {
+            visitMap(null);
+        }
+
+        if (matchingPins.length > 0) {
+            mapRef.current?.fitBounds(
+                matchingPins.map(
+                    (pin) => [pin.lat, pin.lng] as [number, number],
+                ),
+                {
+                    paddingTopLeft: [40, 210],
+                    paddingBottomRight: [60, 60],
+                    maxZoom: 15,
+                    animate: false,
+                },
             );
         }
     }
@@ -312,12 +431,13 @@ function CrmMapContent({
                         initialClientId={initialClientId}
                         initialViewport={initialViewport}
                         onViewportChange={setViewport}
-                        pins={places}
+                        pins={filteredPlaces}
+                        staffId={staffId}
                         clientsById={clientsById}
                         focusClientId={focusClientId}
                         selectedPlaceId={selectedPlaceId}
                         onSelectPlace={selectPlace}
-                        onVisibleClientsChange={setVisibleClientIds}
+                        onVisiblePlacesChange={setVisiblePlaceIds}
                         onPickLocation={
                             canManage
                                 ? (lat, lng) => setPickedLocation({ lat, lng })
@@ -331,12 +451,46 @@ function CrmMapContent({
 
                 <div className="pointer-events-none absolute top-3 left-3 z-[1000] flex w-[min(22rem,calc(100%-1.5rem))] flex-col gap-2">
                     <div className="pointer-events-auto rounded-2xl border bg-white/95 p-2 shadow-lg backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95">
+                        <div className="mb-2 space-y-1 border-b pb-2">
+                            <label
+                                htmlFor="crm-staff-filter"
+                                className="px-1 text-xs font-medium"
+                            >
+                                関わった担当者(社)
+                            </label>
+                            <NativeSelect
+                                id="crm-staff-filter"
+                                value={
+                                    staffId === null ? 'all' : String(staffId)
+                                }
+                                onChange={(event) =>
+                                    chooseStaff(
+                                        event.target.value === 'all'
+                                            ? null
+                                            : Number(event.target.value),
+                                    )
+                                }
+                            >
+                                <option value="all">すべての担当者</option>
+                                <option value={auth.user.id}>
+                                    自分が関わった地点（{auth.user.name}）
+                                </option>
+                                {staff
+                                    .filter((user) => user.id !== auth.user.id)
+                                    .map((user) => (
+                                        <option key={user.id} value={user.id}>
+                                            {user.name}
+                                        </option>
+                                    ))}
+                            </NativeSelect>
+                            <p className="px-1 text-[11px] text-muted-foreground">
+                                {staffId === null
+                                    ? 'すべての記録から、関わった担当者を表示します。'
+                                    : '選んだ担当者の地点を表示中。他の担当者も確認できます。'}
+                            </p>
+                        </div>
                         {focusClient ? (
                             <div className="flex items-center gap-2 px-1">
-                                <ClientBadge
-                                    client={focusClient}
-                                    className="size-7 text-[10px]"
-                                />
                                 <span className="min-w-0 flex-1 truncate text-sm font-medium">
                                     {focusClient.name}
                                 </span>
@@ -374,10 +528,6 @@ function CrmMapContent({
                                             className="flex w-full items-center gap-2 rounded-lg p-2 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-900"
                                             onClick={() => focusOn(client)}
                                         >
-                                            <ClientBadge
-                                                client={client}
-                                                className="size-7 text-[10px]"
-                                            />
                                             {client.name}
                                         </button>
                                     </li>
@@ -386,43 +536,48 @@ function CrmMapContent({
                         )}
                         {searchTerm !== '' && searchResults.length === 0 && (
                             <p className="p-2 text-xs text-muted-foreground">
-                                該当する顧客がいません。
+                                {staffId === null
+                                    ? '該当する顧客がいません。'
+                                    : 'この担当者が関わった地点に該当する顧客がいません。'}
                             </p>
                         )}
                     </div>
 
-                    {!currentLocation && legendClients.length > 0 && (
+                    {!currentLocation && legendStaff.length > 0 && (
                         <div className="pointer-events-auto hidden max-h-[40vh] overflow-y-auto rounded-2xl border bg-white/95 p-2 shadow-lg backdrop-blur sm:block dark:border-neutral-800 dark:bg-neutral-950/95">
                             <p className="px-1 pb-1 text-xs text-muted-foreground">
-                                表示中の顧客（タップで絞り込み）
+                                表示中の担当者（タップで地点を絞り込み）
                             </p>
                             <ul>
-                                {legendClients.map((client) => (
-                                    <li key={client.id}>
+                                {legendStaff.map((user) => (
+                                    <li key={user.id}>
                                         <button
                                             type="button"
-                                            aria-pressed={
-                                                focusClientId === client.id
-                                            }
+                                            aria-pressed={staffId === user.id}
                                             className={cn(
                                                 'flex w-full items-center gap-2 rounded-lg p-1.5 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-900',
-                                                focusClientId === client.id &&
+                                                staffId === user.id &&
                                                     'bg-neutral-100 font-medium dark:bg-neutral-900',
                                             )}
                                             onClick={() =>
-                                                setFocusClientId((current) =>
-                                                    current === client.id
+                                                chooseStaff(
+                                                    staffId === user.id
                                                         ? null
-                                                        : client.id,
+                                                        : user.id,
                                                 )
                                             }
                                         >
-                                            <ClientBadge
-                                                client={client}
-                                                className="size-6 text-[9px] ring-1"
+                                            <span
+                                                aria-hidden="true"
+                                                className="size-3 shrink-0 rounded-full"
+                                                style={{
+                                                    backgroundColor: staffColor(
+                                                        user.id,
+                                                    ),
+                                                }}
                                             />
                                             <span className="truncate">
-                                                {client.name}
+                                                {user.name}
                                             </span>
                                         </button>
                                     </li>
@@ -504,7 +659,7 @@ function CrmMapContent({
                             </Link>
                         </HelpButton>
                         <ActionHelp title="地図の操作">
-                            ピンを押すと履歴が開きます。数字の丸は複数の地点で、押すと拡大します。＋／−で拡大・縮小、重なった地図のボタンで地図の種類を切り替えます。顧客名を検索すると絞り込めます。
+                            ピンには、その地点に記録を残したすべての担当者を表示します。訪問・電話・打合せなど、すべての種類の記録が対象です。担当者を選ぶと、その方が関わった地点に絞り込めます。ピンを押すと各担当者の最終記録日と顧客全体の履歴が開きます。数字の丸は複数の地点で、押すと拡大します。顧客名でも検索できます。
                         </ActionHelp>
                     </div>
                     {locateMessage && (
@@ -636,7 +791,7 @@ function CrmMapContent({
                         </section>
                     )}
                     {focusClient &&
-                        !places.some(
+                        !filteredPlaces.some(
                             (pin) => pin.client_id === focusClient.id,
                         ) && (
                             <p
@@ -647,7 +802,34 @@ function CrmMapContent({
                                 {canManage
                                     ? 'アーカイブ表示を確認するか、顧客詳細から地点を追加してください。'
                                     : 'アーカイブ表示を確認するか、管理者に地点の登録を依頼してください。'}
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                        setFocusClientId(null);
+                                        chooseStaff(null);
+                                    }}
+                                >
+                                    絞り込みをリセット
+                                </Button>
                             </p>
+                        )}
+                    {staffId !== null &&
+                        filteredPlaces.length === 0 &&
+                        !focusClient && (
+                            <div
+                                role="status"
+                                className="pointer-events-auto rounded-lg bg-background p-3 text-sm shadow-md"
+                            >
+                                この担当者の記録がある地点はありません。
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => chooseStaff(null)}
+                                >
+                                    すべての担当者を表示
+                                </Button>
+                            </div>
                         )}
                     {selectionError && (
                         <p
@@ -667,7 +849,7 @@ function CrmMapContent({
                 </div>
 
                 <p className="pointer-events-none absolute right-3 bottom-6 z-[400] hidden rounded-lg bg-white/90 px-2 py-1 text-[11px] text-muted-foreground shadow sm:block dark:bg-neutral-950/90">
-                    色＝顧客 ・ 四角＝事務所 ・ 緑の点＝7日以内の記録
+                    色＝担当者 ・ 四角＝事務所 ・ 緑の点＝7日以内の記録
                     {canManage && ' ・ 長押しで地点を追加'}
                 </p>
 
@@ -675,6 +857,7 @@ function CrmMapContent({
                     <PlacePanel
                         key={selectedPlaceId}
                         selected={panelSelection}
+                        staffId={staffId}
                         canManage={canManage}
                         logTypes={logTypes}
                         reactions={reactions}
@@ -740,10 +923,6 @@ function CrmMapContent({
                                                 })}
                                                 className="flex items-center gap-3 p-3 text-sm hover:bg-neutral-50 dark:hover:bg-neutral-900"
                                             >
-                                                <ClientBadge
-                                                    client={client}
-                                                    className="size-7 text-[10px]"
-                                                />
                                                 {client.name}
                                             </Link>
                                         </li>

@@ -40,7 +40,7 @@ export default function ClientIndex({ clients, filters, canManage }: Props) {
                         {canManage && (
                             <Button
                                 helpTitle="顧客を追加"
-                                help="顧客名・略称・地図の色を登録します。登録後に担当者や地点を追加できます。"
+                                help="顧客名・略称を登録します。登録後に担当者や地点を追加できます。"
                                 asChild
                             >
                                 <Link href={clientCreate()}>

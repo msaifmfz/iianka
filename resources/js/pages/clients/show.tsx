@@ -209,11 +209,7 @@ export default function ClientShow({ client, canManage }: Props) {
                 </div>
                 <section
                     aria-label={`${client.name}の顧客情報`}
-                    className="relative flex flex-wrap items-start justify-between gap-4 overflow-hidden rounded-2xl border border-l-8 bg-white p-5 shadow-sm sm:p-7 dark:border-neutral-800 dark:bg-neutral-950"
-                    style={{
-                        borderLeftColor: client.color,
-                        backgroundImage: `linear-gradient(110deg, ${client.color}18, transparent 75%)`,
-                    }}
+                    className="relative flex flex-wrap items-start justify-between gap-4 overflow-hidden rounded-2xl border bg-white p-5 shadow-sm sm:p-7 dark:border-neutral-800 dark:bg-neutral-950"
                 >
                     <div className="flex min-w-0 flex-1 items-start gap-4">
                         <ClientBadge
@@ -242,7 +238,7 @@ export default function ClientShow({ client, canManage }: Props) {
                         <div className="flex flex-wrap gap-2">
                             <Button
                                 helpTitle="顧客を編集"
-                                help="この顧客の名前・略称・地図の色・メモを変更します。"
+                                help="この顧客の名前・略称・メモを変更します。"
                                 asChild
                                 variant="outline"
                                 size="sm"

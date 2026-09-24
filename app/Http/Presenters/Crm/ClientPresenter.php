@@ -21,7 +21,7 @@ final readonly class ClientPresenter
     /**
      * The identity every pin, legend row and list row needs.
      *
-     * @return array{id: int, name: string, short_label: string, color: string}
+     * @return array{id: int, name: string, short_label: string}
      */
     public function summary(Client $client): array
     {
@@ -29,7 +29,6 @@ final readonly class ClientPresenter
             'id' => $client->id,
             'name' => $client->name,
             'short_label' => $client->short_label,
-            'color' => $client->color,
         ];
     }
 
@@ -99,10 +98,15 @@ final readonly class ClientPresenter
     }
 
     /**
-     * The lightweight shape every map pin needs; history stays out of it so
-     * the map loads in one small payload however long the history grows.
+     * The map carries one summary per author, never the full history.
+     * Expects latestActivity.user and staffActivitySummaries.user loaded.
      *
-     * @return array{id: int, client_id: int, kind: string, name: string, lat: float, lng: float, last_logged_at: string|null, archived_at: string|null}
+     * @return array{
+     *     id: int, client_id: int, kind: string, name: string, lat: float, lng: float,
+     *     last_logged_at: string|null, archived_at: string|null,
+     *     latest_activity: array{occurred_at: string, user: array{id: int, name: string}|null}|null,
+     *     staff_activities: list<array{occurred_at: string, user: array{id: int, name: string}|null}>
+     * }
      */
     public function pin(ClientPlace $place): array
     {
@@ -115,6 +119,26 @@ final readonly class ClientPresenter
             'lng' => (float) $place->lng,
             'last_logged_at' => $place->last_logged_at?->toIso8601String(),
             'archived_at' => $place->archived_at?->toIso8601String(),
+            'latest_activity' => $place->latestActivity instanceof ClientPlaceLog
+                ? $this->activitySummary($place->latestActivity)
+                : null,
+            'staff_activities' => $place->staffActivitySummaries
+                ->map($this->activitySummary(...))
+                ->values()
+                ->all(),
+        ];
+    }
+
+    /**
+     * @return array{occurred_at: string, user: array{id: int, name: string}|null}
+     */
+    private function activitySummary(ClientPlaceLog $log): array
+    {
+        return [
+            'occurred_at' => $log->occurred_at->toIso8601String(),
+            'user' => $log->user instanceof User
+                ? ['id' => $log->user->id, 'name' => $log->user->name]
+                : null,
         ];
     }
 
@@ -136,7 +160,8 @@ final readonly class ClientPresenter
 
     /**
      * A selected place with its client's combined timeline. Each log keeps
-     * its own place and author. Expects client.contacts and log relationships loaded.
+     * its own place and author. Expects client.contacts, latestActivity.user,
+     * staffActivitySummaries.user and log relationships loaded.
      *
      * `$logs` is the newest page, so `$totalLogs` says how many the client
      * has in all and whether the panel should offer the older ones.
@@ -148,6 +173,13 @@ final readonly class ClientPresenter
     {
         return [
             'place' => $this->place($place),
+            'staff_activities' => $place->staffActivitySummaries
+                ->map($this->activitySummary(...))
+                ->values()
+                ->all(),
+            'latest_activity' => $place->latestActivity instanceof ClientPlaceLog
+                ? $this->activitySummary($place->latestActivity)
+                : null,
             'client' => $this->summary($place->client),
             'contacts' => $place->client->contacts
                 ->map(fn (ClientContact $contact): array => [

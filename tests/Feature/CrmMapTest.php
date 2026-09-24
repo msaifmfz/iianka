@@ -97,6 +97,19 @@ test('a deep link opens the panel on first load', function (): void {
             ->where('canManage', true));
 });
 
+test('an archived place keeps its staff activity summaries when its pin is hidden', function (): void {
+    $visitor = User::factory()->create();
+    $place = ClientPlace::factory()->archived()->create();
+    ClientPlaceLog::factory()->for($place, 'place')->for($visitor)->create();
+
+    $this->actingAs($visitor)->get(route('crm.map', ['place' => $place->id]))
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->has('places', 0)
+            ->where('selectedPlace.latest_activity.user.id', $visitor->id)
+            ->has('selectedPlace.staff_activities', 1)
+            ->where('selectedPlace.staff_activities.0.user.id', $visitor->id));
+});
+
 test('an unknown or deleted-client place opens nothing', function (): void {
     $place = ClientPlace::factory()->create();
     $place->client->delete();
@@ -152,6 +165,108 @@ test('the combined client timeline keeps place threads and authors distinct incl
 
 test('guests cannot see the map', function (): void {
     $this->get(route('crm.map'))->assertRedirect(route('login'));
+});
+
+test('pins retain every author once with their latest activity date across all record types', function (): void {
+    $tanaka = User::factory()->create(['name' => '田中']);
+    $sato = User::factory()->create(['name' => '佐藤']);
+    $place = ClientPlace::factory()->create();
+    ClientPlaceLog::factory()->for($place, 'place')->for($tanaka)->create(['occurred_at' => '2026-09-01 01:00:00']);
+    ClientPlaceLog::factory()->for($place, 'place')->for($sato)->create(['occurred_at' => '2026-09-10 01:00:00']);
+    ClientPlaceLog::factory()->for($place, 'place')->for($tanaka)->create(['occurred_at' => '2026-09-05 01:00:00']);
+    foreach (['call', 'meeting', 'other'] as $type) {
+        ClientPlaceLog::factory()->for($place, 'place')->for($tanaka)->create([
+            'type' => $type,
+            'occurred_at' => '2026-09-20 01:00:00',
+        ]);
+    }
+    $otherPlace = ClientPlace::factory()->for($place->client)->create();
+    ClientPlaceLog::factory()->for($otherPlace, 'place')->for($tanaka)->create(['occurred_at' => '2026-09-21 01:00:00']);
+
+    $this->actingAs($tanaka)->get(route('crm.map'))
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->where('places.0.latest_activity.user', ['id' => $tanaka->id, 'name' => '田中'])
+            ->where('places.0.latest_activity.occurred_at', '2026-09-20T01:00:00+00:00')
+            ->where('places.0.staff_activities', [
+                ['occurred_at' => '2026-09-20T01:00:00+00:00', 'user' => ['id' => $tanaka->id, 'name' => '田中']],
+                ['occurred_at' => '2026-09-10T01:00:00+00:00', 'user' => ['id' => $sato->id, 'name' => '佐藤']],
+            ])
+            ->where('places.1.latest_activity.user.id', $tanaka->id)
+            ->has('places.1.staff_activities', 1)
+            ->missing('places.0.logs'));
+});
+
+test('the higher record id breaks timestamp ties and missing authors remain visible alongside known staff', function (): void {
+    $visitor = User::factory()->create();
+    $place = ClientPlace::factory()->create();
+    ClientPlaceLog::factory()->for($place, 'place')->for($visitor)->create(['occurred_at' => '2026-09-10 01:00:00']);
+    ClientPlaceLog::factory()->for($place, 'place')->create([
+        'occurred_at' => '2026-09-10 01:00:00',
+        'user_id' => null,
+    ]);
+    $unvisited = ClientPlace::factory()->create();
+    ClientPlaceLog::factory()->for($unvisited, 'place')->for($visitor)->create(['type' => 'call']);
+    ClientPlace::factory()->create();
+
+    $this->actingAs($visitor)->get(route('crm.map'))
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->where('places.0.latest_activity.user', null)
+            ->where('places.0.latest_activity.occurred_at', '2026-09-10T01:00:00+00:00')
+            ->has('places.0.staff_activities', 2)
+            ->where('places.0.staff_activities.0.user', null)
+            ->where('places.0.staff_activities.1.user.id', $visitor->id)
+            ->where('places.1.latest_activity.user.id', $visitor->id)
+            ->where('places.1.staff_activities.0.user.id', $visitor->id)
+            ->where('places.2.latest_activity', null)
+            ->where('places.2.staff_activities', []));
+});
+
+test('every record type identifies its author on the pin and in the place panel', function (string $type): void {
+    $author = User::factory()->create();
+    $place = ClientPlace::factory()->create();
+    ClientPlaceLog::factory()->for($place, 'place')->for($author)->create(['type' => $type]);
+
+    $this->actingAs($author)->get(route('crm.map', ['place' => $place->id]))
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->where('places.0.latest_activity.user.id', $author->id)
+            ->has('places.0.staff_activities', 1)
+            ->where('places.0.staff_activities.0.user.id', $author->id)
+            ->where('selectedPlace.staff_activities.0.user.id', $author->id));
+})->with(['visit', 'call', 'meeting', 'other']);
+
+test('map activity summaries refresh after recording, redating, changing type and deleting records', function (): void {
+    $visitor = User::factory()->create();
+    $previousVisitor = User::factory()->create();
+    $place = ClientPlace::factory()->create();
+    ClientPlaceLog::factory()->for($place, 'place')->for($previousVisitor)->create(['occurred_at' => '2026-09-10 01:00:00']);
+    $payload = ['type' => 'visit', 'occurred_at' => '2026-09-20T10:00', 'summary' => '訪問記録'];
+    $this->actingAs($visitor)->get(route('crm.map'))->assertOk();
+    $headers = [...selectedPlaceHeaders(), 'X-Inertia-Partial-Data' => 'places'];
+
+    $this->post(route('crm.places.logs.store', $place), $payload)->assertRedirect()->assertSessionHasNoErrors();
+    $log = $place->logs()->where('user_id', $visitor->id)->sole();
+    $this->get(route('crm.map'), $headers)
+        ->assertJsonPath('props.places.0.latest_activity.user.id', $visitor->id)
+        ->assertJsonCount(2, 'props.places.0.staff_activities');
+
+    $this->patch(route('crm.logs.update', $log), [...$payload, 'occurred_at' => '2026-09-01T10:00'])
+        ->assertRedirect()->assertSessionHasNoErrors();
+    $this->get(route('crm.map'), $headers)
+        ->assertJsonPath('props.places.0.latest_activity.user.id', $previousVisitor->id)
+        ->assertJsonPath('props.places.0.staff_activities.0.occurred_at', '2026-09-01T01:00:00+00:00');
+
+    $this->patch(route('crm.logs.update', $log), [...$payload, 'type' => 'call'])
+        ->assertRedirect()->assertSessionHasNoErrors();
+    $this->get(route('crm.map'), $headers)
+        ->assertJsonPath('props.places.0.latest_activity.user.id', $visitor->id)
+        ->assertJsonCount(2, 'props.places.0.staff_activities');
+
+    $this->patch(route('crm.logs.update', $log), $payload)->assertRedirect()->assertSessionHasNoErrors();
+    $this->delete(route('crm.logs.destroy', $log))->assertRedirect();
+    $this->assertModelMissing($log);
+    $this->get(route('crm.map'), $headers)
+        ->assertJsonPath('props.places.0.latest_activity.user.id', $previousVisitor->id)
+        ->assertJsonCount(1, 'props.places.0.staff_activities');
 });
 
 test('the panel ships the newest page of history and fetches the rest on request', function (): void {

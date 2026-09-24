@@ -4,7 +4,6 @@ export type ClientSummary = {
     id: number;
     name: string;
     short_label: string;
-    color: string;
 };
 
 export type ClientListItem = ClientSummary & {
@@ -53,6 +52,16 @@ export type MapPin = {
     archived_at: string | null;
 };
 
+export type CrmActivitySummary = {
+    occurred_at: string;
+    user: { id: number; name: string } | null;
+};
+
+export type CrmMapPin = MapPin & {
+    latest_activity: CrmActivitySummary | null;
+    staff_activities: CrmActivitySummary[];
+};
+
 export type ClientPlaceLogAttachment = {
     id: number;
     kind: 'image' | 'audio';
@@ -80,6 +89,8 @@ export type ClientPlaceLog = {
 
 export type SelectedPlace = {
     place: ClientPlace;
+    latest_activity: CrmActivitySummary | null;
+    staff_activities: CrmActivitySummary[];
     client: ClientSummary;
     contacts: { id: number; name: string; title: string | null }[];
     /** The newest page of the client-wide timeline. */

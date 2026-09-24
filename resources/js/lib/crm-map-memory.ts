@@ -14,6 +14,7 @@ export type MapMemory = {
     viewport: MapViewport;
     search: string;
     focusClientId: number | null;
+    staffId: number | null;
     selectedPlaceId: number | null;
     archived: boolean;
 };
@@ -37,14 +38,16 @@ export function readMapMemory(userId: number): MapMemory | null {
             !MAP_LAYERS.includes(value.viewport.layer) ||
             typeof value.search !== 'string' ||
             typeof value.archived !== 'boolean' ||
-            ![value.focusClientId, value.selectedPlaceId].every(
-                (id) => id === null || (Number.isSafeInteger(id) && id > 0),
-            )
+            ![
+                value.focusClientId,
+                value.selectedPlaceId,
+                value.staffId ?? null,
+            ].every((id) => id === null || (Number.isSafeInteger(id) && id > 0))
         ) {
             return null;
         }
 
-        return value;
+        return { ...value, staffId: value.staffId ?? null };
     } catch {
         return null;
     }

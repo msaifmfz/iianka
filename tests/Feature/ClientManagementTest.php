@@ -16,7 +16,6 @@ function clientPayload(array $overrides = []): array
     return [
         'name' => '西日本建設',
         'short_label' => '西',
-        'color' => '#DC2626',
         'note' => '  ',
         ...$overrides,
     ];
@@ -34,6 +33,7 @@ test('every signed-in user can browse clients with their active place counts', f
             ->component('clients/index')
             ->where('canManage', false)
             ->where('clients.0.name', 'Alpha')
+            ->missing('clients.0.color')
             ->where('clients.0.places_count', 2)
             ->where('clients.0.last_logged_at', fn (string $value): bool => str_starts_with($value, '2026-09-01')));
 });
@@ -49,7 +49,7 @@ test('the client list filters by name', function (): void {
             ->where('clients.0.name', '大阪工業'));
 });
 
-test('an editor creates a client with a normalized color', function (): void {
+test('an editor creates a client without choosing a color', function (): void {
     $editor = User::factory()->editor()->create();
 
     $response = $this->actingAs($editor)->post(route('crm.clients.store'), clientPayload());
@@ -57,7 +57,7 @@ test('an editor creates a client with a normalized color', function (): void {
     $client = Client::query()->sole();
     $response->assertRedirect(route('crm.clients.show', $client));
 
-    expect($client->color)->toBe('#dc2626')
+    expect($client->color)->toBe('#6b7280')
         ->and($client->note)->toBeNull()
         ->and($client->createdBy->is($editor))->toBeTrue()
         ->and(AuditLog::query()->where('event', 'clients.created')->exists())->toBeTrue();
@@ -70,7 +70,7 @@ test('client input is validated', function (array $overrides, string $field): vo
 })->with([
     'missing name' => [['name' => ''], 'name'],
     'label too long' => [['short_label' => 'ABCD'], 'short_label'],
-    'color not hex' => [['color' => 'red'], 'color'],
+    'note too long' => [['note' => str_repeat('a', 5001)], 'note'],
 ]);
 
 test('a viewer cannot create, edit or delete clients', function (): void {
@@ -86,7 +86,7 @@ test('a viewer cannot create, edit or delete clients', function (): void {
     expect(Client::query()->count())->toBe(1);
 });
 
-test('the create form receives colors already in use', function (): void {
+test('the create form no longer receives a color palette', function (): void {
     Client::factory()->create(['color' => '#2563eb']);
 
     $this->actingAs(User::factory()->editor()->create())
@@ -94,10 +94,10 @@ test('the create form receives colors already in use', function (): void {
         ->assertInertia(fn (Assert $page): Assert => $page
             ->component('clients/form')
             ->where('client', null)
-            ->where('usedColors', ['#2563eb']));
+            ->missing('usedColors'));
 });
 
-test('the edit form excludes the client own color from used colors', function (): void {
+test('the edit form no longer receives client colors', function (): void {
     $client = Client::factory()->create(['color' => '#2563eb']);
     Client::factory()->create(['color' => '#16a34a']);
 
@@ -105,18 +105,20 @@ test('the edit form excludes the client own color from used colors', function ()
         ->get(route('crm.clients.edit', $client))
         ->assertInertia(fn (Assert $page): Assert => $page
             ->where('client.id', $client->id)
-            ->where('usedColors', ['#16a34a']));
+            ->missing('client.color')
+            ->missing('usedColors'));
 });
 
 test('an editor updates and deletes a client', function (): void {
     $editor = User::factory()->editor()->create();
-    $client = Client::factory()->create();
+    $client = Client::factory()->create(['color' => '#2563eb']);
 
     $this->actingAs($editor)
-        ->patch(route('crm.clients.update', $client), clientPayload(['name' => '新名称']))
+        ->patch(route('crm.clients.update', $client), clientPayload(['name' => '新名称', 'color' => '#ffffff']))
         ->assertRedirect(route('crm.clients.show', $client));
 
-    expect($client->refresh()->name)->toBe('新名称');
+    expect($client->refresh()->name)->toBe('新名称')
+        ->and($client->color)->toBe('#2563eb');
 
     $this->actingAs($editor)
         ->delete(route('crm.clients.destroy', $client))
@@ -135,6 +137,7 @@ test('the client page shows contacts and places, archived places last', function
         ->get(route('crm.clients.show', $client))
         ->assertInertia(fn (Assert $page): Assert => $page
             ->component('clients/show')
+            ->missing('client.color')
             ->where('client.contacts.0.name', '山田')
             ->where('client.places.0.name', 'B 現場')
             ->where('client.places.1.name', 'A 旧現場'));

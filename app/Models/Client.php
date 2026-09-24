@@ -13,8 +13,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- * A customer tracked on the CRM map. Its color and short label identify
- * every one of its pins on the map.
+ * A customer tracked on the CRM map. Legacy colors remain stored but are
+ * no longer displayed or edited; map colors identify staff instead.
  *
  * @property int $id
  * @property string $name

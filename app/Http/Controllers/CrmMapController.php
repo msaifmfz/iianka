@@ -16,7 +16,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * The CRM map: every client's places as pins, colored by client.
+ * The CRM map: every client's places as pins, identified by activity authors.
  *
  * Pins load in one light payload. A tapped pin's history is the
  * `selectedPlace` prop, fetched with a partial reload carrying `?place=`, so
@@ -50,6 +50,7 @@ class CrmMapController extends Controller
                 $presenter->pin(...),
                 ClientPlace::query()
                     ->whereHas('client')
+                    ->with(['latestActivity.user:id,name', 'staffActivitySummaries.user:id,name'])
                     ->when(! $showArchived, fn ($query) => $query->active())
                     ->get()
                     ->all(),
@@ -74,6 +75,8 @@ class CrmMapController extends Controller
             ->whereHas('client')
             ->with([
                 'client.contacts' => fn ($query) => $query->orderBy('name'),
+                'latestActivity.user:id,name',
+                'staffActivitySummaries.user:id,name',
             ])
             ->find($placeId);
 
