@@ -1,5 +1,5 @@
 import { useForm, usePage } from '@inertiajs/react';
-import { Camera, Mic, Plus, Square, X } from 'lucide-react';
+import { Camera, FileText, Mic, Plus, Square, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import {
     store as logStore,
@@ -22,6 +22,7 @@ import type {
     SelectedPlace,
 } from '@/types';
 import { HelpButton } from './action-help';
+import { DocumentIcon } from './client-document-list';
 import ContactCreateDialog from './contact-create-dialog';
 
 type PendingAttachment = {
@@ -50,9 +51,9 @@ const reactionStyles: Record<string, string> = {
 };
 
 /**
- * Add or edit one history entry. Photos and voice memos are collected on the
- * device and sent with the entry in a single request, so a visit is logged
- * in one tap even on a patchy connection.
+ * Add or edit one history entry. Photos, voice memos and documents are
+ * collected on the device and sent with the entry in a single request, so a
+ * visit is logged in one tap even on a patchy connection.
  */
 export default function PlaceLogForm({
     selected,
@@ -77,6 +78,7 @@ export default function PlaceLogForm({
         max_file_bytes: maxFileBytes,
         max_recording_seconds: maxRecordingSeconds,
         image_extensions: photoExtensions,
+        document_extensions: documentExtensions,
     } = attachmentLimits;
     const maxFileMegabytes = Math.floor(maxFileBytes / (1024 * 1024));
     const { auth } = usePage().props;
@@ -91,6 +93,7 @@ export default function PlaceLogForm({
     const [pending, setPending] = useState<PendingAttachment[]>([]);
     const pendingRef = useRef<PendingAttachment[]>([]);
     const photoInputRef = useRef<HTMLInputElement>(null);
+    const documentInputRef = useRef<HTMLInputElement>(null);
     const [attachmentError, setAttachmentError] = useState<string | null>(null);
     const [isAddingContact, setIsAddingContact] = useState(false);
     const [addedContacts, setAddedContacts] = useState<ClientContact[]>([]);
@@ -117,7 +120,15 @@ export default function PlaceLogForm({
         [],
     );
 
-    function addAttachments(files: File[], durationSeconds: number | null) {
+    /**
+     * `pickedAs` is which picker the files came from, so a document picked as
+     * a photo (or the other way round) is caught before upload.
+     */
+    function addAttachments(
+        files: File[],
+        durationSeconds: number | null,
+        pickedAs: 'photo' | 'document' | 'recording',
+    ) {
         const next = [...pendingRef.current];
         let error: string | null = null;
 
@@ -132,14 +143,20 @@ export default function PlaceLogForm({
                 continue;
             }
 
-            if (
-                durationSeconds === null &&
-                !photoExtensions.includes(
-                    file.name.split('.').pop()?.toLowerCase() ?? '',
-                )
-            ) {
+            const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+
+            if (pickedAs === 'photo' && !photoExtensions.includes(extension)) {
                 error =
                     '写真はJPEG・PNG・GIF・WebP・HEIC形式で選択してください。';
+                continue;
+            }
+
+            if (
+                pickedAs === 'document' &&
+                !documentExtensions.includes(extension)
+            ) {
+                error =
+                    '書類はPDF・Word・Excel・PowerPoint・テキスト・CSV形式で選択してください。';
                 continue;
             }
 
@@ -148,7 +165,8 @@ export default function PlaceLogForm({
                 file,
                 durationSeconds,
                 previewUrl:
-                    file.type.startsWith('image/') || durationSeconds !== null
+                    pickedAs === 'recording' ||
+                    (pickedAs === 'photo' && file.type.startsWith('image/'))
                         ? URL.createObjectURL(file)
                         : null,
             });
@@ -176,7 +194,7 @@ export default function PlaceLogForm({
     const recorder = useAudioRecorder({
         maxRecordingSeconds,
         onSave: (file, durationSeconds) => {
-            addAttachments([file], durationSeconds);
+            addAttachments([file], durationSeconds, 'recording');
 
             return Promise.resolve();
         },
@@ -396,11 +414,11 @@ export default function PlaceLogForm({
                 </FormField>
 
                 <div className="grid gap-2 text-sm font-medium">
-                    <span>写真・音声メモ</span>
+                    <span>写真・音声メモ・書類</span>
                     <div className="flex flex-wrap gap-2">
                         <HelpButton
                             helpTitle="写真"
-                            help={`端末の写真を選んで添付します。写真と音声を合わせて${maxAttachments}件、1件${maxFileMegabytes}MBまで。「記録する」でまとめて保存します。`}
+                            help={`端末の写真を選んで添付します。写真・音声・書類を合わせて${maxAttachments}件、1件${maxFileMegabytes}MBまで。「記録する」でまとめて保存します。`}
                             type="button"
                             size="sm"
                             variant="outline"
@@ -431,6 +449,45 @@ export default function PlaceLogForm({
                                 addAttachments(
                                     Array.from(event.currentTarget.files ?? []),
                                     null,
+                                    'photo',
+                                );
+                                event.currentTarget.value = '';
+                            }}
+                        />
+                        <HelpButton
+                            helpTitle="書類"
+                            help={`見積書・図面・議事録などのPDF・Word・Excel・PowerPoint・テキスト・CSVを添付します。写真・音声・書類を合わせて${maxAttachments}件、1件${maxFileMegabytes}MBまで。`}
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={
+                                remainingSlots <= 0 ||
+                                form.processing ||
+                                recorder.recordingState !== 'idle'
+                            }
+                            onClick={() => documentInputRef.current?.click()}
+                        >
+                            <FileText className="size-4" />
+                            書類
+                        </HelpButton>
+                        <input
+                            ref={documentInputRef}
+                            type="file"
+                            accept={documentExtensions
+                                .map((extension) => `.${extension}`)
+                                .join(',')}
+                            multiple
+                            hidden
+                            disabled={
+                                remainingSlots <= 0 ||
+                                form.processing ||
+                                recorder.recordingState !== 'idle'
+                            }
+                            onChange={(event) => {
+                                addAttachments(
+                                    Array.from(event.currentTarget.files ?? []),
+                                    null,
+                                    'document',
                                 );
                                 event.currentTarget.value = '';
                             }}
@@ -485,7 +542,7 @@ export default function PlaceLogForm({
                                 ? '音声を準備しています…'
                                 : pending.length > 0
                                   ? '添付はまだ保存されていません。「記録する」でまとめて保存します。'
-                                  : '録音・写真は記録と一緒に保存されます。'}
+                                  : '録音・写真・書類は記録と一緒に保存されます。'}
                     </p>
                     {pending.length > 0 && (
                         <ul className="flex flex-wrap gap-2">
@@ -509,14 +566,25 @@ export default function PlaceLogForm({
                                             alt=""
                                             className="h-16 w-16 object-cover"
                                         />
-                                    ) : (
+                                    ) : item.durationSeconds !== null ? (
                                         <span className="flex items-center gap-1 pl-3">
                                             <Mic className="size-4" />
-                                            {item.durationSeconds !== null
-                                                ? formatMinutesSeconds(
-                                                      item.durationSeconds,
-                                                  )
-                                                : item.file.name}
+                                            {formatMinutesSeconds(
+                                                item.durationSeconds,
+                                            )}
+                                        </span>
+                                    ) : (
+                                        <span className="flex max-w-48 items-center gap-1 pl-3">
+                                            <DocumentIcon
+                                                extension={
+                                                    item.file.name
+                                                        .split('.')
+                                                        .pop() ?? null
+                                                }
+                                            />
+                                            <span className="truncate">
+                                                {item.file.name}
+                                            </span>
                                         </span>
                                     )}
                                     <button

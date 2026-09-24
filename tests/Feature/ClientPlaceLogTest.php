@@ -310,3 +310,43 @@ test('editing a log adds attachments up to the limit', function (): void {
         ]))
         ->assertSessionHasErrors('attachments');
 });
+
+test('a log carries documents, and only a PDF among them opens in the browser', function (): void {
+    $place = ClientPlace::factory()->create();
+    $pdfPath = tempnam(sys_get_temp_dir(), 'crm');
+    file_put_contents($pdfPath, "%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n");
+
+    $this->actingAs(User::factory()->create())
+        ->post(route('crm.places.logs.store', $place), logPayload([
+            'attachments' => [
+                ['file' => new UploadedFile($pdfPath, '図面.pdf', null, null, true)],
+                ['file' => UploadedFile::fake()->create('議事録.docx', 20, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')],
+            ],
+        ]))
+        ->assertSessionHasNoErrors();
+
+    [$pdf, $word] = ClientPlaceLogAttachment::query()->orderBy('id')->get()->all();
+
+    expect($pdf->kind)->toBe(ClientPlaceLogAttachmentKind::Document)
+        ->and($word->kind)->toBe(ClientPlaceLogAttachmentKind::Document)
+        ->and($word->name)->toBe('議事録');
+
+    expect($this->get(route('crm.attachments.show', $pdf))->assertOk()->headers->get('Content-Disposition'))
+        ->toStartWith('inline;');
+    expect($this->get(route('crm.attachments.show', $word))->assertOk()->headers->get('Content-Disposition'))
+        ->toStartWith('attachment;');
+});
+
+test('a page disguised as a document is rejected', function (string $name): void {
+    $place = ClientPlace::factory()->create();
+    $path = tempnam(sys_get_temp_dir(), 'crm');
+    file_put_contents($path, '<html><body><script>alert(1)</script></body></html>');
+
+    $this->actingAs(User::factory()->create())
+        ->post(route('crm.places.logs.store', $place), logPayload([
+            'attachments' => [['file' => new UploadedFile($path, $name, null, null, true)]],
+        ]))
+        ->assertSessionHasErrors(['attachments.0.file' => '添付できるのは写真・音声・書類（PDF・Word・Excel・PowerPoint・テキスト・CSV）のみです。']);
+
+    expect(ClientPlaceLog::query()->count())->toBe(0);
+})->with(['quote.pdf', 'minutes.docx', 'notes.txt']);

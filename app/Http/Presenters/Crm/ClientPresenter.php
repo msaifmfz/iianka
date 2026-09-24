@@ -6,6 +6,7 @@ namespace App\Http\Presenters\Crm;
 
 use App\Models\Client;
 use App\Models\ClientContact;
+use App\Models\ClientDocument;
 use App\Models\ClientPlace;
 use App\Models\ClientPlaceLog;
 use App\Models\ClientPlaceLogAttachment;
@@ -122,7 +123,7 @@ final readonly class ClientPresenter
      * The attachment ceilings the log form enforces before upload, so the
      * client never has to restate constants that live in PHP.
      *
-     * @return array{max_per_log: int, max_file_bytes: int, max_recording_seconds: int, image_extensions: list<string>}
+     * @return array{max_per_log: int, max_file_bytes: int, max_recording_seconds: int, image_extensions: list<string>, document_extensions: list<string>}
      */
     public function attachmentLimits(): array
     {
@@ -131,6 +132,43 @@ final readonly class ClientPresenter
             'max_file_bytes' => ClientPlaceLogAttachment::MAX_FILE_KILOBYTES * 1024,
             'max_recording_seconds' => ClientPlaceLogAttachment::MAX_RECORDING_SECONDS,
             'image_extensions' => ClientPlaceLogAttachment::IMAGE_EXTENSIONS,
+            'document_extensions' => ClientPlaceLogAttachment::DOCUMENT_EXTENSIONS,
+        ];
+    }
+
+    /**
+     * What the document upload form accepts, from the same constants the
+     * server validates against.
+     *
+     * @return array{max_file_bytes: int, extensions: list<string>}
+     */
+    public function documentLimits(): array
+    {
+        return [
+            'max_file_bytes' => ClientDocument::MAX_FILE_KILOBYTES * 1024,
+            'extensions' => ClientDocument::allowedExtensions(),
+        ];
+    }
+
+    /**
+     * Expects `place` and `uploader` loaded.
+     *
+     * @return array<string, mixed>
+     */
+    public function document(ClientDocument $document, User $viewer): array
+    {
+        return [
+            'id' => $document->id,
+            'name' => $document->name,
+            'extension' => $document->extension,
+            'size' => $document->size,
+            'issued_on' => $document->issued_on?->toDateString(),
+            'created_at' => $document->created_at->toIso8601String(),
+            'url' => $document->url(),
+            'opens_inline' => $document->opensInline(),
+            'place' => $document->place ? ['id' => $document->place->id, 'name' => $document->place->name] : null,
+            'uploader' => $document->uploader ? ['id' => $document->uploader->id, 'name' => $document->uploader->name] : null,
+            'can_delete' => $document->isDeletableBy($viewer),
         ];
     }
 
@@ -141,10 +179,14 @@ final readonly class ClientPresenter
      * `$logs` is the newest page, so `$totalLogs` says how many the client
      * has in all and whether the panel should offer the older ones.
      *
+     * `$documents` are the newest of those filed on this place or on the
+     * client as a whole; `$totalDocuments` counts all of them.
+     *
      * @param  Collection<int, ClientPlaceLog>  $logs  Client-wide logs, newest first.
+     * @param  Collection<int, ClientDocument>  $documents
      * @return array<string, mixed>
      */
-    public function placeDetail(ClientPlace $place, User $viewer, Collection $logs, int $totalLogs): array
+    public function placeDetail(ClientPlace $place, User $viewer, Collection $logs, int $totalLogs, Collection $documents, int $totalDocuments): array
     {
         return [
             'place' => $this->place($place),
@@ -160,6 +202,8 @@ final readonly class ClientPresenter
             'logs' => array_map(fn (ClientPlaceLog $log): array => $this->log($log, $viewer), $logs->all()),
             'logs_total' => $totalLogs,
             'older_logs_count' => max(0, $totalLogs - $logs->count()),
+            'documents' => array_map(fn (ClientDocument $document): array => $this->document($document, $viewer), $documents->all()),
+            'documents_total' => $totalDocuments,
         ];
     }
 
@@ -189,7 +233,9 @@ final readonly class ClientPresenter
                     'id' => $attachment->id,
                     'kind' => $attachment->kind->value,
                     'name' => $attachment->name,
+                    'extension' => $attachment->extension,
                     'url' => $attachment->url(),
+                    'opens_inline' => $attachment->opensInline(),
                     'duration_seconds' => $attachment->duration_seconds,
                 ])
                 ->values()

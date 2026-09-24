@@ -14,6 +14,7 @@ use App\Http\Controllers\BusinessScheduleController;
 use App\Http\Controllers\CleaningDutyRuleController;
 use App\Http\Controllers\ClientContactController;
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\ClientDocumentController;
 use App\Http\Controllers\ClientPlaceArchiveController;
 use App\Http\Controllers\ClientPlaceController;
 use App\Http\Controllers\ClientPlaceLogAttachmentController;
@@ -118,6 +119,12 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
             ->name('attachments.show');
         Route::delete('attachments/{client_place_log_attachment}', [ClientPlaceLogAttachmentController::class, 'destroy'])
             ->name('attachments.destroy');
+        Route::post('clients/{client}/documents', [ClientDocumentController::class, 'store'])
+            ->name('clients.documents.store');
+        Route::get('documents/{client_document}', [ClientDocumentController::class, 'show'])
+            ->name('documents.show');
+        Route::delete('documents/{client_document}', [ClientDocumentController::class, 'destroy'])
+            ->name('documents.destroy');
     });
     Route::prefix('reception')->name('reception.')->group(function (): void {
         Route::get('/', [ReceptionHomeController::class, 'index'])

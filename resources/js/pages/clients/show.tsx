@@ -20,6 +20,7 @@ import {
     edit as clientEdit,
     index as clientIndex,
 } from '@/actions/App/Http/Controllers/ClientController';
+import { destroy as documentDestroy } from '@/actions/App/Http/Controllers/ClientDocumentController';
 import {
     create as placeCreate,
     edit as placeEdit,
@@ -27,6 +28,8 @@ import {
 import crmMap from '@/actions/App/Http/Controllers/CrmMapController';
 import ClientBadge from '@/components/client-badge';
 import { HelpButton as Button } from '@/components/crm-map/action-help';
+import ClientDocumentForm from '@/components/crm-map/client-document-form';
+import ClientDocumentList from '@/components/crm-map/client-document-list';
 import ClientMapLink from '@/components/crm-map/client-map-link';
 import MapReturnLink from '@/components/crm-map/map-return-link';
 import FormField from '@/components/form-field';
@@ -36,10 +39,17 @@ import { Input } from '@/components/ui/input';
 import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { lastActivityLabel } from '@/lib/crm';
 import { cn } from '@/lib/utils';
-import type { ClientContact, ClientDetail } from '@/types';
+import type {
+    ClientContact,
+    ClientDetail,
+    ClientDocument,
+    ClientDocumentLimits,
+} from '@/types';
 
 type Props = {
     client: ClientDetail;
+    documents: ClientDocument[];
+    documentLimits: ClientDocumentLimits;
     canManage: boolean;
 };
 
@@ -153,11 +163,17 @@ function ContactEditor({
     );
 }
 
-export default function ClientShow({ client, canManage }: Props) {
+export default function ClientShow({
+    client,
+    documents,
+    documentLimits,
+    canManage,
+}: Props) {
     const { confirm, dialog } = useConfirmDialog();
     const [editingContactId, setEditingContactId] = useState<
         number | 'new' | null
     >(null);
+    const [isAddingDocument, setIsAddingDocument] = useState(false);
 
     async function deleteClient() {
         if (
@@ -186,6 +202,22 @@ export default function ClientShow({ client, canManage }: Props) {
         }
 
         router.delete(contactDestroy.url(contact.id), {
+            preserveScroll: true,
+        });
+    }
+
+    async function deleteDocument(clientDocument: ClientDocument) {
+        if (
+            !(await confirm({
+                title: `${clientDocument.name} を削除しますか？`,
+                confirmLabel: '削除',
+                variant: 'destructive',
+            }))
+        ) {
+            return;
+        }
+
+        router.delete(documentDestroy.url(clientDocument.id), {
             preserveScroll: true,
         });
     }
@@ -469,6 +501,46 @@ export default function ClientShow({ client, canManage }: Props) {
                                 </li>
                             ))}
                         </ul>
+                    )}
+                </section>
+
+                <section id="documents" className="space-y-3">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-lg font-semibold">書類</h2>
+                        {!isAddingDocument && (
+                            <Button
+                                helpTitle="書類を登録"
+                                help="見積書・契約書・図面などをこの顧客に登録します。PDF・Word・Excel・PowerPoint・テキスト・CSV・写真を登録できます。"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setIsAddingDocument(true)}
+                            >
+                                <Plus className="size-4" />
+                                登録
+                            </Button>
+                        )}
+                    </div>
+                    {isAddingDocument && (
+                        <ClientDocumentForm
+                            clientId={client.id}
+                            places={client.places}
+                            limits={documentLimits}
+                            onDone={() => setIsAddingDocument(false)}
+                        />
+                    )}
+                    {documents.length === 0 ? (
+                        !isAddingDocument && (
+                            <p className="text-sm text-muted-foreground">
+                                書類は登録されていません。
+                            </p>
+                        )
+                    ) : (
+                        <ClientDocumentList
+                            documents={documents}
+                            onDelete={(clientDocument) =>
+                                void deleteDocument(clientDocument)
+                            }
+                        />
                     )}
                 </section>
             </div>

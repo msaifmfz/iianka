@@ -55,9 +55,11 @@ export type MapPin = {
 
 export type ClientPlaceLogAttachment = {
     id: number;
-    kind: 'image' | 'audio';
+    kind: 'image' | 'audio' | 'document';
     name: string;
+    extension: string | null;
     url: string;
+    opens_inline: boolean;
     duration_seconds: number | null;
 };
 
@@ -87,6 +89,31 @@ export type SelectedPlace = {
     logs_total: number;
     /** How many older entries are not in `logs` yet. */
     older_logs_count: number;
+    /** The newest documents filed on this place or the whole client. */
+    documents: ClientDocument[];
+    documents_total: number;
+};
+
+export type ClientDocument = {
+    id: number;
+    name: string;
+    extension: string | null;
+    size: number | null;
+    /** `YYYY-MM-DD`, the date printed on the document. */
+    issued_on: string | null;
+    created_at: string;
+    url: string;
+    /** PDFs and images open in the browser; Office files download. */
+    opens_inline: boolean;
+    place: { id: number; name: string } | null;
+    uploader: { id: number; name: string } | null;
+    can_delete: boolean;
+};
+
+/** Upload limits mirrored from ClientDocument. */
+export type ClientDocumentLimits = {
+    max_file_bytes: number;
+    extensions: string[];
 };
 
 /** Attachment ceilings mirrored from ClientPlaceLogAttachment. */
@@ -95,4 +122,5 @@ export type CrmAttachmentLimits = {
     max_file_bytes: number;
     max_recording_seconds: number;
     image_extensions: string[];
+    document_extensions: string[];
 };

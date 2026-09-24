@@ -61,6 +61,11 @@
             "Composer\\Config::disableProcessTimeout",
             "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php -d upload_max_filesize=64M -d post_max_size=64M artisan serve\" \"php artisan queue:listen --tries=1 --timeout=0\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,queue,logs,vite --kill-others"
         ],
+        "dev:phone": [
+            "Composer\\Config::disableProcessTimeout",
+            "rm -f public/hot",
+            "npx concurrently -c \"#93c5fd,#c4b5fd,#fdba74,#86efac\" \"php -d upload_max_filesize=64M -d post_max_size=64M artisan serve\" \"php artisan queue:listen --tries=1 --timeout=0\" \"npx vite build --watch\" \"ngrok http 8000 --log stdout --log-format logfmt | grep --line-buffered -o 'url=https://[^ ]*'\" --names=server,queue,vite,ngrok --kill-others"
+        ],
         "nightly:issues": [
             "Composer\\Config::disableProcessTimeout",
             ".codex/scripts/run-nightly-automation.sh"

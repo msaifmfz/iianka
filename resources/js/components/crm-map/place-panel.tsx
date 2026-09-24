@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { show as clientShow } from '@/actions/App/Http/Controllers/ClientController';
+import { destroy as documentDestroy } from '@/actions/App/Http/Controllers/ClientDocumentController';
 import {
     store as placeArchive,
     destroy as placeUnarchive,
@@ -29,12 +30,14 @@ import { formatCrmDateTime, googleMapsDirectionsUrl } from '@/lib/crm';
 import { formatMinutesSeconds } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type {
+    ClientDocument,
     ClientPlaceLog,
     ClientReaction,
     CrmAttachmentLimits,
     CrmOption,
     SelectedPlace,
 } from '@/types';
+import ClientDocumentList, { DocumentLink } from './client-document-list';
 import PanelShell from './panel-shell';
 import PlaceLogForm from './place-log-form';
 
@@ -70,6 +73,9 @@ function LogEntry({
 }) {
     const images = log.attachments.filter((item) => item.kind === 'image');
     const recordings = log.attachments.filter((item) => item.kind === 'audio');
+    const documents = log.attachments.filter(
+        (item) => item.kind === 'document',
+    );
     const isCurrentPlace = log.place.id === selectedPlaceId;
 
     return (
@@ -228,6 +234,30 @@ function LogEntry({
                     )}
                 </div>
             ))}
+            {documents.map((attachment) => (
+                <div key={attachment.id} className="flex items-center gap-2">
+                    <DocumentLink
+                        href={attachment.url}
+                        name={attachment.name}
+                        extension={attachment.extension}
+                        opensInline={attachment.opens_inline}
+                        className="flex-1 text-sm"
+                    />
+                    {log.can_edit && (
+                        <Button
+                            size="icon"
+                            variant="ghost"
+                            className="size-7"
+                            aria-label="書類を削除"
+                            helpTitle="書類を削除"
+                            help="確認後、この書類だけを削除します。記録の本文は残ります。"
+                            onClick={() => onDeleteAttachment(attachment.id)}
+                        >
+                            <Trash2 className="size-3.5" />
+                        </Button>
+                    )}
+                </div>
+            ))}
         </li>
     );
 }
@@ -276,7 +306,13 @@ export default function PlacePanel({
         );
     }
 
-    const { place, client, logs, older_logs_count: olderLogsCount } = selected;
+    const {
+        place,
+        client,
+        logs,
+        documents,
+        older_logs_count: olderLogsCount,
+    } = selected;
     const isArchived = place.archived_at !== null;
 
     async function deleteLog(log: ClientPlaceLog) {
@@ -304,6 +340,21 @@ export default function PlacePanel({
             })
         ) {
             router.delete(attachmentDestroy.url(attachmentId), partialReload);
+        }
+    }
+
+    async function deleteDocument(clientDocument: ClientDocument) {
+        if (
+            await confirm({
+                title: `${clientDocument.name} を削除しますか？`,
+                confirmLabel: '削除',
+                variant: 'destructive',
+            })
+        ) {
+            router.delete(documentDestroy.url(clientDocument.id), {
+                ...partialReload,
+                only: ['selectedPlace'],
+            });
         }
     }
 
@@ -364,7 +415,7 @@ export default function PlacePanel({
                     {editing === null && (
                         <Button
                             helpTitle="記録を追加"
-                            help="この地点での訪問・打ち合わせ・電話などを記録します。担当者、顧客の反応、写真・音声も残せます。"
+                            help="この地点での訪問・打ち合わせ・電話などを記録します。担当者、顧客の反応、写真・音声・書類も残せます。"
                             size="sm"
                             onClick={() => setEditing('new')}
                         >
@@ -431,6 +482,29 @@ export default function PlacePanel({
                         attachmentLimits={attachmentLimits}
                         onDone={() => setEditing(null)}
                     />
+                )}
+
+                {documents.length > 0 && (
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                            <h3 className="text-sm font-semibold">書類</h3>
+                            <Link
+                                href={`${clientShow.url(client.id)}#documents`}
+                                className="text-xs text-muted-foreground hover:underline"
+                            >
+                                {selected.documents_total > documents.length
+                                    ? `すべて表示（全${selected.documents_total}件）`
+                                    : '顧客ページで管理'}
+                            </Link>
+                        </div>
+                        <ClientDocumentList
+                            documents={documents}
+                            currentPlaceId={place.id}
+                            onDelete={(clientDocument) =>
+                                void deleteDocument(clientDocument)
+                            }
+                        />
+                    </div>
                 )}
 
                 <div className="space-y-1">

@@ -1,8 +1,10 @@
 <?php
 
 use App\Domain\Crm\Enums\ClientPlaceLogAttachmentKind;
+use App\Http\Controllers\CrmMapController;
 use App\Models\Client;
 use App\Models\ClientContact;
+use App\Models\ClientDocument;
 use App\Models\ClientPlace;
 use App\Models\ClientPlaceLog;
 use App\Models\ClientPlaceLogAttachment;
@@ -20,7 +22,8 @@ test('CRM demo data is realistic, repeatable and preserves existing clients', fu
         ->and(ClientPlace::query()->count())->toBe(16)
         ->and(ClientPlace::query()->whereNotNull('archived_at')->count())->toBe(3)
         ->and(ClientPlaceLog::query()->count())->toBe(14)
-        ->and(ClientPlaceLogAttachment::query()->count())->toBe(7)
+        ->and(ClientPlaceLogAttachment::query()->count())->toBe(9)
+        ->and(ClientDocument::query()->count())->toBe(8)
         ->and(ClientPlace::query()->whereNull('last_logged_at')->count())->toBe(7)
         ->and(ClientPlaceLog::query()->whereNotNull('user_id')->count())->toBe(13)
         ->and(ClientPlaceLog::query()->whereNull('user_id')->count())->toBe(1)
@@ -37,8 +40,32 @@ test('CRM demo data is realistic, repeatable and preserves existing clients', fu
         ->and($contactlessClient->contacts()->count())->toBe(0)
         ->and($archivedOnlyClient->places()->whereNull('archived_at')->count())->toBe(0);
 
-    foreach (ClientPlaceLogAttachment::query()->pluck('path') as $path) {
+    foreach ([...ClientPlaceLogAttachment::query()->pluck('path'), ...ClientDocument::query()->pluck('path')] as $path) {
         Storage::disk(ClientPlaceLogAttachment::DISK)->assertExists($path);
+    }
+});
+
+test('CRM demo documents cover the panel limit and the upload variations', function (): void {
+    Storage::fake(ClientDocument::DISK);
+    $this->seed(CrmDemoSeeder::class);
+
+    $documents = ClientDocument::query()->get();
+    $busiestClientCount = $documents->groupBy('client_id')->map->count()->max();
+
+    expect($busiestClientCount)->toBeGreaterThan(CrmMapController::RECENT_DOCUMENT_LIMIT)
+        ->and($documents->whereNull('client_place_id')->count())->toBeGreaterThan(0)
+        ->and($documents->whereNotNull('client_place_id')->count())->toBeGreaterThan(0)
+        ->and($documents->whereNull('issued_on')->count())->toBeGreaterThan(0)
+        ->and($documents->whereNull('uploaded_by_user_id')->count())->toBeGreaterThan(0)
+        ->and($documents->pluck('extension')->unique()->sort()->values()->all())->toBe(['csv', 'jpg', 'pdf', 'txt'])
+        ->and(ClientPlaceLogAttachment::query()->where('kind', ClientPlaceLogAttachmentKind::Document)->count())->toBe(2);
+
+    // Demo PDFs must be real files the browser viewer can open.
+    foreach ($documents->where('extension', 'pdf') as $pdf) {
+        $contents = (string) Storage::disk(ClientDocument::DISK)->get($pdf->path);
+
+        expect($contents)->toStartWith('%PDF-')->toContain('startxref')
+            ->and(new finfo(FILEINFO_MIME_TYPE)->buffer($contents))->toBe('application/pdf');
     }
 });
 

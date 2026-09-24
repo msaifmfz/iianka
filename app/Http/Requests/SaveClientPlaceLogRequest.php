@@ -21,8 +21,8 @@ use Illuminate\Validation\Validator;
 use Override;
 
 /**
- * A CRM history entry, with optional photos and voice memos sent in the same
- * request so field staff submit a visit in one tap.
+ * A CRM history entry, with optional photos, voice memos and documents sent
+ * in the same request so field staff submit a visit in one tap.
  *
  * Any signed-in user may add an entry; editing is limited to its author (or
  * an admin).
@@ -33,6 +33,8 @@ class SaveClientPlaceLogRequest extends FormRequest
 
     /** How far ahead of the server an entry may be dated, to absorb device clock skew. */
     private const int FUTURE_GRACE_MINUTES = 5;
+
+    private const string UNSUPPORTED_FILE_MESSAGE = '添付できるのは写真・音声・書類（PDF・Word・Excel・PowerPoint・テキスト・CSV）のみです。';
 
     #[Override]
     protected function prepareForValidation(): void
@@ -86,7 +88,7 @@ class SaveClientPlaceLogRequest extends FormRequest
                 'required',
                 'file',
                 'max:'.ClientPlaceLogAttachment::MAX_FILE_KILOBYTES,
-                'extensions:'.implode(',', [...ClientPlaceLogAttachment::IMAGE_EXTENSIONS, ...ClientPlaceLogAttachment::AUDIO_EXTENSIONS]),
+                'extensions:'.implode(',', ClientPlaceLogAttachment::allowedExtensions()),
             ],
             'attachments.*.duration_seconds' => ['nullable', 'integer', 'min:0', 'max:'.ClientPlaceLogAttachment::MAX_RECORDING_SECONDS],
         ];
@@ -119,14 +121,14 @@ class SaveClientPlaceLogRequest extends FormRequest
 
         return [
             'attachments.*.file.max' => "添付ファイルは{$maxMegabytes}MBまでです。",
-            'attachments.*.file.extensions' => '添付できるのは写真と音声のみです。',
+            'attachments.*.file.extensions' => self::UNSUPPORTED_FILE_MESSAGE,
             'occurred_at.before_or_equal' => '日時に未来の日付は指定できません。',
         ];
     }
 
     /**
-     * Reject files whose real content is not an image or audio, whatever
-     * their extension says: attachments are served inline.
+     * Reject files whose real content does not match their extension:
+     * images, audio and PDFs are served inline.
      *
      * @return array<int, callable>
      */
@@ -158,7 +160,7 @@ class SaveClientPlaceLogRequest extends FormRequest
                     }
 
                     if (! $guard->accepts($file)) {
-                        $validator->errors()->add($key, '添付できるのは写真と音声のみです。');
+                        $validator->errors()->add($key, self::UNSUPPORTED_FILE_MESSAGE);
                     }
                 }
             },

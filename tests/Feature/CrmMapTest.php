@@ -3,6 +3,7 @@
 use App\Http\Controllers\CrmMapController;
 use App\Models\Client;
 use App\Models\ClientContact;
+use App\Models\ClientDocument;
 use App\Models\ClientPlace;
 use App\Models\ClientPlaceLog;
 use App\Models\ClientPlaceLogAttachment;
@@ -219,5 +220,25 @@ test('the map hands the log form the attachment ceilings instead of restating th
             ->where('attachmentLimits.max_file_bytes', ClientPlaceLogAttachment::MAX_FILE_KILOBYTES * 1024)
             ->where('attachmentLimits.max_recording_seconds', ClientPlaceLogAttachment::MAX_RECORDING_SECONDS)
             ->where('attachmentLimits.image_extensions', ClientPlaceLogAttachment::IMAGE_EXTENSIONS)
+            ->where('attachmentLimits.document_extensions', ClientPlaceLogAttachment::DOCUMENT_EXTENSIONS)
         );
+});
+
+test('a place panel lists the newest documents filed on it or on the whole client', function (): void {
+    $place = ClientPlace::factory()->create();
+    $siblingPlace = ClientPlace::factory()->for($place->client)->create();
+    $onPlace = ClientDocument::factory()->for($place->client)->for($place, 'place')->create(['issued_on' => '2026-09-10']);
+    $clientWide = ClientDocument::factory()->for($place->client)->create(['issued_on' => '2026-09-01']);
+    ClientDocument::factory()->for($place->client)->for($siblingPlace, 'place')->create();
+    ClientDocument::factory()->create();
+    ClientDocument::factory()->for($place->client)->count(CrmMapController::RECENT_DOCUMENT_LIMIT)->create(['issued_on' => '2026-01-01']);
+
+    $this->actingAs(User::factory()->create())->get(route('crm.map'))->assertOk();
+
+    $this->get(route('crm.map', ['place' => $place->id]), selectedPlaceHeaders())
+        ->assertOk()
+        ->assertJsonCount(CrmMapController::RECENT_DOCUMENT_LIMIT, 'props.selectedPlace.documents')
+        ->assertJsonPath('props.selectedPlace.documents.0.id', $onPlace->id)
+        ->assertJsonPath('props.selectedPlace.documents.1.id', $clientWide->id)
+        ->assertJsonPath('props.selectedPlace.documents_total', CrmMapController::RECENT_DOCUMENT_LIMIT + 2);
 });

@@ -51,6 +51,14 @@ class Client extends Model
     }
 
     /**
+     * @return HasMany<ClientDocument, $this>
+     */
+    public function documents(): HasMany
+    {
+        return $this->hasMany(ClientDocument::class);
+    }
+
+    /**
      * @return BelongsTo<User, $this>
      */
     public function createdBy(): BelongsTo
