@@ -11,6 +11,8 @@ Only final releases are listed; `-rc.N` pre-releases fold into their final versi
 
 - Add CRM clients, places and interactive client map ([#62](https://github.com/msaifmfz/iianka/issues/62))
 - Add client map and client list to menu ([#63](https://github.com/msaifmfz/iianka/issues/63))
+- Allow document uploads in CRM visits and client-level ([#65](https://github.com/msaifmfz/iianka/issues/65))
+- Add staff-oriented CRM map ([#66](https://github.com/msaifmfz/iianka/issues/66))
 
 ## [0.4.11](https://github.com/msaifmfz/iianka/compare/v0.4.10...v0.4.11) - 2026-09-13
 
