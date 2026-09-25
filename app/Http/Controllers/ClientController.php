@@ -52,7 +52,6 @@ class ClientController extends Controller
     {
         $client = Client::query()->create([
             ...$request->validated(),
-            'color' => '#6b7280',
             'created_by_user_id' => $request->user()?->id,
         ]);
 

@@ -13,19 +13,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- * A customer tracked on the CRM map. Legacy colors remain stored but are
- * no longer displayed or edited; map colors identify staff instead.
+ * A customer tracked on the CRM map. Pins are colored by staff, not client.
  *
  * @property int $id
  * @property string $name
  * @property string $short_label
- * @property string $color
  * @property string|null $note
  */
 #[Fillable([
     'name',
     'short_label',
-    'color',
     'note',
     'created_by_user_id',
 ])]

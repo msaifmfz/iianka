@@ -11,7 +11,6 @@ use App\Domain\Crm\Enums\ClientReaction;
 use App\Models\Client;
 use App\Models\ClientContact;
 use App\Models\ClientDocument;
-use App\Models\ClientPlace;
 use App\Models\ClientPlaceLog;
 use App\Models\ClientPlaceLogAttachment;
 use App\Models\User;
@@ -62,47 +61,12 @@ class CrmDemoSeeder extends Seeder
         }
 
         DB::transaction(function (): void {
-            $this->removeLegacyHistory();
             $authors = $this->authors();
 
             foreach ($this->scenarios() as $scenario) {
                 $this->seedClient($scenario, $authors);
             }
         });
-    }
-
-    /**
-     * The first version of this seeder copied the same three summaries to
-     * every place. Remove only those exact generated rows when upgrading an
-     * existing demo database; edited rows and non-demo data remain untouched.
-     */
-    private function removeLegacyHistory(): void
-    {
-        $legacySummaries = [
-            '【デモ】初回の現地確認。搬入口と養生範囲を担当者と確認した。次回までに数量を整理し、概算見積を送る。',
-            '【デモ】工程変更の相談。午前中の資材搬入は他業者と重なるため難色。午後の搬入案と追加費用を確認し、再提案する。',
-            '【デモ】変更案を説明し、午後搬入で合意。見積内容にも了承を得た。着工前週に最終数量と安全書類をメールで共有する。',
-        ];
-
-        Client::withTrashed()
-            ->where('name', 'like', '【デモ】%')
-            ->whereNull('deleted_at')
-            ->with('places.logs.attachments')
-            ->get()
-            ->each(function (Client $client) use ($legacySummaries): void {
-                $client->places->each(function (ClientPlace $place) use ($legacySummaries): void {
-                    $place->logs
-                        ->whereIn('summary', $legacySummaries)
-                        ->each(function (ClientPlaceLog $log): void {
-                            foreach ($log->attachments as $attachment) {
-                                Storage::disk($attachment->disk)->delete($attachment->path);
-                            }
-
-                            $log->delete();
-                        });
-                    $place->refreshLastLoggedAt();
-                });
-            });
     }
 
     /**
@@ -142,7 +106,6 @@ class CrmDemoSeeder extends Seeder
             ['name' => '【デモ】'.$scenario['name']],
             [
                 'short_label' => $scenario['label'],
-                'color' => $scenario['color'],
                 'note' => $scenario['note'] === null
                     ? null
                     : '操作練習用の架空データです。実在する企業・人物・現場とは関係ありません。'.$scenario['note'],
@@ -364,11 +327,12 @@ class CrmDemoSeeder extends Seeder
     }
 
     /**
-     * These scenarios cover empty states, every enum value, named and deleted
-     * authors, archived-only places, overlapping pins, mixed attachments,
-     * client documents (more than the panel lists), and the layout extremes —
-     * a pale client color, a three-character label, long names, a
-     * multi-paragraph entry and two entries sharing a timestamp.
+     * These scenarios cover empty states, every enum value, several staff on
+     * one place plus a deleted author (the staff filter and legend),
+     * archived-only places, overlapping pins, mixed attachments, client
+     * documents (more than the panel lists), and the layout extremes — a
+     * three-character label, long names, a multi-paragraph entry and two
+     * entries sharing a timestamp.
      * Coordinates are fictional but clustered around Kansai.
      *
      * @return list<array<string, mixed>>
@@ -377,7 +341,7 @@ class CrmDemoSeeder extends Seeder
     {
         return [
             [
-                'name' => 'なにわ総合建設株式会社', 'label' => '浪', 'color' => '#dc2626', 'note' => '大阪市内の小規模改修を中心に取引。',
+                'name' => 'なにわ総合建設株式会社', 'label' => '浪', 'note' => '大阪市内の小規模改修を中心に取引。',
                 'contacts' => [
                     ['key' => 'site', 'name' => '森田 健介', 'title' => '工事部 主任', 'phone' => '06-5555-0101', 'email' => 'morita@example.invalid', 'note' => '現場窓口。午後の連絡がスムーズ。'],
                     ['key' => 'sales', 'name' => '上田 真由', 'title' => '営業部 課長', 'email' => 'ueda@example.invalid'],
@@ -419,7 +383,7 @@ class CrmDemoSeeder extends Seeder
                 ],
             ],
             [
-                'name' => '六甲みらい設備株式会社', 'label' => '六', 'color' => '#2563eb', 'note' => '空調更新が得意。夜間搬入の案件が多い。',
+                'name' => '六甲みらい設備株式会社', 'label' => '六', 'note' => '空調更新が得意。夜間搬入の案件が多い。',
                 'contacts' => [
                     ['key' => 'site', 'name' => '藤原 悠介', 'title' => '設備課 主任', 'phone' => '078-555-0202'],
                     ['key' => 'sales', 'name' => '岡本 彩香', 'title' => '購買担当', 'email' => 'okamoto@example.invalid'],
@@ -432,42 +396,42 @@ class CrmDemoSeeder extends Seeder
                 ],
             ],
             [
-                'name' => '京洛リノベーション合同会社', 'label' => '京', 'color' => '#16a34a', 'note' => '町家の改修。近隣への騒音配慮が重要。',
+                'name' => '京洛リノベーション合同会社', 'label' => '京', 'note' => '町家の改修。近隣への騒音配慮が重要。',
                 'contacts' => [['key' => 'site', 'name' => '中西 翔太', 'title' => '現場監督', 'email' => 'nakanishi@example.invalid']],
                 'places' => [['name' => '西陣町家改修計画', 'kind' => ClientPlaceKind::Site, 'address' => '京都府京都市上京区今出川通', 'lat' => 35.0295, 'lng' => 135.7500, 'archived_days_ago' => null, 'logs' => [['summary' => '近隣説明の電話。工事時間を短縮してほしいとの要望。', 'type' => ClientPlaceLogType::Call, 'reaction' => ClientReaction::Negative, 'contact' => 'site', 'author' => 'primary', 'days_ago' => 95]]]],
             ],
             [
-                'name' => '大和あおば工務店', 'label' => '大', 'color' => '#9333ea', 'note' => '木造住宅の修繕が中心。月末にまとめて発注。',
+                'name' => '大和あおば工務店', 'label' => '大', 'note' => '木造住宅の修繕が中心。月末にまとめて発注。',
                 'contacts' => [['key' => 'site', 'name' => '松井 直樹', 'title' => '代表', 'phone' => '0742-555-0404']],
                 'places' => [['name' => '新大宮住宅外壁改修', 'kind' => ClientPlaceKind::Site, 'address' => '奈良県奈良市大宮町', 'lat' => 34.6820, 'lng' => 135.8110, 'archived_days_ago' => null, 'logs' => []]],
             ],
             [
-                'name' => '堺ベイエリア工業株式会社', 'label' => '堺', 'color' => '#ea580c', 'note' => '工場保全を担当。安全書類を早めに用意する。',
+                'name' => '堺ベイエリア工業株式会社', 'label' => '堺', 'note' => '工場保全を担当。安全書類を早めに用意する。',
                 'contacts' => [],
                 'places' => [['name' => '臨海工場定期修繕', 'kind' => ClientPlaceKind::Site, 'address' => '大阪府堺市堺区築港八幡町', 'lat' => 34.5910, 'lng' => 135.4550, 'archived_days_ago' => null, 'logs' => []]],
             ],
             [
-                'name' => '尼崎つばさ建装株式会社', 'label' => '尼', 'color' => '#0891b2', 'note' => '前回取引から時間が経っているため再訪問を検討。',
+                'name' => '尼崎つばさ建装株式会社', 'label' => '尼', 'note' => '前回取引から時間が経っているため再訪問を検討。',
                 'contacts' => [['key' => 'site', 'name' => '吉岡 達也', 'title' => '工事部', 'email' => 'yoshioka@example.invalid']],
                 'places' => [['name' => '杭瀬集合住宅共用部改修', 'kind' => ClientPlaceKind::Site, 'address' => '兵庫県尼崎市杭瀬本町', 'lat' => 34.7200, 'lng' => 135.4370, 'archived_days_ago' => 180, 'logs' => [['summary' => '過去案件の完了確認。今後の改修計画は未定。', 'type' => ClientPlaceLogType::Other, 'reaction' => null, 'contact' => 'site', 'author' => 'secondary', 'days_ago' => 180]]]],
             ],
             [
-                'name' => '空地点テスト商事', 'label' => '空', 'color' => '#64748b', 'note' => '顧客詳細から地点を追加する空状態の確認用。', 'contacts' => [['key' => 'sales', 'name' => '空地点窓口', 'title' => '営業担当']], 'places' => [],
+                'name' => '空地点テスト商事', 'label' => '空', 'note' => '顧客詳細から地点を追加する空状態の確認用。', 'contacts' => [['key' => 'sales', 'name' => '空地点窓口', 'title' => '営業担当']], 'places' => [],
             ],
             [
-                'name' => '共同現場サンプルA', 'label' => '共A', 'color' => '#db2777', 'note' => '別顧客と同じ座標を使うクラスタ確認用。',
+                'name' => '共同現場サンプルA', 'label' => '共A', 'note' => '別顧客と同じ座標を使うクラスタ確認用。',
                 'contacts' => [['key' => 'site', 'name' => '共有現場 A担当', 'title' => '現場担当']],
                 'places' => [['name' => '梅田共同現場 A', 'kind' => ClientPlaceKind::Other, 'address' => '大阪府大阪市北区梅田', 'lat' => 34.7025, 'lng' => 135.4959, 'archived_days_ago' => null, 'logs' => [['summary' => '共同現場の入場手順を確認した。', 'type' => ClientPlaceLogType::Other, 'reaction' => ClientReaction::Neutral, 'contact' => 'site', 'author' => 'viewer', 'days_ago' => 20]]]],
             ],
             [
-                'name' => '共同現場サンプルB', 'label' => '共B', 'color' => '#ca8a04', 'note' => '同一地点に複数顧客が存在する表示確認用。',
+                'name' => '共同現場サンプルB', 'label' => '共B', 'note' => '同一地点に複数顧客が存在する表示確認用。',
                 'contacts' => [['key' => 'site', 'name' => '共有現場 B担当', 'title' => '購買担当']],
                 'places' => [['name' => '梅田共同現場 B', 'kind' => ClientPlaceKind::Other, 'address' => null, 'lat' => 34.7025, 'lng' => 135.4959, 'archived_days_ago' => null, 'logs' => [['summary' => '別会社との工程調整。次回は合同確認する。', 'type' => ClientPlaceLogType::Meeting, 'reaction' => null, 'contact' => null, 'author' => 'primary', 'days_ago' => 2]]]],
             ],
             [
-                // A pale color proves the pin label flips to black; the label is
-                // the full three characters the column allows; the note is unset.
-                'name' => '淡色ラベル確認テスト株式会社関西支社サンプル', 'label' => '淡黄色', 'color' => '#facc15', 'note' => null,
+                // The label is the full three characters the column allows; the
+                // note is unset.
+                'name' => '長名ラベル確認テスト株式会社関西支社サンプル', 'label' => '長名社', 'note' => null,
                 'contacts' => [
                     ['key' => 'site', 'name' => '長名 担当太郎', 'title' => '品質管理部 生産技術課 主任技師'],
                 ],
@@ -508,14 +472,6 @@ class CrmDemoSeeder extends Seeder
                 ],
                 'documents' => [
                     ['name' => '北港緑地第二工区 仮設計画図・搬入経路図・近隣説明資料一式（長い書類名の表示確認用）', 'extension' => 'pdf', 'mime_type' => 'application/pdf', 'place' => '此花区北港緑地第二工区 仮設事務所・資材ヤード併設現場（長い地点名の表示確認用）', 'issued_days_ago' => 3, 'author' => 'primary'],
-                ],
-            ],
-            [
-                // White is the hardest case for the pin label and the badge ring.
-                'name' => '白ラベル確認商会', 'label' => '白', 'color' => '#ffffff', 'note' => 'ピンの文字色が自動で黒になることの確認用。',
-                'contacts' => [],
-                'places' => [
-                    ['name' => '白ピン確認地点', 'kind' => ClientPlaceKind::Other, 'address' => null, 'lat' => 34.6600, 'lng' => 135.5200, 'archived_days_ago' => null, 'logs' => []],
                 ],
             ],
         ];

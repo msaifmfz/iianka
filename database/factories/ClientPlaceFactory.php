@@ -26,8 +26,8 @@ class ClientPlaceFactory extends Factory
             'kind' => ClientPlaceKind::Site->value,
             'name' => fake()->streetName(),
             'address' => fake()->optional()->address(),
-            'lat' => fake()->latitude(33.5, 35.0),
-            'lng' => fake()->longitude(130.5, 135.5),
+            'lat' => fake()->latitude(34.4, 35.1),
+            'lng' => fake()->longitude(135.1, 135.9),
             'archived_at' => null,
             'last_logged_at' => null,
         ];
