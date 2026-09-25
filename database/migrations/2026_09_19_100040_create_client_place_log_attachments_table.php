@@ -17,7 +17,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('client_place_log_id')->constrained()->cascadeOnDelete();
             $table->foreignId('uploaded_by_user_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->string('kind')->index();
+            $table->string('kind');
             $table->string('name');
             $table->string('disk')->default('local');
             $table->string('path');

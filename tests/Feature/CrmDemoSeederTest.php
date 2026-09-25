@@ -17,14 +17,14 @@ test('CRM demo data is realistic, repeatable and preserves existing clients', fu
     $this->seed(CrmDemoSeeder::class);
     $this->seed(CrmDemoSeeder::class);
 
-    expect(Client::query()->count())->toBe(12)
+    expect(Client::query()->count())->toBe(11)
         ->and(ClientContact::query()->count())->toBe(11)
-        ->and(ClientPlace::query()->count())->toBe(16)
+        ->and(ClientPlace::query()->count())->toBe(15)
         ->and(ClientPlace::query()->whereNotNull('archived_at')->count())->toBe(3)
         ->and(ClientPlaceLog::query()->count())->toBe(14)
         ->and(ClientPlaceLogAttachment::query()->count())->toBe(9)
         ->and(ClientDocument::query()->count())->toBe(8)
-        ->and(ClientPlace::query()->whereNull('last_logged_at')->count())->toBe(7)
+        ->and(ClientPlace::query()->whereNull('last_logged_at')->count())->toBe(6)
         ->and(ClientPlaceLog::query()->whereNotNull('user_id')->count())->toBe(13)
         ->and(ClientPlaceLog::query()->whereNull('user_id')->count())->toBe(1)
         ->and(ClientPlaceLog::query()->distinct('type')->count('type'))->toBe(4)
@@ -84,8 +84,6 @@ test('CRM demo data covers the layout and formatting extremes', function (): voi
     $longest = fn (iterable $values): int => max(array_map(mb_strlen(...), [...$values, '']));
 
     expect(Client::query()->whereNull('note')->count())->toBeGreaterThan(0)
-        // A pale client proves the pin label flips from white to black.
-        ->and(Client::query()->whereIn('color', ['#ffffff', '#facc15'])->count())->toBe(2)
         // short_label is capped at three characters; the demo uses all three.
         ->and($longest(Client::query()->pluck('short_label')))->toBe(3)
         ->and($longest(Client::query()->pluck('name')))->toBeGreaterThan(20)
@@ -134,7 +132,7 @@ test('CRM demo seeding enforces the environment guard even with force', function
     try {
         if ($allowed) {
             $this->artisan('db:seed', ['--class' => CrmDemoSeeder::class, '--force' => true])->assertSuccessful();
-            expect(Client::query()->count())->toBe(11);
+            expect(Client::query()->count())->toBe(10);
         } else {
             expect(fn () => $this->artisan('db:seed', ['--class' => CrmDemoSeeder::class, '--force' => true])->run())
                 ->toThrow(LogicException::class, 'local, testing or staging');
@@ -156,5 +154,5 @@ test('CRM demo seeding does not restore deleted demo clients', function (): void
     $this->seed(CrmDemoSeeder::class);
 
     expect($client->refresh()->trashed())->toBeTrue()
-        ->and(Client::withTrashed()->count())->toBe(11);
+        ->and(Client::withTrashed()->count())->toBe(10);
 });

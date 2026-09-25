@@ -18,7 +18,7 @@ return new class extends Migration
             $table->foreignId('client_place_id')->constrained()->cascadeOnDelete();
             $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('client_contact_id')->nullable()->constrained()->nullOnDelete();
-            $table->string('type')->index();
+            $table->string('type');
             $table->timestamp('occurred_at');
             $table->text('summary');
             $table->string('reaction')->nullable();

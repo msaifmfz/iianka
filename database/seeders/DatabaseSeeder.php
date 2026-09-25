@@ -114,5 +114,9 @@ class DatabaseSeeder extends Seeder
         );
 
         $businessSchedule->assignedUsers()->sync([$admin->id]);
+
+        if (app()->environment(['local', 'staging'])) {
+            $this->call(CrmDemoSeeder::class);
+        }
     }
 }

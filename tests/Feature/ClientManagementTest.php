@@ -49,7 +49,7 @@ test('the client list filters by name', function (): void {
             ->where('clients.0.name', '大阪工業'));
 });
 
-test('an editor creates a client without choosing a color', function (): void {
+test('an editor creates a client', function (): void {
     $editor = User::factory()->editor()->create();
 
     $response = $this->actingAs($editor)->post(route('crm.clients.store'), clientPayload());
@@ -57,8 +57,7 @@ test('an editor creates a client without choosing a color', function (): void {
     $client = Client::query()->sole();
     $response->assertRedirect(route('crm.clients.show', $client));
 
-    expect($client->color)->toBe('#6b7280')
-        ->and($client->note)->toBeNull()
+    expect($client->note)->toBeNull()
         ->and($client->createdBy->is($editor))->toBeTrue()
         ->and(AuditLog::query()->where('event', 'clients.created')->exists())->toBeTrue();
 });
@@ -87,7 +86,7 @@ test('a viewer cannot create, edit or delete clients', function (): void {
 });
 
 test('the create form no longer receives a color palette', function (): void {
-    Client::factory()->create(['color' => '#2563eb']);
+    Client::factory()->create();
 
     $this->actingAs(User::factory()->editor()->create())
         ->get(route('crm.clients.create'))
@@ -98,8 +97,8 @@ test('the create form no longer receives a color palette', function (): void {
 });
 
 test('the edit form no longer receives client colors', function (): void {
-    $client = Client::factory()->create(['color' => '#2563eb']);
-    Client::factory()->create(['color' => '#16a34a']);
+    $client = Client::factory()->create();
+    Client::factory()->create();
 
     $this->actingAs(User::factory()->editor()->create())
         ->get(route('crm.clients.edit', $client))
@@ -111,14 +110,14 @@ test('the edit form no longer receives client colors', function (): void {
 
 test('an editor updates and deletes a client', function (): void {
     $editor = User::factory()->editor()->create();
-    $client = Client::factory()->create(['color' => '#2563eb']);
+    $client = Client::factory()->create();
 
+    // A stray color from an old form is ignored, not stored.
     $this->actingAs($editor)
         ->patch(route('crm.clients.update', $client), clientPayload(['name' => '新名称', 'color' => '#ffffff']))
         ->assertRedirect(route('crm.clients.show', $client));
 
-    expect($client->refresh()->name)->toBe('新名称')
-        ->and($client->color)->toBe('#2563eb');
+    expect($client->refresh()->name)->toBe('新名称');
 
     $this->actingAs($editor)
         ->delete(route('crm.clients.destroy', $client))

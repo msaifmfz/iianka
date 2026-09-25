@@ -216,8 +216,7 @@ class E2eSeeder extends Seeder
     /**
      * One CRM client with an office in Osaka and a site in Kobe — far enough
      * apart that they never cluster — and one history entry, so the map can be
-     * exercised for pins, the panel and logging. The client takes red, so the
-     * new-client form should suggest the next palette color.
+     * exercised for pins, the panel and logging.
      */
     private function seedCrm(User $worker): void
     {
@@ -235,7 +234,6 @@ class E2eSeeder extends Seeder
         $client = Client::create([
             'name' => 'E2E 西日本商事',
             'short_label' => '西',
-            'color' => '#dc2626',
         ]);
 
         $contact = $client->contacts()->create(['name' => '山田 太郎', 'title' => '部長']);
@@ -276,7 +274,6 @@ class E2eSeeder extends Seeder
         Client::create([
             'name' => 'E2E 東大阪工業',
             'short_label' => '東',
-            'color' => '#2563eb',
         ])->places()->create([
             'kind' => ClientPlaceKind::Office,
             'name' => 'E2E 東大阪事務所',

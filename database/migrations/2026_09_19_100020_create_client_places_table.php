@@ -16,7 +16,7 @@ return new class extends Migration
         Schema::create('client_places', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('client_id')->constrained()->cascadeOnDelete();
-            $table->string('kind')->index();
+            $table->string('kind');
             $table->string('name');
             $table->string('address')->nullable();
             $table->decimal('lat', 10, 7);
