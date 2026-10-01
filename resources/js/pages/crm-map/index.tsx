@@ -3,21 +3,13 @@ import type L from 'leaflet';
 import { ChevronDown, Crosshair, List, Plus, Search, X } from 'lucide-react';
 import { lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { index as clientIndex } from '@/actions/App/Http/Controllers/ClientController';
-import { create as clientCreate } from '@/actions/App/Http/Controllers/ClientController';
-import { create as placeCreate } from '@/actions/App/Http/Controllers/ClientPlaceController';
 import crmMap from '@/actions/App/Http/Controllers/CrmMapController';
 import { ActionHelp, HelpButton } from '@/components/crm-map/action-help';
+import AddPlaceDialog from '@/components/crm-map/add-place-dialog';
 import ClientOnly from '@/components/crm-map/client-only';
 import PlacePanel from '@/components/crm-map/place-panel';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { formatDistance, nearbyPlaces } from '@/lib/crm-location';
@@ -42,12 +34,13 @@ type Props = {
     filters: { archived: boolean };
     selectedPlace: SelectedPlace | null;
     canManage: boolean;
+    placeKinds: CrmOption[];
     logTypes: CrmOption[];
     reactions: CrmOption[];
     attachmentLimits: CrmAttachmentLimits;
 };
 
-const MAP_ONLY_PROPS = ['selectedPlace', 'places', 'filters'];
+const MAP_ONLY_PROPS = ['selectedPlace', 'clients', 'places', 'filters'];
 
 function mapQuery(placeId: number | null, archived: boolean, allLogs = false) {
     return {
@@ -75,6 +68,7 @@ function CrmMapContent({
     selectedPlace,
     canManage,
     logTypes,
+    placeKinds,
     reactions,
     attachmentLimits,
 }: Props) {
@@ -172,7 +166,6 @@ function CrmMapContent({
         [places, staffId],
     );
     const [search, setSearch] = useState(saved?.search ?? '');
-    const [clientChoiceSearch, setClientChoiceSearch] = useState('');
     const [pickedLocation, setPickedLocation] = useState<{
         lat: number;
         lng: number;
@@ -238,10 +231,6 @@ function CrmMapContent({
                               )),
                   )
                   .slice(0, 8);
-    const clientChoiceTerm = clientChoiceSearch.trim().toLocaleLowerCase();
-    const clientChoices = clients.filter((client) =>
-        client.name.toLocaleLowerCase().includes(clientChoiceTerm),
-    );
     const visiblePlaces = new Set(visiblePlaceIds);
     const visibleStaffIds = new Set(
         filteredPlaces
@@ -590,7 +579,8 @@ function CrmMapContent({
                         {canManage && (
                             <HelpButton
                                 helpTitle="地点を追加"
-                                help="顧客を選び、住所検索・地図のタップ・ピンの移動で地点を登録します。最初は現在の地図の中央が選ばれます。"
+                                disabled={viewport === null}
+                                help="地図中央に新しい顧客と地点を登録するか、既存の顧客に地点を追加します。位置を指定するには地図を右クリックしてください。対応端末では長押しも使えます。"
                                 size="sm"
                                 className="rounded-full shadow-md"
                                 onClick={() => {
@@ -842,7 +832,7 @@ function CrmMapContent({
                     {places.length === 0 && (
                         <p className="pointer-events-auto rounded-lg bg-white/95 px-3 py-2 text-xs text-muted-foreground shadow-md dark:bg-neutral-950/95">
                             {canManage
-                                ? '地点がまだありません。地図を長押しするか、顧客ページから地点を追加してください。'
+                                ? '地点がまだありません。地図を右クリックするか、「地点を追加」から顧客と地点を登録できます。対応端末では長押しも使えます。'
                                 : '地点がまだありません。'}
                         </p>
                     )}
@@ -850,7 +840,8 @@ function CrmMapContent({
 
                 <p className="pointer-events-none absolute right-3 bottom-6 z-[400] hidden rounded-lg bg-white/90 px-2 py-1 text-[11px] text-muted-foreground shadow sm:block dark:bg-neutral-950/90">
                     色＝担当者 ・ 四角＝事務所 ・ 緑の点＝7日以内の記録
-                    {canManage && ' ・ 長押しで地点を追加'}
+                    {canManage &&
+                        ' ・ 右クリックで地点を追加（対応端末では長押し）'}
                 </p>
 
                 {selectedPlaceId !== null && (
@@ -875,64 +866,25 @@ function CrmMapContent({
                 )}
             </div>
 
-            <Dialog
-                open={pickedLocation !== null}
-                onOpenChange={(open) => {
-                    if (!open) {
+            {canManage && pickedLocation && (
+                <AddPlaceDialog
+                    position={pickedLocation}
+                    clients={clients}
+                    kinds={placeKinds}
+                    onClose={() => setPickedLocation(null)}
+                    onCreated={() => {
+                        selectionRequestRef.current++;
+                        setPendingPlaceId(undefined);
+                        setSelectionError(null);
+                        setIsChangingArchive(false);
+                        setIsLoadingOlderLogs(false);
+                        setStaffId(null);
+                        setFocusClientId(null);
+                        setSearch('');
                         setPickedLocation(null);
-                        setClientChoiceSearch('');
-                    }
-                }}
-            >
-                <DialogContent className="max-h-[80svh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle>ここに地点を追加</DialogTitle>
-                        <DialogDescription>
-                            顧客を選択してください。次の画面で住所や位置を調整できます。
-                        </DialogDescription>
-                    </DialogHeader>
-                    {clients.length === 0 ? (
-                        <HelpButton
-                            asChild
-                            helpTitle="顧客を追加"
-                            help="まず顧客名と色を登録します。登録後、その顧客の事務所や現場を地図に追加できます。"
-                        >
-                            <Link href={clientCreate()}>顧客を追加</Link>
-                        </HelpButton>
-                    ) : (
-                        <>
-                            <Input
-                                aria-label="地点を追加する顧客を探す"
-                                placeholder="顧客名で検索"
-                                value={clientChoiceSearch}
-                                onChange={(event) =>
-                                    setClientChoiceSearch(event.target.value)
-                                }
-                            />
-                            {clientChoices.length === 0 ? (
-                                <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground dark:border-neutral-800">
-                                    該当する顧客がいません。
-                                </p>
-                            ) : (
-                                <ul className="divide-y rounded-xl border dark:border-neutral-800">
-                                    {clientChoices.map((client) => (
-                                        <li key={client.id}>
-                                            <Link
-                                                href={placeCreate(client.id, {
-                                                    query: pickedLocation ?? {},
-                                                })}
-                                                className="flex items-center gap-3 p-3 text-sm hover:bg-neutral-50 dark:hover:bg-neutral-900"
-                                            >
-                                                {client.name}
-                                            </Link>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                        </>
-                    )}
-                </DialogContent>
-            </Dialog>
+                    }}
+                />
+            )}
         </>
     );
 }

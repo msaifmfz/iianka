@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { devices, expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
 const password = 'password';
@@ -107,9 +107,7 @@ test.describe('CRM map', () => {
         await page.screenshot({
             path: testInfo.outputPath('client-detail.png'),
         });
-        await page
-            .getByRole('link', { name: '編集', exact: true })
-            .click();
+        await page.getByRole('link', { name: '編集', exact: true }).click();
         await expect(page.locator('input[type="color"]')).toHaveCount(0);
         await page.getByLabel('メモ').fill('色の選択なしで編集できます');
         await page
@@ -462,7 +460,7 @@ test.describe('CRM map', () => {
             'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aBz0AAAAASUVORK5CYII=',
             'base64',
         );
-        await panel.locator('input[type="file"]').setInputFiles(
+        await panel.locator('input[type="file"][accept*=".png"]').setInputFiles(
             Array.from({ length: 11 }, (_, index) => ({
                 name: `photo-${index}.png`,
                 mimeType: 'image/png',
@@ -593,7 +591,8 @@ test.describe('CRM map', () => {
             .getAttribute('src');
         expect(audioUrl).toBeTruthy();
         const response = await page.request.get(audioUrl!);
-        expect(response.ok()).toBe(true);
+        expect(response.status()).toBe(200);
+        expect(response.headers()['content-type']).toMatch(/^(audio|video)\//);
         expect((await response.body()).byteLength).toBeGreaterThan(0);
     });
 
@@ -1156,5 +1155,461 @@ test.describe('CRM map', () => {
         await expect(
             page.getByRole('complementary', { name: '地点の記録' }),
         ).toHaveCount(0);
+    });
+});
+
+const mapCreationTest = test.extend<{
+    trackCreatedClient: (name: string) => Promise<void>;
+}>({
+    trackCreatedClient: async ({ page }, provide) => {
+        const clientUrls = new Set<string>();
+        await provide(async (name) => {
+            const link = page
+                .getByRole('complementary', { name: '地点の記録' })
+                .getByRole('link', { name, exact: true });
+            await expect(link).toBeVisible();
+            const href = await link.getAttribute('href');
+            expect(href).toMatch(/^\/crm\/clients\/\d+$/);
+            clientUrls.add(href!);
+        });
+
+        const csrfCookie = (await page.context().cookies()).find(
+            (cookie) => cookie.name === 'XSRF-TOKEN',
+        );
+
+        for (const url of clientUrls) {
+            const response = await page.request.delete(url, {
+                maxRedirects: 0,
+                headers: csrfCookie
+                    ? { 'X-XSRF-TOKEN': decodeURIComponent(csrfCookie.value) }
+                    : {},
+            });
+            expect(response.status()).toBe(302);
+        }
+    },
+});
+
+mapCreationTest.describe('CRM map client creation', () => {
+    mapCreationTest.beforeEach(async ({ page }) => {
+        await blockMapTiles(page);
+    });
+
+    mapCreationTest.afterEach(async ({ page }) => {
+        expect((await page.pageErrors()).map((error) => error.message)).toEqual(
+            [],
+        );
+    });
+
+    mapCreationTest(
+        'right-click creates a client and pin once, clears filters and survives reload',
+        async ({ page, trackCreatedClient }, testInfo) => {
+            await login(page, 'e2e-editor');
+            await page.goto('/crm/clients');
+            await page
+                .getByRole('link', {
+                    name: `${seededClient}を地図で表示`,
+                    exact: true,
+                })
+                .click();
+            await page
+                .getByLabel('関わった担当者(社)')
+                .selectOption({ label: 'E2E Timeline Worker' });
+            const name = `E2E 地図登録 ${testInfo.testId}`;
+            await page
+                .locator('.leaflet-container')
+                .click({ button: 'right', position: { x: 500, y: 350 } });
+            const chooser = page.getByRole('dialog', {
+                name: 'ここに地点を追加',
+                exact: true,
+            });
+            await chooser.getByLabel('地点を追加する顧客を探す').fill(name);
+            await expect(chooser).toContainText('該当する顧客がいません');
+            const position = await chooser
+                .getByLabel('選択した位置')
+                .innerText();
+            const coordinates = position
+                .replace('選択した位置：', '')
+                .split(', ')
+                .map(Number);
+            await chooser
+                .getByRole('button', {
+                    name: '新しい顧客と地点を追加',
+                    exact: true,
+                })
+                .click();
+            const form = page.getByRole('dialog', {
+                name: '新しい顧客と地点を追加',
+                exact: true,
+            });
+            await form.getByLabel('顧客名').fill(name);
+            await form.getByLabel(/略称/).fill('地図');
+            await form.getByLabel('地点名').fill('最初の現場');
+            await form.getByLabel('種別').selectOption('site');
+            await form
+                .getByLabel('住所')
+                .fill('住所を入力しても位置は変えない');
+            await expect(form.getByLabel('選択した位置')).toHaveText(position);
+            await page.screenshot({
+                path: testInfo.outputPath('map-client-desktop.png'),
+            });
+            const submissions: unknown[] = [];
+            page.on('request', (request) => {
+                if (
+                    request.method() === 'POST' &&
+                    request.url().endsWith('/crm/map/clients')
+                ) {
+                    submissions.push(request.postDataJSON());
+                }
+            });
+            let releaseSave!: () => void;
+            const saveGate = new Promise<void>((resolve) => {
+                releaseSave = resolve;
+            });
+            await page.route('**/crm/map/clients', async (route) => {
+                await saveGate;
+                await route.continue();
+            });
+
+            try {
+                await form
+                    .getByRole('button', { name: '顧客と地点を保存' })
+                    .click();
+                await expect(
+                    form.getByRole('button', { name: '保存中...' }),
+                ).toBeDisabled();
+                await page.keyboard.press('Escape');
+                await expect(form).toBeVisible();
+            } finally {
+                releaseSave();
+            }
+
+            await expect(form).toHaveCount(0);
+            await trackCreatedClient(name);
+            expect(submissions).toHaveLength(1);
+            expect(submissions[0]).toMatchObject({
+                lat: coordinates[0],
+                lng: coordinates[1],
+            });
+            const panel = page.getByRole('complementary', {
+                name: '地点の記録',
+            });
+            await expect(panel).toContainText(name);
+            await expect(panel).toContainText('最初の現場');
+            await expect(page.getByLabel('関わった担当者(社)')).toHaveValue(
+                'all',
+            );
+            await expect(
+                page.getByRole('button', {
+                    name: '絞り込みを解除',
+                    exact: true,
+                }),
+            ).toHaveCount(0);
+            const marker = page.getByTitle(`${name} 最初の現場`);
+            await expect(marker).toBeInViewport();
+            await expect(marker.locator('.crm-pin')).toHaveClass(
+                /crm-pin--selected/,
+            );
+            await page.screenshot({
+                path: testInfo.outputPath('map-client-selected.png'),
+            });
+            const selectedUrl = page.url();
+            await page.reload();
+            await expect(page).toHaveURL(selectedUrl);
+            await expect(panel).toContainText(name);
+            await expect(marker).toBeInViewport();
+            await page.getByRole('link', { name: '一覧', exact: true }).click();
+            await expect(
+                page.getByRole('link').filter({ hasText: name }),
+            ).toHaveCount(1);
+        },
+    );
+
+    mapCreationTest(
+        'cancel and Escape discard creation and reopening uses the new point',
+        async ({ page }) => {
+            await login(page, 'e2e-admin');
+            await page.goto('/crm/map');
+            let writes = 0;
+            page.on('request', (request) => {
+                if (
+                    request.method() === 'POST' &&
+                    request.url().endsWith('/crm/map/clients')
+                ) {
+                    writes++;
+                }
+            });
+            const map = page.locator('.leaflet-container');
+            await map.click({ button: 'right', position: { x: 500, y: 350 } });
+            const firstPosition = await page
+                .getByLabel('選択した位置')
+                .innerText();
+            await page
+                .getByRole('button', {
+                    name: '新しい顧客と地点を追加',
+                    exact: true,
+                })
+                .click();
+            await page.getByLabel('顧客名').fill('保存しない顧客');
+            await page.keyboard.press('Escape');
+            await expect(page.getByRole('dialog')).toHaveCount(0);
+            await map.click({ button: 'right', position: { x: 700, y: 400 } });
+            await expect(page.getByLabel('選択した位置')).not.toHaveText(
+                firstPosition,
+            );
+            await page
+                .getByRole('button', {
+                    name: '新しい顧客と地点を追加',
+                    exact: true,
+                })
+                .click();
+            await expect(page.getByLabel('顧客名')).toHaveValue('');
+            await page
+                .getByRole('button', { name: 'キャンセル', exact: true })
+                .click();
+            await expect(page.getByRole('dialog')).toHaveCount(0);
+            expect(writes).toBe(0);
+        },
+    );
+
+    mapCreationTest(
+        'server validation keeps entered details and selected coordinates',
+        async ({ page, trackCreatedClient }, testInfo) => {
+            await login(page, 'e2e-editor');
+            await page.goto('/crm/map');
+            await page
+                .getByRole('button', { name: '地点を追加', exact: true })
+                .click();
+            await page
+                .getByRole('button', {
+                    name: '新しい顧客と地点を追加',
+                    exact: true,
+                })
+                .click();
+            const form = page.getByRole('dialog');
+            const position = await form.getByLabel('選択した位置').innerText();
+            const name = `E2E 入力保持 ${testInfo.testId}`;
+            await form.getByLabel('顧客名').fill(name);
+            await form.getByLabel(/略称/).fill('   ');
+            await form.getByLabel('地点名').fill('入力した地点');
+            await form.getByLabel('顧客メモ').fill('入力したメモ');
+            await form
+                .getByRole('button', { name: '顧客と地点を保存' })
+                .click();
+            await expect(form).toContainText('略称は必須項目です。');
+            await expect(form.getByLabel('地点名')).toHaveValue('入力した地点');
+            await expect(form.getByLabel('顧客メモ')).toHaveValue(
+                '入力したメモ',
+            );
+            await expect(form.getByLabel('選択した位置')).toHaveText(position);
+            await form.getByLabel(/略称/).fill('保持');
+            await form
+                .getByRole('button', { name: '顧客と地点を保存' })
+                .click();
+            await expect(form).toHaveCount(0);
+            await trackCreatedClient(name);
+            await expect(
+                page.getByRole('complementary', { name: '地点の記録' }),
+            ).toContainText('入力した地点');
+        },
+    );
+
+    mapCreationTest(
+        'an empty map offers creation and receives the new client in the save response',
+        async ({ page, trackCreatedClient }, testInfo) => {
+            await login(page, 'e2e-admin');
+            // Supply the zero-client initial page without deleting shared test fixtures.
+            await page.route('**/crm/map', async (route) => {
+                const response = await route.fetch();
+                const body = (await response.json()) as {
+                    props: { clients: unknown[]; places: unknown[] };
+                };
+                body.props.clients = [];
+                body.props.places = [];
+                await route.fulfill({ response, json: body });
+            });
+            await page
+                .getByRole('link', { name: '顧客マップ', exact: true })
+                .click();
+            await expect(
+                page.getByText('地点がまだありません。', { exact: false }),
+            ).toBeVisible();
+            await page.unroute('**/crm/map');
+            await page
+                .locator('.leaflet-container')
+                .click({ button: 'right', position: { x: 500, y: 350 } });
+            await page
+                .getByRole('button', {
+                    name: '新しい顧客と地点を追加',
+                    exact: true,
+                })
+                .click();
+            const name = `E2E 最初の顧客 ${testInfo.testId}`;
+            await page.getByLabel('顧客名').fill(name);
+            await page.getByLabel(/略称/).fill('初');
+            await page
+                .getByRole('button', { name: '顧客と地点を保存' })
+                .click();
+            await trackCreatedClient(name);
+            await expect(page.getByTitle(`${name} 本社`)).toBeInViewport();
+            await expect(
+                page.getByRole('complementary', { name: '地点の記録' }),
+            ).toContainText(name);
+        },
+    );
+
+    mapCreationTest(
+        'markers, clusters and controls do not open background creation and viewers cannot create',
+        async ({ page }) => {
+            await login(page, 'e2e-admin');
+            await openSeededOffice(page);
+            const marker = page.getByTitle(`${seededClient} ${seededOffice}`);
+            await marker.click({ button: 'right' });
+            await expect(
+                page.getByRole('dialog', { name: 'ここに地点を追加' }),
+            ).toHaveCount(0);
+            await page
+                .getByRole('button', { name: '閉じる', exact: true })
+                .click();
+
+            for (let step = 0; step < 7; step++) {
+                await page.getByRole('button', { name: 'Zoom out' }).click();
+            }
+
+            const cluster = page.locator('.crm-cluster').first();
+            await expect(cluster).toBeVisible();
+            await cluster.click({ button: 'right' });
+            await page
+                .getByRole('button', { name: 'Zoom in' })
+                .click({ button: 'right' });
+            await expect(
+                page.getByRole('dialog', { name: 'ここに地点を追加' }),
+            ).toHaveCount(0);
+            await page.context().clearCookies();
+            await login(page, 'e2e-login');
+            await page.goto('/crm/map');
+            await expect(
+                page.getByRole('button', { name: '地点を追加', exact: true }),
+            ).toHaveCount(0);
+            await page
+                .locator('.leaflet-container')
+                .click({ button: 'right', position: { x: 500, y: 350 } });
+            await expect(page.getByRole('dialog')).toHaveCount(0);
+        },
+    );
+
+    mapCreationTest.describe('touch devices', () => {
+        mapCreationTest.use({
+            hasTouch: true,
+            viewport: { width: 390, height: 844 },
+        });
+
+        mapCreationTest(
+            'the toolbar creates a client and pin with touch and keyboard',
+            async ({ page, trackCreatedClient }, testInfo) => {
+                await login(page, 'e2e-editor');
+                await page.goto('/crm/map');
+                const action = page.getByRole('button', {
+                    name: '地点を追加',
+                    exact: true,
+                });
+                await expect(action).toBeEnabled();
+                await action.focus();
+                await page.keyboard.press('Enter');
+                await expect(
+                    page.getByRole('dialog', { name: 'ここに地点を追加' }),
+                ).toBeVisible();
+                await page.keyboard.press('Escape');
+                await action.tap();
+                await page
+                    .getByRole('button', {
+                        name: '新しい顧客と地点を追加',
+                        exact: true,
+                    })
+                    .tap();
+                const form = page.getByRole('dialog');
+                const name = `E2E タッチ登録 ${testInfo.testId}`;
+                await form.getByLabel('顧客名').fill(name);
+                await form.getByLabel(/略称/).fill('触');
+                const bounds = await form.boundingBox();
+                expect(bounds!.x).toBeGreaterThanOrEqual(0);
+                expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
+                await page.screenshot({
+                    path: testInfo.outputPath('map-client-mobile.png'),
+                });
+                await form
+                    .getByRole('button', { name: '顧客と地点を保存' })
+                    .tap();
+                await expect(form).toHaveCount(0);
+                await expect(
+                    page.getByRole('complementary', { name: '地点の記録' }),
+                ).toContainText(name);
+                await trackCreatedClient(name);
+                await expect(page.getByTitle(`${name} 本社`)).toBeInViewport();
+                await page.screenshot({
+                    path: testInfo.outputPath('map-client-mobile-selected.png'),
+                });
+            },
+        );
+    });
+});
+
+test.describe('CRM mobile Safari long press', () => {
+    test.use({
+        hasTouch: true,
+        userAgent: devices['iPhone 13'].userAgent,
+        viewport: { width: 390, height: 844 },
+    });
+
+    test('a held touch on map background opens creation at that location', async ({
+        page,
+        browserName,
+    }) => {
+        test.skip(
+            browserName !== 'webkit',
+            'Leaflet simulates long press specifically for mobile Safari.',
+        );
+        await blockMapTiles(page);
+        await login(page, 'e2e-editor');
+        await page.goto('/crm/map');
+        await expect(
+            page.getByRole('button', { name: '地点を追加', exact: true }),
+        ).toBeEnabled();
+        await page.clock.install();
+        await page.locator('.leaflet-container').evaluate((element) => {
+            const bounds = element.getBoundingClientRect();
+            const touch = {
+                identifier: 1,
+                target: element,
+                clientX: bounds.x + bounds.width * 0.7,
+                clientY: bounds.y + bounds.height * 0.6,
+            };
+            // WebKit exposes Touch but disallows constructing it. Feed the
+            // touch data to Leaflet, which produces contextmenu after its timer.
+            const event = new Event('touchstart', {
+                bubbles: true,
+                cancelable: true,
+            });
+            Object.assign(event, { touches: [touch], changedTouches: [touch] });
+            element.dispatchEvent(event);
+        });
+        await page.clock.fastForward(650);
+        await expect(
+            page.getByRole('dialog', { name: 'ここに地点を追加' }),
+        ).toBeVisible();
+        await page
+            .locator('.leaflet-container')
+            .dispatchEvent('touchend', { touches: [], changedTouches: [] });
+        await page
+            .getByRole('button', {
+                name: '新しい顧客と地点を追加',
+                exact: true,
+            })
+            .tap();
+        await expect(page.getByLabel('選択した位置')).toBeVisible();
+        await page.keyboard.press('Escape');
+        await expect(page.getByRole('dialog')).toHaveCount(0);
+        expect((await page.pageErrors()).map((error) => error.message)).toEqual(
+            [],
+        );
     });
 });
