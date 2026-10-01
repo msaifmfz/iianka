@@ -293,10 +293,18 @@ test.describe('CRM map', () => {
         await expect(pin.locator('.crm-pin__staff-name')).toHaveText(
             expectedNames,
         );
-        const staffBackground = await pin
-            .locator('.crm-pin')
-            .evaluate((element) => getComputedStyle(element).backgroundImage);
-        expect(staffBackground).toContain('conic-gradient');
+        let staffBackground = '';
+        await expect
+            .poll(async () => {
+                staffBackground = await pin
+                    .locator('.crm-pin')
+                    .evaluate(
+                        (element) => getComputedStyle(element).backgroundImage,
+                    );
+
+                return staffBackground;
+            })
+            .toContain('conic-gradient');
         await expect(pin.locator('.crm-pin__staff-name b')).toHaveCount(0);
         expect(
             await pin
@@ -600,7 +608,7 @@ test.describe('CRM map', () => {
         page,
     }) => {
         await page.addInitScript(() => {
-            navigator.mediaDevices.getUserMedia = () =>
+            MediaDevices.prototype.getUserMedia = () =>
                 Promise.reject(
                     new DOMException('Permission denied', 'NotAllowedError'),
                 );
