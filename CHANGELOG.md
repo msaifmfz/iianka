@@ -5,6 +5,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Only final releases are listed; `-rc.N` pre-releases fold into their final version.
 
+## [0.5.1](https://github.com/msaifmfz/iianka/compare/v0.5.0...v0.5.1) - 2026-10-01
+
+### Added
+
+- Create clients and first pins from the CRM map ([#69](https://github.com/msaifmfz/iianka/issues/69))
+
+### Fixed
+
+- Update CommonMark to resolve security advisories
+
 ## [0.5.0](https://github.com/msaifmfz/iianka/compare/v0.4.11...v0.5.0) - 2026-09-20
 
 ### Added
