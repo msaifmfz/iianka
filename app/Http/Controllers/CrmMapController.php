@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Domain\Crm\Enums\ClientPlaceKind;
 use App\Domain\Crm\Enums\ClientPlaceLogType;
 use App\Domain\Crm\Enums\ClientReaction;
 use App\Http\Presenters\Crm\ClientPresenter;
@@ -66,6 +67,7 @@ class CrmMapController extends Controller
                 ? $this->placeDetail($selectedPlaceId, $viewer, $presenter, $showAllLogs)
                 : null,
             'canManage' => $viewer->canManageContent(),
+            'placeKinds' => ClientPlaceKind::options(),
             'logTypes' => ClientPlaceLogType::options(),
             'reactions' => ClientReaction::options(),
             'attachmentLimits' => $presenter->attachmentLimits(),

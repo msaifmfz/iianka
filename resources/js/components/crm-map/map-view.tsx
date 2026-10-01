@@ -199,6 +199,17 @@ function MapEvents({
             }
         },
         contextmenu: (event) => {
+            const target = event.originalEvent.target;
+
+            if (
+                target instanceof Element &&
+                target.closest(
+                    '.leaflet-marker-icon, .leaflet-interactive, .leaflet-control, .leaflet-popup',
+                )
+            ) {
+                return;
+            }
+
             const position = event.latlng.wrap();
             onPickLocation?.(position.lat, position.lng);
         },
@@ -322,6 +333,93 @@ export default function MapView({
     initialClientId,
     currentLocation,
 }: Props) {
+    function renderPin(pin: CrmMapPin) {
+        const client = clientsById.get(pin.client_id);
+
+        if (!client) {
+            return null;
+        }
+
+        const isSelected = pin.id === selectedPlaceId;
+        const activity = displayedActivity(pin, staffId);
+        const authors = sortedStaff(pin.staff_activities);
+        const staff =
+            authors.length > 0
+                ? authors.map((author) => ({
+                      name: staffName(author),
+                      color: staffColor(author.user?.id ?? null),
+                      highlighted:
+                          staffId !== null && author.user?.id === staffId,
+                  }))
+                : [
+                      {
+                          name: staffName(null),
+                          color: staffColor(null),
+                          highlighted: false,
+                      },
+                  ];
+        const label = staff.map((person) => person.name).join('・');
+        const color = staff.length === 1 ? staff[0].color : staffColor(staffId);
+        const accessibleName = `${label} ・ ${client.name} ${pin.name}${activity ? ` ・ ${formatCrmDateTime(activity.occurred_at)}` : ''}`;
+        // Leaflet passes unknown props through as marker
+        // options; the cluster icon reads the color back.
+        const clusterOptions: object = {
+            staffColors: staff.map((person) => person.color),
+        };
+
+        return (
+            <Marker
+                key={`${pin.id}:${label}:${activity?.occurred_at ?? ''}`}
+                position={[pin.lat, pin.lng]}
+                title={accessibleName}
+                alt={accessibleName}
+                zIndexOffset={isSelected ? 1000 : 0}
+                icon={pinIcon({
+                    kind: pin.kind,
+                    color,
+                    label,
+                    staff,
+                    name: accessibleName,
+                    freshness: pinFreshness(activity?.occurred_at ?? null),
+                    dimmed:
+                        focusClientId !== null &&
+                        focusClientId !== pin.client_id,
+                    selected: isSelected,
+                })}
+                eventHandlers={{
+                    click: () => onSelectPlace(pin.id),
+                    keydown: (event) => {
+                        if (
+                            event.originalEvent.key === 'Enter' ||
+                            event.originalEvent.key === ' '
+                        ) {
+                            event.originalEvent.preventDefault();
+                            onSelectPlace(pin.id);
+                        }
+                    },
+                }}
+                {...clusterOptions}
+            >
+                <Tooltip direction="top" offset={[0, -24]}>
+                    {authors.length === 0 && (
+                        <span className="block">記録なし</span>
+                    )}
+                    {authors.map((author) => (
+                        <span
+                            key={author.user?.id ?? 'unknown'}
+                            className="block"
+                        >
+                            {staffName(author)} ・ 最終記録:{' '}
+                            {formatCrmDateTime(author.occurred_at)}
+                        </span>
+                    ))}
+                    <span className="block">{client.name}</span>
+                    <span className="block">{pin.name}</span>
+                </Tooltip>
+            </Marker>
+        );
+    }
+
     return (
         <MapContainer
             center={DEFAULT_CENTER}
@@ -400,99 +498,12 @@ export default function MapView({
                 spiderfyOnMaxZoom
                 showCoverageOnHover={false}
             >
-                {pins.map((pin) => {
-                    const client = clientsById.get(pin.client_id);
-
-                    if (!client) {
-                        return null;
-                    }
-
-                    const isSelected = pin.id === selectedPlaceId;
-                    const activity = displayedActivity(pin, staffId);
-                    const authors = sortedStaff(pin.staff_activities);
-                    const staff =
-                        authors.length > 0
-                            ? authors.map((author) => ({
-                                  name: staffName(author),
-                                  color: staffColor(author.user?.id ?? null),
-                                  highlighted:
-                                      staffId !== null &&
-                                      author.user?.id === staffId,
-                              }))
-                            : [
-                                  {
-                                      name: staffName(null),
-                                      color: staffColor(null),
-                                      highlighted: false,
-                                  },
-                              ];
-                    const label = staff.map((person) => person.name).join('・');
-                    const color =
-                        staff.length === 1
-                            ? staff[0].color
-                            : staffColor(staffId);
-                    const accessibleName = `${label} ・ ${client.name} ${pin.name}${activity ? ` ・ ${formatCrmDateTime(activity.occurred_at)}` : ''}`;
-                    // Leaflet passes unknown props through as marker
-                    // options; the cluster icon reads the color back.
-                    const clusterOptions: object = {
-                        staffColors: staff.map((person) => person.color),
-                    };
-
-                    return (
-                        <Marker
-                            key={`${pin.id}:${label}:${activity?.occurred_at ?? ''}`}
-                            position={[pin.lat, pin.lng]}
-                            title={accessibleName}
-                            alt={accessibleName}
-                            zIndexOffset={isSelected ? 1000 : 0}
-                            icon={pinIcon({
-                                kind: pin.kind,
-                                color,
-                                label,
-                                staff,
-                                name: accessibleName,
-                                freshness: pinFreshness(
-                                    activity?.occurred_at ?? null,
-                                ),
-                                dimmed:
-                                    focusClientId !== null &&
-                                    focusClientId !== pin.client_id,
-                                selected: isSelected,
-                            })}
-                            eventHandlers={{
-                                click: () => onSelectPlace(pin.id),
-                                keydown: (event) => {
-                                    if (
-                                        event.originalEvent.key === 'Enter' ||
-                                        event.originalEvent.key === ' '
-                                    ) {
-                                        event.originalEvent.preventDefault();
-                                        onSelectPlace(pin.id);
-                                    }
-                                },
-                            }}
-                            {...clusterOptions}
-                        >
-                            <Tooltip direction="top" offset={[0, -24]}>
-                                {authors.length === 0 && (
-                                    <span className="block">記録なし</span>
-                                )}
-                                {authors.map((author) => (
-                                    <span
-                                        key={author.user?.id ?? 'unknown'}
-                                        className="block"
-                                    >
-                                        {staffName(author)} ・ 最終記録:{' '}
-                                        {formatCrmDateTime(author.occurred_at)}
-                                    </span>
-                                ))}
-                                <span className="block">{client.name}</span>
-                                <span className="block">{pin.name}</span>
-                            </Tooltip>
-                        </Marker>
-                    );
-                })}
+                {pins
+                    .filter((pin) => pin.id !== selectedPlaceId)
+                    .map(renderPin)}
             </MarkerClusterGroup>
+            {/* Keep the selected place visible even beside a pin at the same coordinates. */}
+            {pins.filter((pin) => pin.id === selectedPlaceId).map(renderPin)}
         </MapContainer>
     );
 }

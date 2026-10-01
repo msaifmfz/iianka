@@ -26,6 +26,7 @@ use App\Http\Controllers\ConstructionSubcontractorController;
 use App\Http\Controllers\CrmGeocodeController;
 use App\Http\Controllers\CrmMapController;
 use App\Http\Controllers\InternalNoticeController;
+use App\Http\Controllers\MapClientController;
 use App\Http\Controllers\ReceptionArchiveController;
 use App\Http\Controllers\ReceptionCaseAssignmentController;
 use App\Http\Controllers\ReceptionCaseAttachmentController;
@@ -92,6 +93,7 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
         Route::delete('contacts/{client_contact}', [ClientContactController::class, 'destroy'])
             ->name('contacts.destroy');
         Route::get('map', CrmMapController::class)->name('map');
+        Route::post('map/clients', [MapClientController::class, 'store'])->name('map.clients.store');
         Route::get('geocode', CrmGeocodeController::class)
             ->middleware('throttle:30,1')
             ->name('geocode');

@@ -4,24 +4,26 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
-use App\Http\Requests\Concerns\NormalizesRequestInput;
+use App\Http\Requests\Concerns\ValidatesClientFields;
 use App\Http\Requests\Concerns\ValidatesClientPlaceFields;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
 
-/**
- * Adding and editing a client's place (a pin on the CRM map) share fields.
- */
-class SaveClientPlaceRequest extends FormRequest
+class StoreMapClientRequest extends FormRequest
 {
-    use NormalizesRequestInput, ValidatesClientPlaceFields;
+    use ValidatesClientFields {
+        attributes as private clientAttributes;
+    }
+    use ValidatesClientPlaceFields;
 
     #[Override]
     protected function prepareForValidation(): void
     {
+        $this->prepareClientInput();
+
         $this->merge([
-            'name' => trim((string) $this->input('name', '')),
+            'place_name' => trim((string) $this->input('place_name', '')),
             'address' => $this->nullableStringInput('address'),
         ]);
     }
@@ -32,13 +34,11 @@ class SaveClientPlaceRequest extends FormRequest
     }
 
     /**
-     * Get the validation rules that apply to the request.
-     *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
-        return $this->placeRules();
+        return [...$this->clientRules(), ...$this->placeRules('place_name')];
     }
 
     /**
@@ -47,18 +47,6 @@ class SaveClientPlaceRequest extends FormRequest
     #[Override]
     public function attributes(): array
     {
-        return $this->placeAttributes();
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    #[Override]
-    public function messages(): array
-    {
-        return [
-            'lat.required' => '地図上で位置を指定してください。',
-            'lng.required' => '地図上で位置を指定してください。',
-        ];
+        return [...$this->clientAttributes(), ...$this->placeAttributes('place_name')];
     }
 }
