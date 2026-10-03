@@ -15,8 +15,9 @@ use Illuminate\Support\Facades\Log;
  *
  * Proxied through the server rather than called from the browser so the
  * dependency is testable and the provider can change without a frontend
- * release. A failure returns no candidates: staff can still place the pin
- * by hand.
+ * release. A provider failure throws GeocodingUnavailable so callers can
+ * tell an outage apart from "no match"; either way staff can still place the
+ * pin by hand.
  */
 final readonly class GeocodeAddress
 {
@@ -26,6 +27,8 @@ final readonly class GeocodeAddress
 
     /**
      * @return list<array{label: string, lat: float, lng: float}>
+     *
+     * @throws GeocodingUnavailable when GSI is unreachable, returns an error status or a body that is not a list
      */
     public function candidates(string $address): array
     {
@@ -38,15 +41,18 @@ final readonly class GeocodeAddress
         try {
             $response = Http::timeout(5)->get(self::ENDPOINT, ['q' => $address]);
         } catch (ConnectionException $exception) {
-            Log::warning('GSI address search failed to connect.', ['message' => $exception->getMessage()]);
+            Log::warning('GSI address search failed to connect.', [
+                'exception' => $exception::class,
+                'message' => $exception->getMessage(),
+            ]);
 
-            return [];
+            throw new GeocodingUnavailable('GSI address search failed to connect.', $exception->getCode(), previous: $exception);
         }
 
         if ($response->failed() || ! is_array($response->json())) {
             Log::warning('GSI address search returned an error.', ['status' => $response->status()]);
 
-            return [];
+            throw new GeocodingUnavailable("GSI address search returned an error (HTTP {$response->status()}).");
         }
 
         $candidates = [];

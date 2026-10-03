@@ -4,6 +4,7 @@ use App\Application\Crm\GeocodeAddress;
 use App\Models\User;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 test('the geocoder turns GSI results into lat/lng candidates', function (): void {
     Http::fake([
@@ -41,14 +42,47 @@ test('the geocoder caps candidates', function (): void {
     expect(app(GeocodeAddress::class)->candidates('大阪'))->toHaveCount(GeocodeAddress::MAX_CANDIDATES);
 });
 
-test('the geocoder returns no candidates when GSI is down', function (): void {
-    Http::fake(fn () => throw new ConnectionException('timeout'));
+test('the geocoder returns 503 and logs a warning when GSI cannot be reached', function (): void {
+    Http::preventStrayRequests();
+    Http::fake([GeocodeAddress::ENDPOINT.'*' => fn () => throw new ConnectionException('timeout')]);
+    $log = Log::spy();
 
-    expect(app(GeocodeAddress::class)->candidates('大阪'))->toBe([]);
+    $this->actingAs(User::factory()->create())
+        ->getJson(route('crm.geocode', ['address' => '大阪']))
+        ->assertServiceUnavailable()
+        ->assertExactJson(['message' => '住所検索サービスに接続できませんでした。', 'candidates' => []]);
 
-    Http::fake([GeocodeAddress::ENDPOINT.'*' => Http::response('oops', 500)]);
+    $log->shouldHaveReceived('warning')
+        ->once()
+        ->with('GSI address search failed to connect.', ['exception' => ConnectionException::class, 'message' => 'timeout']);
+});
 
-    expect(app(GeocodeAddress::class)->candidates('大阪'))->toBe([]);
+test('the geocoder returns 503 and logs the status when GSI answers with an error or a non-list body', function (string $body, int $status): void {
+    Http::preventStrayRequests();
+    Http::fake([GeocodeAddress::ENDPOINT.'*' => Http::response($body, $status)]);
+    $log = Log::spy();
+
+    $this->actingAs(User::factory()->create())
+        ->getJson(route('crm.geocode', ['address' => '大阪']))
+        ->assertServiceUnavailable()
+        ->assertJsonPath('candidates', []);
+
+    $log->shouldHaveReceived('warning')
+        ->once()
+        ->with('GSI address search returned an error.', ['status' => $status]);
+})->with([
+    'server error' => ['oops', 500],
+    'HTML page with 200' => ['<html>maintenance</html>', 200],
+]);
+
+test('the geocoder returns 200 with no candidates when GSI finds no match', function (): void {
+    Http::preventStrayRequests();
+    Http::fake([GeocodeAddress::ENDPOINT.'*' => Http::response([])]);
+
+    $this->actingAs(User::factory()->create())
+        ->getJson(route('crm.geocode', ['address' => '存在しない住所']))
+        ->assertOk()
+        ->assertExactJson(['candidates' => []]);
 });
 
 test('geocoding requires an address and a signed-in user', function (): void {
