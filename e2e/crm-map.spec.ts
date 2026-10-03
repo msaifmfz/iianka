@@ -545,6 +545,57 @@ test.describe('CRM map', () => {
         ).toBeVisible();
     });
 
+    test('address search tells a geocoder outage apart from no match', async ({
+        page,
+    }) => {
+        await login(page, 'e2e-admin');
+        await page.goto('/crm/map');
+        await expect(
+            page.locator('.leaflet-marker-icon').first(),
+        ).toBeVisible();
+        await page
+            .getByRole('button', { name: '地点を追加', exact: true })
+            .click();
+        const dialog = page.getByRole('dialog', { name: 'ここに地点を追加' });
+        await dialog.getByLabel('地点を追加する顧客を探す').fill('西日本');
+        await dialog.getByRole('link', { name: seededClient }).click();
+        await page.route('**/crm/geocode?*', async (route) => {
+            const address = new URL(route.request().url()).searchParams.get(
+                'address',
+            );
+
+            if (address === '障害') {
+                await route.fulfill({
+                    status: 503,
+                    json: {
+                        message: '住所検索サービスに接続できませんでした。',
+                        candidates: [],
+                    },
+                });
+
+                return;
+            }
+
+            await route.fulfill({ json: { candidates: [] } });
+        });
+
+        await page.getByLabel('住所', { exact: true }).fill('障害');
+        await page.getByRole('button', { name: '検索', exact: true }).click();
+        await expect(
+            page.getByText(
+                '住所を検索できませんでした。地図をタップして位置を指定してください。',
+            ),
+        ).toBeVisible();
+
+        await page.getByLabel('住所', { exact: true }).fill('該当なし');
+        await page.getByRole('button', { name: '検索', exact: true }).click();
+        await expect(
+            page.getByText(
+                '住所が見つかりませんでした。地図をタップして位置を指定してください。',
+            ),
+        ).toBeVisible();
+    });
+
     test('recording stops, previews, uploads and can be started again in Strict Mode', async ({
         page,
     }, testInfo) => {

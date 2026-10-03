@@ -117,10 +117,23 @@ export default function ClientPlaceFormPage({
                 headers: { Accept: 'application/json' },
                 signal: controller.signal,
             });
-            const body = (await response.json()) as {
-                candidates?: Candidate[];
-            };
-            const found = response.ok ? (body.candidates ?? []) : [];
+
+            // 503 means GSI is down, not that the address has no match; let
+            // the catch below say so instead of 住所が見つかりませんでした.
+            if (response.status >= 500) {
+                throw new Error(
+                    `Geocoding failed with HTTP ${response.status}`,
+                );
+            }
+
+            let found: Candidate[] = [];
+
+            if (response.ok) {
+                const body = (await response.json()) as {
+                    candidates?: Candidate[];
+                };
+                found = body.candidates ?? [];
+            }
 
             if (controller.signal.aborted) {
                 return;
