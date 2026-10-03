@@ -23,7 +23,7 @@ permissions:
 jobs:
   ci:
     name: CI
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
 
     steps:
@@ -65,7 +65,7 @@ jobs:
 
   validate_release:
     name: Validate release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     if: ${{ github.event_name == 'release' }}
 
@@ -119,7 +119,7 @@ jobs:
 
   deploy_staging:
     name: Deploy staging
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     needs:
       - ci
@@ -208,7 +208,7 @@ jobs:
 
   deploy_production:
     name: Deploy production
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     needs:
       - ci
