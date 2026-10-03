@@ -227,8 +227,8 @@ export default function CleaningDutyRuleForm({
 CleaningDutyRuleForm.layout = {
     breadcrumbs: [
         {
-            title: '予定表',
-            href: scheduleIndex(),
+            title: '掃除当番設定',
+            href: cleaningDutyRuleIndex(),
         },
     ],
 };

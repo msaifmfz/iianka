@@ -2,6 +2,7 @@ import { Head, Link } from '@inertiajs/react';
 import { ArrowLeft, ClipboardList, Pencil, Plus, Users } from 'lucide-react';
 import {
     create as cleaningDutyRuleCreate,
+    index as cleaningDutyRuleIndex,
     edit as cleaningDutyRuleEdit,
 } from '@/actions/App/Http/Controllers/CleaningDutyRuleController';
 import { index as scheduleIndex } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
@@ -189,8 +190,8 @@ export default function CleaningDutyRuleIndex({ rules, canManage }: Props) {
 CleaningDutyRuleIndex.layout = {
     breadcrumbs: [
         {
-            title: '予定表',
-            href: scheduleIndex(),
+            title: '掃除当番設定',
+            href: cleaningDutyRuleIndex(),
         },
     ],
 };

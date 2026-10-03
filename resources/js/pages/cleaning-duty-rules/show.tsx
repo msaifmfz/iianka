@@ -1,6 +1,9 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { ClipboardList, Pencil, Users } from 'lucide-react';
-import { edit as cleaningDutyRuleEdit } from '@/actions/App/Http/Controllers/CleaningDutyRuleController';
+import {
+    edit as cleaningDutyRuleEdit,
+    index as cleaningDutyRuleIndex,
+} from '@/actions/App/Http/Controllers/CleaningDutyRuleController';
 import { index as scheduleIndex } from '@/actions/App/Http/Controllers/ConstructionScheduleController';
 import { FloatingBackButton } from '@/components/floating-back-button';
 import {
@@ -146,8 +149,8 @@ export default function CleaningDutyRuleShow({
 CleaningDutyRuleShow.layout = {
     breadcrumbs: [
         {
-            title: '予定表',
-            href: scheduleIndex(),
+            title: '掃除当番設定',
+            href: cleaningDutyRuleIndex(),
         },
     ],
 };
