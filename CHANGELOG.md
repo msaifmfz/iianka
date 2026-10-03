@@ -5,6 +5,12 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Only final releases are listed; `-rc.N` pre-releases fold into their final version.
 
+## [0.5.2](https://github.com/msaifmfz/iianka/compare/v0.5.1...v0.5.2) - 2026-10-03
+
+### Changed
+
+- Update composer + npm deps ([#71](https://github.com/msaifmfz/iianka/issues/71))
+
 ## [0.5.1](https://github.com/msaifmfz/iianka/compare/v0.5.0...v0.5.1) - 2026-10-01
 
 ### Added
