@@ -165,7 +165,8 @@ errors in the changed code.
 
 ## Git hooks and commits
 
-Lefthook is installed by `npm install`/`npm run prepare`:
+Install Lefthook once per checkout or worktree with `npm run prepare`. `.npmrc` sets
+`ignore-scripts=true`, so `npm install` does not install the hooks.
 
 - Pre-commit runs Rector then Pint on staged PHP and ESLint then Prettier on staged frontend files.
 - Pre-push runs PHPStan, Psalm, Rector dry-run, and TypeScript.

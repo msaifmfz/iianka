@@ -213,7 +213,7 @@ Commits and pushes are gated by lefthook hooks + CI. Run checks locally before p
 
 - **pre-commit**: auto-fixes staged files (rector → pint for PHP; eslint → prettier for JS) and re-stages them.
 - **pre-push**: runs phpstan, psalm, rector dry-run, tsc. Fix failures before pushing.
-- Hooks install via `npm install` (`prepare` script). Escape hatch: `git commit --no-verify` / `LEFTHOOK=0` (CI still enforces).
+- Install hooks once per checkout/worktree: `npm run prepare` (`.npmrc` sets `ignore-scripts=true`, so `npm install` does not run it). Escape hatch: `git commit --no-verify` / `LEFTHOOK=0` (CI still enforces).
 
 ## Baseline policy
 
