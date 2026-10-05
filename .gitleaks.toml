@@ -1,0 +1,11 @@
+# https://github.com/gitleaks/gitleaks — extends the default ruleset
+title = "iianka gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Vendored skill docs containing example placeholder keys"
+paths = [
+  '''^\.(agents|claude)/skills/.*\.md$''',
+]
