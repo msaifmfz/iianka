@@ -10,6 +10,16 @@ Only final releases are listed; `-rc.N` pre-releases fold into their final versi
 ### Changed
 
 - Update composer + npm deps ([#71](https://github.com/msaifmfz/iianka/issues/71))
+- Pin node 22 via volta ([#75](https://github.com/msaifmfz/iianka/issues/75))
+- Add @inertiajs/core as direct dep ([#77](https://github.com/msaifmfz/iianka/issues/77))
+- Name npm package, drop pnpm hoist config ([#78](https://github.com/msaifmfz/iianka/issues/78))
+- Symlink AGENTS.md to CLAUDE.md ([#80](https://github.com/msaifmfz/iianka/issues/80))
+
+### Fixed
+
+- Report geocode provider outages instead of "address not found" ([#74](https://github.com/msaifmfz/iianka/issues/74))
+- Point cleaning duty breadcrumbs at 掃除当番設定 ([#76](https://github.com/msaifmfz/iianka/issues/76))
+- Stop client header name wrapping per character on mobile ([#82](https://github.com/msaifmfz/iianka/issues/82))
 
 ## [0.5.1](https://github.com/msaifmfz/iianka/compare/v0.5.0...v0.5.1) - 2026-10-01
 
