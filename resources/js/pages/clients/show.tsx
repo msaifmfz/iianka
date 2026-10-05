@@ -243,7 +243,7 @@ export default function ClientShow({
                     aria-label={`${client.name}の顧客情報`}
                     className="relative flex flex-wrap items-start justify-between gap-4 overflow-hidden rounded-2xl border bg-white p-5 shadow-sm sm:p-7 dark:border-neutral-800 dark:bg-neutral-950"
                 >
-                    <div className="flex min-w-0 flex-1 items-start gap-4">
+                    <div className="flex min-w-0 grow basis-72 items-start gap-4">
                         <ClientBadge
                             client={client}
                             className="size-16 shrink-0 rounded-2xl text-xl ring-4 ring-white dark:ring-neutral-900"
