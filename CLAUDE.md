@@ -205,14 +205,15 @@ Commits and pushes are gated by lefthook hooks + CI. Run checks locally before p
 | `composer analyse` | Psalm + PHPStan (Larastan, level 6) |
 | `composer analyse:phpstan` / `composer analyse:psalm` | Single analyzer |
 | `composer analyse:taint` | Psalm taint analysis (security SAST) |
-| `composer security` | Taint analysis + composer audit |
+| `composer secrets` | gitleaks scan of git history (needs `brew install gitleaks`) |
+| `composer security` | Taint analysis + gitleaks + composer audit |
 | `composer rector:check` / `composer rector` | Rector dry-run / apply fixes |
 | `npm run lint:check` / `npm run types:check` | Type-aware ESLint / tsc |
 
 ## Git hooks (lefthook)
 
-- **pre-commit**: auto-fixes staged files (rector → pint for PHP; eslint → prettier for JS) and re-stages them.
-- **pre-push**: runs phpstan, psalm, rector dry-run, tsc. Fix failures before pushing.
+- **pre-commit**: gitleaks on staged diff; auto-fixes staged files (rector → pint for PHP; eslint → prettier for JS) and re-stages them.
+- **pre-push**: runs gitleaks, phpstan, psalm, rector dry-run, tsc. Fix failures before pushing.
 - Install hooks once per checkout/worktree: `npm run prepare` (`.npmrc` sets `ignore-scripts=true`, so `npm install` does not run it). Escape hatch: `git commit --no-verify` / `LEFTHOOK=0` (CI still enforces).
 
 ## Baseline policy

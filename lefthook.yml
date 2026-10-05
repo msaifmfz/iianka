@@ -7,6 +7,8 @@ min_version: 2.0.0
 pre-commit:
   parallel: true # php + js chains run concurrently; each chain is piped
   jobs:
+    - name: gitleaks
+      run: gitleaks git --staged --redact --no-banner --verbose
     - name: php
       group:
         piped: true # rector rewrites first, then pint formats the result
@@ -55,6 +57,8 @@ commit-msg:
 pre-push:
   parallel: true
   jobs:
+    - name: gitleaks
+      run: gitleaks git --redact --no-banner
     - name: phpstan
       run: composer analyse:phpstan
     - name: psalm

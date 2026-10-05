@@ -99,9 +99,13 @@
         "baseline:psalm": [
             "psalm --no-progress --set-baseline=psalm-baseline.xml"
         ],
+        "secrets": [
+            "gitleaks git --redact --no-banner"
+        ],
         "security": [
             "Composer\\Config::disableProcessTimeout",
             "@analyse:taint",
+            "@secrets",
             "composer audit --abandoned=report"
         ],
         "check": [
