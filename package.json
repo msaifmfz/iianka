@@ -75,7 +75,7 @@
         "@types/react-dom": "^19.2.0",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
-        "concurrently": "^9.0.1",
+        "concurrently": "^9.2.5",
         "input-otp": "^1.4.2",
         "laravel-vite-plugin": "^3.0.0",
         "leaflet": "^1.9.4",
