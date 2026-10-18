@@ -138,9 +138,20 @@ test.describe('CRM map', () => {
         await expect(page).toHaveURL(/\/crm\/map\?place=\d+/);
         const panel = page.getByRole('complementary', { name: '地点の記録' });
         await expect(panel.getByText('E2E 三宮事務所').first()).toBeVisible();
+        // Before any history the pin, legend and filter follow the registrant.
         await expect(
             page.locator('.crm-pin--selected + .crm-pin__staff'),
-        ).toHaveText('記録なし');
+        ).toHaveText('E2E Admin User');
+        const legend = page.getByRole('button', {
+            name: 'E2E Admin User',
+            exact: true,
+        });
+        await legend.click();
+        await expect(legend).toHaveAttribute('aria-pressed', 'true');
+        await expect(
+            page.locator('.crm-pin--selected + .crm-pin__staff'),
+        ).toHaveText('E2E Admin User');
+        await legend.click();
         await expect(
             panel.getByText(
                 'まだ記録がありません。最初の記録を追加しましょう。',

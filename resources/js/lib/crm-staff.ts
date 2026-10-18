@@ -19,6 +19,24 @@ export function displayedActivity(
           ) ?? null);
 }
 
+/**
+ * The staff a pin is shown as: its history authors, or whoever registered
+ * it until the first record. The legend and staff filter follow the pin.
+ */
+export function pinStaff(pin: CrmMapPin): { id: number; name: string }[] {
+    if (pin.staff_activities.length === 0) {
+        return pin.registered_by ? [pin.registered_by] : [];
+    }
+
+    return pin.staff_activities.flatMap((activity) =>
+        activity.user ? [activity.user] : [],
+    );
+}
+
+export function isPinOfStaff(pin: CrmMapPin, staffId: number): boolean {
+    return pinStaff(pin).some((user) => user.id === staffId);
+}
+
 export function staffName(activity: CrmActivitySummary | null): string {
     return activity === null
         ? '記録なし'
