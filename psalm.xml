@@ -22,6 +22,8 @@
     <issueHandlers>
         <ClassMustBeFinal errorLevel="suppress" />
         <MissingOverrideAttribute errorLevel="suppress" />
+        <!-- Laravel 13.32+ relation generics rely on template defaults, unsupported by psalm; larastan checks these -->
+        <MissingTemplateParam errorLevel="suppress" />
         <PossiblyUnusedMethod errorLevel="suppress" />
         <UnusedClass errorLevel="suppress" />
         <UnusedClosureParam errorLevel="suppress" />
