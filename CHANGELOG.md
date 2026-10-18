@@ -5,6 +5,18 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Only final releases are listed; `-rc.N` pre-releases fold into their final version.
 
+## [0.5.3](https://github.com/msaifmfz/iianka/compare/v0.5.2...v0.5.3) - 2026-10-18
+
+### Added
+
+- Color history-less CRM pins by place registrant ([#87](https://github.com/msaifmfz/iianka/issues/87))
+- Legend and staff filter include history-less pin registrants ([#90](https://github.com/msaifmfz/iianka/issues/90))
+
+### Changed
+
+- Bump shell-quote to 1.12.0 for GHSA-pqg4-j6r4-53mv ([#88](https://github.com/msaifmfz/iianka/issues/88))
+- Update composer + npm deps ([#89](https://github.com/msaifmfz/iianka/issues/89))
+
 ## [0.5.2](https://github.com/msaifmfz/iianka/compare/v0.5.1...v0.5.2) - 2026-10-03
 
 ### Changed
