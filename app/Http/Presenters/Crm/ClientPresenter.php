@@ -99,12 +99,14 @@ final readonly class ClientPresenter
     }
 
     /**
-     * The map carries one summary per author, never the full history.
-     * Expects latestActivity.user and staffActivitySummaries.user loaded.
+     * The map carries one summary per author, never the full history, and
+     * who registered the place so a pin without history keeps their color.
+     * Expects createdBy, latestActivity.user and staffActivitySummaries.user loaded.
      *
      * @return array{
      *     id: int, client_id: int, kind: string, name: string, lat: float, lng: float,
      *     last_logged_at: string|null, archived_at: string|null,
+     *     registered_by: array{id: int, name: string}|null,
      *     latest_activity: array{occurred_at: string, user: array{id: int, name: string}|null}|null,
      *     staff_activities: list<array{occurred_at: string, user: array{id: int, name: string}|null}>
      * }
@@ -120,6 +122,9 @@ final readonly class ClientPresenter
             'lng' => (float) $place->lng,
             'last_logged_at' => $place->last_logged_at?->toIso8601String(),
             'archived_at' => $place->archived_at?->toIso8601String(),
+            'registered_by' => $place->createdBy instanceof User
+                ? ['id' => $place->createdBy->id, 'name' => $place->createdBy->name]
+                : null,
             'latest_activity' => $place->latestActivity instanceof ClientPlaceLog
                 ? $this->activitySummary($place->latestActivity)
                 : null,

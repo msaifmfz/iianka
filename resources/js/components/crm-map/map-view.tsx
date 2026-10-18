@@ -351,13 +351,21 @@ export default function MapView({
                       highlighted:
                           staffId !== null && author.user?.id === staffId,
                   }))
-                : [
-                      {
-                          name: staffName(null),
-                          color: staffColor(null),
-                          highlighted: false,
-                      },
-                  ];
+                : pin.registered_by
+                  ? [
+                        {
+                            name: pin.registered_by.name,
+                            color: staffColor(pin.registered_by.id),
+                            highlighted: staffId === pin.registered_by.id,
+                        },
+                    ]
+                  : [
+                        {
+                            name: staffName(null),
+                            color: staffColor(null),
+                            highlighted: false,
+                        },
+                    ];
         const label = staff.map((person) => person.name).join('・');
         const color = staff.length === 1 ? staff[0].color : staffColor(staffId);
         const accessibleName = `${label} ・ ${client.name} ${pin.name}${activity ? ` ・ ${formatCrmDateTime(activity.occurred_at)}` : ''}`;

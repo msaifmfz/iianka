@@ -58,6 +58,8 @@ export type CrmActivitySummary = {
 };
 
 export type CrmMapPin = MapPin & {
+    /** Who registered the place; colors the pin until it has history. */
+    registered_by: { id: number; name: string } | null;
     latest_activity: CrmActivitySummary | null;
     staff_activities: CrmActivitySummary[];
 };
