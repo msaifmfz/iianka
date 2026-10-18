@@ -57,7 +57,7 @@ class CrmMapController extends Controller
                 $presenter->pin(...),
                 ClientPlace::query()
                     ->whereHas('client')
-                    ->with(['latestActivity.user:id,name', 'staffActivitySummaries.user:id,name'])
+                    ->with(['createdBy:id,name', 'latestActivity.user:id,name', 'staffActivitySummaries.user:id,name'])
                     ->when(! $showArchived, fn ($query) => $query->active())
                     ->get()
                     ->all(),

@@ -68,6 +68,14 @@ class ClientPlace extends Model
     }
 
     /**
+     * @return BelongsTo<User, $this>
+     */
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by_user_id');
+    }
+
+    /**
      * @return HasMany<ClientPlaceLog, $this>
      */
     public function logs(): HasMany
