@@ -16,7 +16,7 @@ import { formatDistance, nearbyPlaces } from '@/lib/crm-location';
 import type { CurrentLocation } from '@/lib/crm-location';
 import { readMapMemory, saveMapMemory } from '@/lib/crm-map-memory';
 import type { MapViewport } from '@/lib/crm-map-memory';
-import { displayedActivity, staffColor } from '@/lib/crm-staff';
+import { isPinOfStaff, pinStaff, staffColor } from '@/lib/crm-staff';
 import { cn } from '@/lib/utils';
 import type {
     ClientSummary,
@@ -110,15 +110,12 @@ function CrmMapContent({
         const id = saved?.staffId ?? null;
         const selectedPin = places.find((pin) => pin.id === selectedPlaceId);
 
-        if (
-            id === null ||
-            (selectedPin && displayedActivity(selectedPin, id) === null)
-        ) {
+        if (id === null || (selectedPin && !isPinOfStaff(selectedPin, id))) {
             return null;
         }
 
         return id === auth.user.id ||
-            places.some((pin) => displayedActivity(pin, id) !== null)
+            places.some((pin) => isPinOfStaff(pin, id))
             ? id
             : null;
     });
@@ -128,10 +125,8 @@ function CrmMapContent({
         const users = new Map<number, { id: number; name: string }>();
 
         for (const pin of places) {
-            for (const activity of pin.staff_activities) {
-                if (activity.user) {
-                    users.set(activity.user.id, activity.user);
-                }
+            for (const user of pinStaff(pin)) {
+                users.set(user.id, user);
             }
         }
 
@@ -147,8 +142,7 @@ function CrmMapContent({
         if (
             staffId !== null &&
             ((selectedPlaceId !== null &&
-                (!selectedPin ||
-                    displayedActivity(selectedPin, staffId) === null)) ||
+                (!selectedPin || !isPinOfStaff(selectedPin, staffId))) ||
                 (staffId !== auth.user.id &&
                     !staff.some((user) => user.id === staffId)))
         ) {
@@ -160,9 +154,7 @@ function CrmMapContent({
         () =>
             staffId === null
                 ? places
-                : places.filter(
-                      (pin) => displayedActivity(pin, staffId) !== null,
-                  ),
+                : places.filter((pin) => isPinOfStaff(pin, staffId)),
         [places, staffId],
     );
     const [search, setSearch] = useState(saved?.search ?? '');
@@ -235,9 +227,7 @@ function CrmMapContent({
     const visibleStaffIds = new Set(
         filteredPlaces
             .filter((pin) => visiblePlaces.has(pin.id))
-            .flatMap((pin) =>
-                pin.staff_activities.map((activity) => activity.user?.id),
-            ),
+            .flatMap((pin) => pinStaff(pin).map((user) => user.id)),
     );
     const legendStaff = staff.filter((user) => visibleStaffIds.has(user.id));
 
@@ -255,7 +245,7 @@ function CrmMapContent({
         if (
             placeId !== null &&
             staffId !== null &&
-            (!targetPin || displayedActivity(targetPin, staffId) === null)
+            (!targetPin || !isPinOfStaff(targetPin, staffId))
         ) {
             setStaffId(null);
         }
@@ -326,7 +316,7 @@ function CrmMapContent({
         setStaffId(id);
         const matchingPins = places.filter(
             (pin) =>
-                (id === null || displayedActivity(pin, id) !== null) &&
+                (id === null || isPinOfStaff(pin, id)) &&
                 (focusClientId === null || pin.client_id === focusClientId),
         );
 

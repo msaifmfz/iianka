@@ -222,6 +222,20 @@ test('the higher record id breaks timestamp ties and missing authors remain visi
             ->where('places.2.staff_activities', []));
 });
 
+test('pins identify who registered the place even before any history, and nobody once that account is gone', function (): void {
+    $registrant = User::factory()->create(['name' => '田中']);
+    ClientPlace::factory()->create(['created_by_user_id' => $registrant->id]);
+    $orphaned = User::factory()->create();
+    ClientPlace::factory()->create(['created_by_user_id' => $orphaned->id]);
+    $orphaned->delete();
+
+    $this->actingAs($registrant)->get(route('crm.map'))
+        ->assertInertia(fn (Assert $page): Assert => $page
+            ->where('places.0.registered_by', ['id' => $registrant->id, 'name' => '田中'])
+            ->where('places.0.staff_activities', [])
+            ->where('places.1.registered_by', null));
+});
+
 test('every record type identifies its author on the pin and in the place panel', function (string $type): void {
     $author = User::factory()->create();
     $place = ClientPlace::factory()->create();
