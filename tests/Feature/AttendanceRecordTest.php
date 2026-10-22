@@ -5,6 +5,7 @@ use App\Models\ConstructionSchedule;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 test('users can view attendance records', function (): void {
     $user = User::factory()->create(['name' => '閲覧者']);
@@ -476,4 +477,42 @@ test('schedule form availability and leave data are bounded to the surrounding w
     } finally {
         Carbon::setTestNow();
     }
+});
+
+test('users can download the attendance period as an excel sheet', function (): void {
+    $viewer = User::factory()->create(['name' => 'Aoki']);
+    $worker = User::factory()->create(['name' => 'Baba']);
+    $hiddenUser = User::factory()->hiddenFromWorkers()->create(['name' => 'Hidden']);
+
+    AttendanceRecord::factory()->working()->create(['user_id' => $worker->id, 'work_date' => '2025-12-21']);
+    AttendanceRecord::factory()->earlyOut()->create(['user_id' => $worker->id, 'work_date' => '2025-12-22']);
+    AttendanceRecord::factory()->leave()->create(['user_id' => $worker->id, 'work_date' => '2026-01-01']);
+    AttendanceRecord::factory()->working()->create(['user_id' => $worker->id, 'work_date' => '2026-01-21']);
+    AttendanceRecord::factory()->leave()->create(['user_id' => $hiddenUser->id, 'work_date' => '2025-12-21']);
+
+    $response = $this->actingAs($viewer)
+        ->get(route('attendance-records.export', ['month' => '2025-12-01']));
+
+    $response->assertOk()
+        ->assertDownload('attendance_2025-12-21_2026-01-20.xlsx');
+
+    $path = tempnam(sys_get_temp_dir(), 'attendance').'.xlsx';
+    file_put_contents($path, $response->streamedContent());
+    $rows = IOFactory::load($path)->getActiveSheet()->toArray();
+    unlink($path);
+
+    expect($rows)->toHaveCount(33)
+        ->and($rows[0])->toBe(['氏名', null, 'Aoki', 'Baba'])
+        ->and($rows[1])->toBe(['年月日', null, null, null])
+        ->and($rows[2])->toBe(['07/12/21/(日)', null, null, '出'])
+        ->and($rows[3])->toBe(['07/12/22/(月)', null, null, '出'])
+        ->and($rows[4])->toBe(['07/12/23/(火)', null, null, null])
+        ->and($rows[13])->toBe(['08/1/1/(木)', '元旦', null, '休'])
+        ->and($rows[24])->toBe(['08/1/12/(月)', '祝', null, null])
+        ->and($rows[32])->toBe(['08/1/20/(火)', null, null, null]);
+});
+
+test('guests cannot download the attendance sheet', function (): void {
+    $this->get(route('attendance-records.export'))
+        ->assertRedirect(route('login'));
 });

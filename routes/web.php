@@ -79,6 +79,8 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
         ->name('construction-subcontractors.destroy');
     Route::resource('construction-schedules', ConstructionScheduleController::class);
     Route::resource('business-schedules', BusinessScheduleController::class);
+    Route::get('attendance-records/export', [AttendanceRecordController::class, 'export'])
+        ->name('attendance-records.export');
     Route::resource('attendance-records', AttendanceRecordController::class)->only(['index', 'store', 'destroy']);
     Route::resource('internal-notices', InternalNoticeController::class);
     Route::resource('cleaning-duty-rules', CleaningDutyRuleController::class);
