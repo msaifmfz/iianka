@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreAttendanceRecordRequest;
 use App\Models\AttendanceRecord;
 use App\Models\User;
+use App\Services\AttendanceSheetExporter;
 use App\Services\BusinessDate;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -14,6 +15,8 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
 class AttendanceRecordController extends Controller
@@ -21,23 +24,11 @@ class AttendanceRecordController extends Controller
     public function index(Request $request): Response
     {
         $month = $this->selectedMonth($request);
-        $startsOn = $month->copy()->day(21);
-        $endsOn = $month->copy()->addMonthNoOverflow()->day(20);
+        [$startsOn, $endsOn] = $this->period($month);
         $canManage = $request->user()?->canManageContent() === true;
         $days = $this->days($startsOn, $endsOn);
-
-        $users = User::query()
-            ->visibleToWorkers()
-            ->orderBy('name')
-            ->get(['id', 'name', 'email', 'is_hidden_from_workers']);
-
-        $records = AttendanceRecord::query()
-            ->with('user:id,name,email,is_hidden_from_workers')
-            ->whereHas('user', fn (Builder $query) => $query->visibleToWorkers())
-            ->whereDate('work_date', '>=', $startsOn->toDateString())
-            ->whereDate('work_date', '<=', $endsOn->toDateString())
-            ->orderBy('work_date')
-            ->get();
+        $users = $this->visibleUsers();
+        $records = $this->periodRecords($startsOn, $endsOn);
 
         return Inertia::render('attendance-records/index', [
             'filters' => [
@@ -56,6 +47,26 @@ class AttendanceRecordController extends Controller
                 'unmarked' => max(0, ($users->count() * $days->count()) - $records->count()),
             ],
             'canManage' => $canManage,
+        ]);
+    }
+
+    public function export(Request $request, AttendanceSheetExporter $exporter): StreamedResponse
+    {
+        [$startsOn, $endsOn] = $this->period($this->selectedMonth($request));
+
+        $spreadsheet = $exporter->build(
+            $startsOn,
+            $endsOn,
+            $this->visibleUsers(),
+            $this->periodRecords($startsOn, $endsOn),
+        );
+
+        $filename = "attendance_{$startsOn->toDateString()}_{$endsOn->toDateString()}.xlsx";
+
+        return response()->streamDownload(function () use ($spreadsheet): void {
+            new Xlsx($spreadsheet)->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ]);
     }
 
@@ -122,6 +133,45 @@ class AttendanceRecordController extends Controller
         } catch (Throwable) {
             return $this->defaultMonth();
         }
+    }
+
+    /**
+     * The attendance period runs from the 21st of the selected month to the
+     * 20th of the next.
+     *
+     * @return array{Carbon, Carbon}
+     */
+    private function period(Carbon $month): array
+    {
+        return [
+            $month->copy()->day(21),
+            $month->copy()->addMonthNoOverflow()->day(20),
+        ];
+    }
+
+    /**
+     * @return Collection<int, User>
+     */
+    private function visibleUsers(): Collection
+    {
+        return User::query()
+            ->visibleToWorkers()
+            ->orderBy('name')
+            ->get(['id', 'name', 'email', 'is_hidden_from_workers']);
+    }
+
+    /**
+     * @return Collection<int, AttendanceRecord>
+     */
+    private function periodRecords(Carbon $startsOn, Carbon $endsOn): Collection
+    {
+        return AttendanceRecord::query()
+            ->with('user:id,name,email,is_hidden_from_workers')
+            ->whereHas('user', fn (Builder $query) => $query->visibleToWorkers())
+            ->whereDate('work_date', '>=', $startsOn->toDateString())
+            ->whereDate('work_date', '<=', $endsOn->toDateString())
+            ->orderBy('work_date')
+            ->get();
     }
 
     private function defaultMonth(): Carbon

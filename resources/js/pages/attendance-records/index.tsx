@@ -4,6 +4,7 @@ import {
     CheckCircle2,
     ChevronLeft,
     ChevronRight,
+    Download,
     Eraser,
     Plane,
     UserCheck,
@@ -11,6 +12,7 @@ import {
 import { useMemo, useState } from 'react';
 import {
     destroy as attendanceRecordDestroy,
+    exportMethod as attendanceRecordExport,
     index as attendanceRecordIndex,
     store as attendanceRecordStore,
 } from '@/actions/App/Http/Controllers/AttendanceRecordController';
@@ -386,6 +388,17 @@ export default function AttendanceRecordIndex({
                         <h1 className="text-2xl font-bold">出勤管理</h1>
                     </div>
                     <div className="flex flex-wrap gap-2">
+                        <Button asChild variant="outline">
+                            <a
+                                href={attendanceRecordExport.url({
+                                    query: { month: filters.month },
+                                })}
+                                download
+                            >
+                                <Download className="size-4" />
+                                Excel出力
+                            </a>
+                        </Button>
                         <Button asChild variant="outline">
                             <Link
                                 href={attendanceRecordIndex({
