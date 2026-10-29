@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Domain\Stock\ValueObjects\StockQuantity;
 
+mutates(StockQuantity::class);
+
 test('it creates canonical quantities from decimal strings', function (string $input, int $milliUnits, string $canonical): void {
     $quantity = StockQuantity::fromDecimal($input);
 
@@ -14,9 +16,14 @@ test('it creates canonical quantities from decimal strings', function (string $i
     'whole number' => ['18', 18_000, '18.000'],
     'fractional quantity' => ['1.25', 1_250, '1.250'],
     'smallest precision' => ['0.001', 1, '0.001'],
+    'smallest negative quantity' => ['-0.001', -1, '-0.001'],
+    'zero' => ['0', 0, '0.000'],
+    'negative zero' => ['-0.000', 0, '0.000'],
     'negative ledger delta' => ['-7.5', -7_500, '-7.500'],
     'maximum quantity' => ['999999999.999', StockQuantity::MAX_MILLI_UNITS, '999999999.999'],
+    'minimum quantity' => ['-999999999.999', -999_999_999_999, '-999999999.999'],
     'leading zeroes' => ['0002.010', 2_010, '2.010'],
+    'leading zeroes beyond the integer digit limit' => ['00000000000002.010', 2_010, '2.010'],
 ]);
 
 test('it rejects malformed or out of range decimal strings', function (string $input): void {
@@ -55,5 +62,48 @@ test('arithmetic cannot exceed the persisted quantity range', function (): void 
     $maximum = StockQuantity::fromMilliUnits(StockQuantity::MAX_MILLI_UNITS);
 
     expect(fn (): StockQuantity => $maximum->plus(StockQuantity::fromMilliUnits(1)))
+        ->toThrow(InvalidArgumentException::class);
+});
+
+test('quantity signs distinguish zero from the smallest positive and negative values', function (
+    string $decimal,
+    bool $positive,
+    bool $negative,
+    bool $zero,
+): void {
+    $quantity = StockQuantity::fromDecimal($decimal);
+
+    expect($quantity->isPositive())->toBe($positive);
+    expect($quantity->isNegative())->toBe($negative);
+    expect($quantity->isZero())->toBe($zero);
+})->with([
+    'smallest negative' => ['-0.001', false, true, false],
+    'zero' => ['0', false, false, true],
+    'negative zero' => ['-0.000', false, false, true],
+    'smallest positive' => ['0.001', true, false, false],
+]);
+
+test('milli unit boundaries preserve their exact decimal values', function (int $milliUnits, string $decimal): void {
+    $quantity = StockQuantity::fromMilliUnits($milliUnits);
+
+    expect($quantity->milliUnits())->toBe($milliUnits);
+    expect($quantity->toDecimalString())->toBe($decimal);
+})->with([
+    'minimum' => [-999_999_999_999, '-999999999.999'],
+    'maximum' => [999_999_999_999, '999999999.999'],
+]);
+
+test('milli unit values outside either persisted boundary are rejected', function (int $milliUnits): void {
+    expect(fn (): StockQuantity => StockQuantity::fromMilliUnits($milliUnits))
+        ->toThrow(InvalidArgumentException::class);
+})->with([
+    'below minimum' => [-1_000_000_000_000],
+    'above maximum' => [1_000_000_000_000],
+]);
+
+test('subtracting one milli unit cannot underflow the persisted quantity range', function (): void {
+    $minimum = StockQuantity::fromMilliUnits(-999_999_999_999);
+
+    expect(fn (): StockQuantity => $minimum->minus(StockQuantity::fromMilliUnits(1)))
         ->toThrow(InvalidArgumentException::class);
 });

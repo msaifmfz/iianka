@@ -54,3 +54,11 @@ jobs:
 
       - name: Tests
         run: ./vendor/bin/pest
+
+      - name: Mutation test reception workflow permissions
+        env:
+          XDEBUG_MODE: coverage
+        run: >
+          ./vendor/bin/pest tests/Feature/Policies/ReceptionCasePolicyTest.php
+          --mutate --covered-only --parallel --min=100
+          --path=app/Policies/ReceptionCasePolicy.php
