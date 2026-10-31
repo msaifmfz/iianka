@@ -1,8 +1,7 @@
 import js from '@eslint/js';
 import stylistic from '@stylistic/eslint-plugin';
 import prettier from 'eslint-config-prettier/flat';
-import importPlugin from 'eslint-plugin-import';
-import react from 'eslint-plugin-react';
+import importPlugin from 'eslint-plugin-import-x';
 import reactHooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
 import typescript from 'typescript-eslint';
@@ -67,17 +66,10 @@ export default [
         },
     },
     {
-        ...react.configs.flat.recommended,
-        ...react.configs.flat['jsx-runtime'], // Required for React 17+
         languageOptions: {
             globals: {
                 ...globals.browser,
             },
-        },
-        rules: {
-            'react/react-in-jsx-scope': 'off',
-            'react/prop-types': 'off',
-            'react/no-unescaped-entities': 'off',
         },
         settings: {
             react: {
@@ -87,10 +79,10 @@ export default [
     },
     {
         plugins: {
-            import: importPlugin,
+            'import-x': importPlugin,
         },
         settings: {
-            'import/resolver': {
+            'import-x/resolver': {
                 typescript: {
                     alwaysTryTypes: true,
                     project: './tsconfig.json',
@@ -107,7 +99,7 @@ export default [
                     fixStyle: 'separate-type-imports',
                 },
             ],
-            'import/order': [
+            'import-x/order': [
                 'error',
                 {
                     groups: [
@@ -124,7 +116,7 @@ export default [
                     },
                 },
             ],
-            'import/consistent-type-specifier-style': [
+            'import-x/consistent-type-specifier-style': [
                 'error',
                 'prefer-top-level',
             ],
