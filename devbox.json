@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.17.5/.schema/devbox.schema.json",
   "packages": [
-    "php@8.5",
-    "php85Packages.composer@2",
+    "github:NixOS/nixpkgs/e62746b0b472753ef019baceab6f1e2e52014980#php85",
+    "github:NixOS/nixpkgs/e62746b0b472753ef019baceab6f1e2e52014980#php85Packages.composer",
     "nodejs@22",
     "sqlite@3",
     "git@2"
