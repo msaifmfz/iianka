@@ -27,6 +27,8 @@ use App\Http\Controllers\CrmGeocodeController;
 use App\Http\Controllers\CrmMapController;
 use App\Http\Controllers\InternalNoticeController;
 use App\Http\Controllers\MapClientController;
+use App\Http\Controllers\QuotationController;
+use App\Http\Controllers\QuotationPdfController;
 use App\Http\Controllers\ReceptionArchiveController;
 use App\Http\Controllers\ReceptionCaseAssignmentController;
 use App\Http\Controllers\ReceptionCaseAttachmentController;
@@ -58,6 +60,12 @@ Route::get('robots.txt', fn (): ResponseFactory|Response => response("User-agent
 
 Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::redirect('dashboard', 'schedule-overview')->name('dashboard');
+    Route::post('quotations/preview/{quotation?}', [QuotationController::class, 'preview'])->name('quotations.preview');
+    Route::post('quotations/pdf-preview/{document}/{quotation?}', [QuotationController::class, 'previewPdf'])
+        ->whereIn('document', ['quotation', 'breakdown'])->name('quotations.pdf-preview');
+    Route::get('quotations/{quotation}/pdf/{document}', QuotationPdfController::class)
+        ->whereIn('document', ['quotation', 'breakdown'])->name('quotations.pdf');
+    Route::resource('quotations', QuotationController::class)->except('destroy');
     Route::get('schedule-search', ScheduleSearchController::class)
         ->name('schedule-search.index');
     Route::get('schedule-overview', ScheduleOverviewController::class)
