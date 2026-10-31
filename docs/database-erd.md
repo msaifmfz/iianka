@@ -5,8 +5,8 @@ Last verified: 2026-07-30
 ## Scope and source
 
 This document describes the physical schema produced by running all current migrations into a
-fresh SQLite database. That schema contains 38 application and framework tables and passes
-`PRAGMA foreign_key_check`.
+fresh SQLite database. A fresh migration check on 2026-10-30 contains 45 application and
+framework tables and passes `PRAGMA foreign_key_check`.
 
 Migrations are the schema source of truth. Models describe application-level relationships and
 casts; the developer's existing `database/database.sqlite` may contain local drift.
@@ -128,6 +128,31 @@ composite index on place and occurrence time. `last_logged_at` is denormalized f
 Database cascades remove rows; `PlaceLogRecorder` handles corresponding filesystem cleanup for
 application log/place deletions. Client soft deletion retains rows and files for recovery, while
 CRM middleware blocks access to its child resources.
+
+## Quotations
+
+```mermaid
+erDiagram
+    users o|--o{ quotations : "creator; set null"
+    quotations {
+        integer id PK
+        string number UK
+        string client_name
+        string project_name
+        date issued_on
+        json input
+        json calculation
+        json catalog_snapshot
+        json issuer
+        integer created_by FK
+        integer version
+    }
+```
+
+Input, selected catalog rows, calculation, and issuer are saved together. `version` provides
+optimistic concurrency protection. The unique number is assigned after insert within the same
+transaction; it is nullable only during that transaction. `issued_on` is indexed. Deleting a
+creator preserves the quotation and sets `created_by` to null.
 
 ## Reception
 
@@ -343,6 +368,12 @@ primary application database.
 | `cleaning_duty_rule_user`               | Assigned users                                         | Composite primary key; both FKs cascade                                                       |
 | `attendance_records`                    | Per-user working/early-out/leave status                | Unique `(user_id, work_date)`                                                                 |
 | `general_contractors`                   | Unique contractor-name suggestion catalog              | No FK from schedules                                                                          |
+
+### Quotations
+
+| Table | Purpose | Important constraints |
+| --- | --- | --- |
+| `quotations` | Client quotation, price snapshot, and reproducible PDF data | Unique number; indexed issue date; nullable creator FK with set-null deletion; version default 1 |
 
 ### Reception
 

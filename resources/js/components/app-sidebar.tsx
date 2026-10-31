@@ -27,6 +27,7 @@ import { index as scheduleIndex } from '@/actions/App/Http/Controllers/Construct
 import { index as voucherIndex } from '@/actions/App/Http/Controllers/ConstructionScheduleVoucherController';
 import { index as siteIndex } from '@/actions/App/Http/Controllers/ConstructionSiteController';
 import crmMap from '@/actions/App/Http/Controllers/CrmMapController';
+import { index as quotationIndex } from '@/actions/App/Http/Controllers/QuotationController';
 import { index as receptionArchiveIndex } from '@/actions/App/Http/Controllers/ReceptionArchiveController';
 import {
     create as receptionCreate,
@@ -111,6 +112,9 @@ export function AppSidebar() {
         mainNavItems[4],
         mainNavItems[5],
         mainNavItems[6],
+        ...(auth.permissions.view_all_content
+            ? [{ title: '見積書', href: quotationIndex(), icon: FileText }]
+            : []),
         {
             title: '出勤管理',
             href: attendanceRecordIndex(),

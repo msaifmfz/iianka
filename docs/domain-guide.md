@@ -48,6 +48,52 @@ The role helpers in `App\Models\User` and gates in `AppServiceProvider` are auth
 reception-assignee option queries. Existing relationships and administrative access still use the
 same user row.
 
+## Quotations / 見積書
+
+Verified: 2026-10-30. Admins and Editors create and edit quotations; all three roles can
+read saved quotations and download their 見積書 and 内訳明細書 PDFs.
+
+- `resources/data/quotation-catalog.json` contains the 301 master rows extracted from
+  `見積入力作成.xlsx`, with source row numbers and the agreed ceiling-height corrections.
+  Each quotation snapshots its selected catalog entries, issuer details, input, and calculated
+  result. Later catalog or issuer changes do not silently change saved quotations.
+- The editor supports up to 30 master/free-entry lines. Irrelevant controls are disabled;
+  server validation normalizes inactive options and the calculator independently excludes them.
+- Master prices support standard, additive, multiplier, and direct adjustments. Construction
+  rates are added, then the adjusted unit price is rounded half-up to ¥10, then the per-unit
+  processing fee is added. Quantities and free-entry prices use exact decimal arithmetic.
+- New calculations round each extended line amount and expenses half-up to whole yen, then
+  sum the settled amounts. Unit rates and quantities retain their precision. The saved
+  `line_half_up_yen` policy identifies this behavior; earlier quotation snapshots retain their
+  original amounts until explicitly revised. The editor and both PDFs disclose the policy.
+- Processing applies only when a nonstandard length is requested. D16 is ¥12; per-line manual
+  processing fees are supported. Standard-length and unrelated products cannot receive a fee.
+- Construction rate defaults are vacuum 10%, angle 15%, deck 20%, high 20%, upward 20%, pit 20%,
+  and cleanroom 25%. Angle, pit, and cleanroom are provisional; rates can be overridden per line.
+  High work is one condition regardless of equipment. Ceiling-anchor prices include their
+  height band (`4.0m未満` / `4.0m以上`) and deck penetration where stated in their master note;
+  those included conditions cannot be surcharged again.
+- The manually enabled minimum adds only the shortfall between construction subtotal and
+  the minimum (default ¥10,000). Free entries are materials/other and excluded; materials-only
+  quotations receive no minimum charge. Holiday selection adds ¥20,000 once; expenses are added
+  separately. NET is a whole-yen reference and never replaces the ordinary total.
+- A cover with more than five lines automatically uses a lump sum. The breakdown retains every
+  line and paginates. Both documents are tax-exclusive, use embedded IPAex Gothic via mPDF, and
+  escape customer-provided content. Issuer defaults live in `config/quotation.php`.
+- Complete form inputs can be previewed as either PDF without saving. These PDFs are marked
+  as unissued previews; editing previews retain the saved catalog/issuer snapshots while using
+  the latest form inputs. `見積を発行` saves the quotation; both downloads are available from the list.
+  The dialog renders the actual PDF using locally bundled PDF.js, with page navigation and zoom;
+  no browser PDF plugin or third-party document viewer is required.
+- Recalculation retains the previous amounts in place while indicating its pending state and
+  disabling issuance/preview until the current input is valid. Unsaved-navigation warnings ignore
+  hover prefetch requests and apply to actual navigation.
+- Updates require the saved `version`; stale edits are rejected instead of overwriting newer
+  changes. Creation/update actions are audited. No quotation deletion or sending workflow exists.
+
+Implementation: `App\Domain\Quotation\QuotationCalculator`, `App\Application\Quotation`,
+`QuotationController`, `SaveQuotationRequest`, and `resources/js/pages/quotations`.
+
 ## Scheduling and internal communication
 
 ### Construction schedules
