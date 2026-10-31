@@ -518,17 +518,31 @@ test('PDFs embed fallback fonts for mathematical symbols and supplementary-plane
     expect($pdf)->toContain('NotoEmoji-Regular', 'DejaVuSansCondensed');
 });
 
-test('wide glyph units cannot shrink quotation notes below their readable font size', function (string $document): void {
+test('wide glyph units cannot shrink quotation notes below their readable font size', function (string $document, bool $coldCache): void {
     $quote = Quotation::factory()->make();
     $input = $quote->input;
     $input['items'][0] = [...$input['items'][0], 'mode' => 'free', 'free_name' => '材料', 'free_unit' => '😀😀', 'free_price' => '1', 'note' => str_repeat('備考', 150)];
     $quote->input = $input;
     $quote->calculation = (new QuotationCalculator)->calculate($input, app(QuotationCatalog::class)->indexed());
 
-    $pdf = app(QuotationPdf::class)->render($quote, $document);
+    $storage = storage_path();
+    $sandbox = sys_get_temp_dir().'/quotation-wide-unit-'.Str::uuid();
+    if ($coldCache) {
+        File::makeDirectory($sandbox, 0755);
+        app()->useStoragePath($sandbox);
+    }
 
-    expect(min(quotationPdfFontSizes($pdf)))->toBeGreaterThanOrEqual(7.49);
-})->with(['quotation', 'breakdown']);
+    try {
+        $pdf = app(QuotationPdf::class)->render($quote, $document);
+
+        expect(min(quotationPdfFontSizes($pdf)))->toBeGreaterThanOrEqual(7.49);
+    } finally {
+        if ($coldCache) {
+            app()->useStoragePath($storage);
+            File::deleteDirectory($sandbox);
+        }
+    }
+})->with(['quotation', 'breakdown'])->with(['warm cache' => [false], 'cold cache' => [true]]);
 
 test('PDF text preserves note lines and graphemes while escaping HTML', function (): void {
     $text = "FIRST-LINE\r\nSECOND-LINE\rTHIRD-LINE\n<script>😀👷🏽‍♀️</script>";

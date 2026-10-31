@@ -54,10 +54,11 @@ class QuotationPdf
     {
         // Explicit break opportunities avoid mPDF shrinking a whole table to fit one long word.
         // Split graphemes rather than code points so combining marks and emoji stay together.
+        // The grapheme API also avoids older PCRE2 versions merging adjacent emoji in \X.
         $wrapped = preg_replace_callback('/\S+/u', function (array $match) use ($maxWordLength): string {
-            preg_match_all('/\X/u', $match[0], $characters);
+            $characters = grapheme_str_split($match[0]) ?: [];
 
-            return count($characters[0]) > $maxWordLength ? implode("\u{200B}", $characters[0]) : $match[0];
+            return count($characters) > $maxWordLength ? implode("\u{200B}", $characters) : $match[0];
         }, str_replace(["\r\n", "\r"], "\n", $value ?? ''));
 
         return new HtmlString(nl2br(e($wrapped)));

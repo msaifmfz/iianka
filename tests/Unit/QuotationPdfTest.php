@@ -23,6 +23,9 @@ test('PDF text adds wrapping opportunities only beyond the word boundary', funct
     'over boundary' => ['ABCDE', 4, "A\u{200B}B\u{200B}C\u{200B}D\u{200B}E"],
     'separate short words' => ['AB CD', 2, 'AB CD'],
     'graphemes remain intact' => ["a\u{0301}🙂", 1, "a\u{0301}\u{200B}🙂"],
+    'adjacent emoji split independently' => ['😀😀', 1, "😀\u{200B}😀"],
+    'joined emoji remain intact' => ['👷🏽‍♀️🙂', 1, "👷🏽‍♀️\u{200B}🙂"],
+    'regional indicators retain their flag pairs' => ['🇯🇵🇲🇾', 1, "🇯🇵\u{200B}🇲🇾"],
     'HTML escaped' => ['<b>&', 20, '&lt;b&gt;&amp;'],
 ]);
 
