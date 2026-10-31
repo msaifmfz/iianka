@@ -55,7 +55,7 @@
         "@inertiajs/core": "^3.8.0",
         "@inertiajs/react": "^3.0.0",
         "@inertiajs/vite": "^3.0.0",
-        "@laravel/passkeys": "^0.2.0",
+        "@laravel/passkeys": "^0.4.0",
         "@lexical/react": "^0.53.0",
         "@lexical/utils": "^0.53.0",
         "@radix-ui/react-avatar": "^1.1.3",

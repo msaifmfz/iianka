@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const appUrl = 'http://127.0.0.1:8010';
+// localhost provides a valid relying-party ID for WebAuthn tests.
+const appUrl = 'http://localhost:8010';
 const viteUrl = 'http://127.0.0.1:5174';
 const e2eDatabasePath = '.playwright/database/e2e.sqlite';
 const e2eEnv = {
@@ -101,7 +102,7 @@ export default defineConfig({
                 `touch ${e2eDatabasePath}`,
                 `${e2eEnvPrefix} php artisan config:clear --no-interaction`,
                 `${e2eEnvPrefix} php artisan migrate:fresh --force --seed --seeder=E2eSeeder --no-interaction`,
-                `${e2eEnvPrefix} php artisan serve --host=127.0.0.1 --port=8010 --no-reload`,
+                `${e2eEnvPrefix} php artisan serve --host=localhost --port=8010 --no-reload`,
             ].join(' && '),
             url: appUrl,
             reuseExistingServer: false,
