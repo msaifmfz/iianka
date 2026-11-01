@@ -43,7 +43,7 @@ export default [
             '**/*.mjs',
             '**/*.cjs',
             'e2e/**/*.ts',
-            'playwright.config.ts',
+            'playwright*.config.ts',
         ],
         ...typescript.configs.disableTypeChecked,
     },

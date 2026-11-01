@@ -40,4 +40,6 @@ node_modules/
 /playwright/.auth/
 /.playwright/database/
 /.playwright/vite.hot
+/.playwright/production.hot
+/.playwright/nginx-*
 lefthook-local.yml

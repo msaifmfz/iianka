@@ -4,7 +4,7 @@ import type {
     PDFDocumentLoadingTask,
     RenderTask,
 } from 'pdfjs-dist';
-import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?worker&url';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 

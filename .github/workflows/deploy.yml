@@ -63,6 +63,15 @@ jobs:
       - name: Check frontend
         run: npm run lint:check && npm run format:check && npm run types:check
 
+      - name: Install production browser test runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends nginx
+          npx playwright install --with-deps chromium
+
+      - name: Test production PDF previews and CRM location selection
+        run: npm run test:e2e:production -- --grep 'creates a quotation|address search'
+
   validate_release:
     name: Validate release
     runs-on: ubuntu-24.04

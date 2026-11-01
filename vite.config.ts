@@ -39,6 +39,11 @@ export default defineConfig(({ mode }) => {
         optimizeDeps: {
             include: ['leaflet', 'react-leaflet', 'react-leaflet-cluster'],
         },
+        // PDF.js creates a module worker. Bundle it as JavaScript so static
+        // servers without an .mjs MIME mapping can serve it correctly.
+        worker: {
+            format: 'es',
+        },
         server: {
             host: devServerHost,
             port: devServerPort,

@@ -49,7 +49,9 @@ final readonly class GeocodeAddress
             throw new GeocodingUnavailable('GSI address search failed to connect.', $exception->getCode(), previous: $exception);
         }
 
-        if ($response->failed() || ! is_array($response->json())) {
+        $features = $response->json();
+
+        if (! $response->successful() || ! is_array($features) || ! array_is_list($features)) {
             Log::warning('GSI address search returned an error.', ['status' => $response->status()]);
 
             throw new GeocodingUnavailable("GSI address search returned an error (HTTP {$response->status()}).");
@@ -57,7 +59,7 @@ final readonly class GeocodeAddress
 
         $candidates = [];
 
-        foreach ($response->json() as $feature) {
+        foreach ($features as $feature) {
             $coordinates = is_array($feature) ? data_get($feature, 'geometry.coordinates') : null;
             $label = is_array($feature) ? data_get($feature, 'properties.title') : null;
 
@@ -75,12 +77,16 @@ final readonly class GeocodeAddress
                 'lat' => (float) $coordinates[1],
                 'lng' => (float) $coordinates[0],
             ];
-
-            if (count($candidates) === self::MAX_CANDIDATES) {
-                break;
-            }
         }
 
-        return $candidates;
+        // GSI can put broad address matches before an exact landmark match.
+        // Rank before capping so searches such as 東京駅 retain their matches.
+        usort($candidates, static function (array $left, array $right) use ($address): int {
+            $rank = static fn (string $label): int => $label === $address ? 0 : (str_contains($label, $address) ? 1 : 2);
+
+            return $rank($left['label']) <=> $rank($right['label']);
+        });
+
+        return array_slice($candidates, 0, self::MAX_CANDIDATES);
     }
 }
