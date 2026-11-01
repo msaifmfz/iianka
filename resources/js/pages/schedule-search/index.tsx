@@ -366,6 +366,7 @@ export default function ScheduleSearchIndex({
     const [detailEvent, setDetailEvent] = useState<ScheduleDetailEvent | null>(
         null,
     );
+    const [navigatingToOverview, setNavigatingToOverview] = useState(false);
     // Hide the results until the scroll position is restored so returning from
     // the overview never flashes the top of the list before snapping into place.
     const [restoringScroll, setRestoringScroll] = useState(
@@ -390,6 +391,11 @@ export default function ScheduleSearchIndex({
 
     useEffect(() => {
         const stopListening = router.on('navigate', (event) => {
+            if (event.detail.page.component !== 'schedule-search/index') {
+                return;
+            }
+
+            setNavigatingToOverview(false);
             const nextUrl =
                 event.detail.page.url ||
                 `${window.location.pathname}${window.location.search}`;
@@ -504,6 +510,7 @@ export default function ScheduleSearchIndex({
         // (results.data.length), refreshing the deadline to keep progressing.
         let frame = 0;
         let settled = false;
+        let alignedFrames = 0;
         let deadline = performance.now() + scrollRestoreDeadline;
 
         const settle = () => {
@@ -515,25 +522,31 @@ export default function ScheduleSearchIndex({
         };
 
         const restoreScroll = () => {
-            if (storedAnchor !== null) {
-                const anchorElement = searchResultElement(storedAnchor.key);
+            const anchorElement = storedAnchor
+                ? searchResultElement(storedAnchor.key)
+                : null;
 
-                if (anchorElement) {
-                    const viewportOffset =
-                        anchorElement.getBoundingClientRect().top -
-                        storedAnchor.viewportTop;
+            if (anchorElement && storedAnchor) {
+                const viewportOffset =
+                    anchorElement.getBoundingClientRect().top -
+                    storedAnchor.viewportTop;
 
-                    if (Math.abs(viewportOffset) > scrollRestoreTolerance) {
-                        window.scrollBy(0, viewportOffset);
-                    }
+                if (Math.abs(viewportOffset) > scrollRestoreTolerance) {
+                    window.scrollBy(0, viewportOffset);
+                    alignedFrames = 0;
+                } else {
+                    alignedFrames =
+                        pendingVisitsRef.current === 0 ? alignedFrames + 1 : 0;
+                }
 
+                // InfiniteScroll also restores its reference element after a
+                // page arrives. Wait for that layout work before revealing.
+                if (alignedFrames >= 3) {
                     settle();
 
                     return;
                 }
-            }
-
-            if (storedScrollTop !== null) {
+            } else if (storedScrollTop !== null) {
                 const maxScrollTop = maxDocumentScrollTop();
 
                 window.scrollTo(0, Math.min(storedScrollTop, maxScrollTop));
@@ -581,6 +594,7 @@ export default function ScheduleSearchIndex({
         schedule: SearchSchedule,
         element: HTMLElement,
     ) {
+        setNavigatingToOverview(true);
         const nextSelected = {
             type: schedule.type,
             id: schedule.id,
@@ -598,16 +612,27 @@ export default function ScheduleSearchIndex({
             });
         }
 
-        router.visit(
-            overviewIndex({
-                query: {
-                    date: schedule.scheduled_on,
-                    highlight_type: schedule.type,
-                    highlight_id: schedule.id,
-                    return_to: returnTo,
-                },
-            }),
-        );
+        // Finish pending page-URL updates before leaving. Otherwise an
+        // InfiniteScroll replacement can cancel the overview visit, or leave
+        // the previous history entry pointing at page one of a deep result.
+        router.replace({
+            url: currentSearchUrl,
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => {
+                router.visit(
+                    overviewIndex({
+                        query: {
+                            date: schedule.scheduled_on,
+                            highlight_type: schedule.type,
+                            highlight_id: schedule.id,
+                            return_to: returnTo,
+                        },
+                    }),
+                    { onFinish: () => setNavigatingToOverview(false) },
+                );
+            },
+        });
     }
 
     return (
@@ -714,6 +739,9 @@ export default function ScheduleSearchIndex({
                 </div>
 
                 <div
+                    role="region"
+                    aria-label="検索結果"
+                    aria-busy={restoringScroll}
                     className="mx-auto max-w-7xl px-3 py-4 md:px-6 md:py-6"
                     style={restoringScroll ? { opacity: 0 } : undefined}
                 >
@@ -722,7 +750,11 @@ export default function ScheduleSearchIndex({
                             該当する予定がありません。
                         </div>
                     ) : (
-                        <InfiniteScroll data="results" className="space-y-3">
+                        <InfiniteScroll
+                            data="results"
+                            preserveUrl={navigatingToOverview}
+                            className="space-y-3"
+                        >
                             {results.data.map((schedule) => (
                                 <SearchResultItem
                                     key={scheduleKey(schedule)}

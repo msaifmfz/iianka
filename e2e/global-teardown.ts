@@ -1,17 +1,21 @@
 import { rmSync } from 'node:fs';
 
-const e2eDatabasePath = '.playwright/database/e2e.sqlite';
+const e2eDatabasePaths = ['chromium', 'firefox', 'webkit'].map(
+    (browser) => `.playwright/database/e2e-${browser}.sqlite`,
+);
 
 export default function globalTeardown(): void {
     if (process.env.E2E_KEEP_DATABASE === '1') {
         return;
     }
 
-    for (const path of [
-        e2eDatabasePath,
-        `${e2eDatabasePath}-shm`,
-        `${e2eDatabasePath}-wal`,
-    ]) {
-        rmSync(path, { force: true });
+    for (const databasePath of e2eDatabasePaths) {
+        for (const path of [
+            databasePath,
+            `${databasePath}-shm`,
+            `${databasePath}-wal`,
+        ]) {
+            rmSync(path, { force: true });
+        }
     }
 }

@@ -115,6 +115,8 @@ test.describe('schedule content stock picker', () => {
     test('an attached measurement unit is counted as the numeric stock usage', async ({
         page,
     }, testInfo) => {
+        const browserErrors: string[] = [];
+        page.on('pageerror', (error) => browserErrors.push(error.message));
         await login(page, editorLoginId);
         const editor = await openContentEditor(page);
 
@@ -139,5 +141,6 @@ test.describe('schedule content stock picker', () => {
             stockName,
         );
         await expect(usageSection.getByRole('listitem')).toContainText('4');
+        expect(browserErrors).toEqual([]);
     });
 });

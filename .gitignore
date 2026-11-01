@@ -39,4 +39,5 @@ node_modules/
 /playwright/.cache/
 /playwright/.auth/
 /.playwright/database/
+/.playwright/vite.hot
 lefthook-local.yml
