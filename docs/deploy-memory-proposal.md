@@ -287,7 +287,8 @@ To roll back new host preparation, first stop/disable the proposed deploy
 launcher and wait for all its units to exit. Keep the original deployment
 workflow disabled until the owner accepts its memory/partial-deploy risks.
 Only remove mappings that this rollout added (restore any pre-existing
-mapping instead of deleting it):
+mapping instead of deleting it). Keep the release mappings while any served
+release relies on them; do not execute their removal against an active release:
 
 ```bash
 set -euo pipefail
