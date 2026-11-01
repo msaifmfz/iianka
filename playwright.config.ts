@@ -1,8 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const appUrl = 'http://127.0.0.1:8010';
+// localhost provides a valid relying-party ID for WebAuthn tests.
+const appUrl = 'http://localhost:8010';
 const viteUrl = 'http://127.0.0.1:5174';
-const e2eDatabasePath = '.playwright/database/e2e.sqlite';
+const e2eDatabasePath = '.playwright/database/e2e-chromium.sqlite';
 const e2eEnv = {
     APP_ENV: 'testing',
     APP_URL: appUrl,
@@ -17,10 +18,41 @@ const e2eEnv = {
     SESSION_DRIVER: 'database',
     VITE_DEV_SERVER_HOST: '127.0.0.1',
     VITE_DEV_SERVER_PORT: '5174',
+    VITE_HOT_FILE: '.playwright/vite.hot',
+    VITE_CACHE_DIR: 'node_modules/.vite-e2e',
 };
 const e2eEnvPrefix = Object.entries(e2eEnv)
     .map(([key, value]) => `${key}=${value}`)
     .join(' ');
+const browserProjects = [
+    { name: 'chromium', port: 8010, device: devices['Desktop Chrome'] },
+    { name: 'firefox', port: 8012, device: devices['Desktop Firefox'] },
+    { name: 'webkit', port: 8013, device: devices['Desktop Safari'] },
+];
+const appServers = browserProjects.map(({ name, port }) => {
+    const url = `http://localhost:${port}`;
+    const databasePath = `.playwright/database/e2e-${name}.sqlite`;
+    const envPrefix = Object.entries({
+        ...e2eEnv,
+        APP_URL: url,
+        DB_DATABASE: databasePath,
+    })
+        .map(([key, value]) => `${key}=${value}`)
+        .join(' ');
+
+    return {
+        command: [
+            'mkdir -p .playwright/database',
+            `rm -f ${databasePath}`,
+            `touch ${databasePath}`,
+            `${envPrefix} php artisan config:clear --no-interaction`,
+            `${envPrefix} php artisan migrate:fresh --force --seed --seeder=E2eSeeder --no-interaction`,
+            `${envPrefix} php artisan serve --host=localhost --port=${port} --no-reload`,
+        ].join(' && '),
+        url,
+        reuseExistingServer: false,
+    };
+});
 
 /**
  * Read environment variables from file.
@@ -56,20 +88,10 @@ export default defineConfig({
 
     /* Configure projects for major browsers */
     projects: [
-        {
-            name: 'chromium',
-            use: { ...devices['Desktop Chrome'] },
-        },
-
-        {
-            name: 'firefox',
-            use: { ...devices['Desktop Firefox'] },
-        },
-
-        {
-            name: 'webkit',
-            use: { ...devices['Desktop Safari'] },
-        },
+        ...browserProjects.map(({ name, port, device }) => ({
+            name,
+            use: { ...device, baseURL: `http://localhost:${port}` },
+        })),
 
         /* Test against mobile viewports. */
         // {
@@ -94,18 +116,7 @@ export default defineConfig({
 
     /* Run your local dev server before starting the tests */
     webServer: [
-        {
-            command: [
-                'mkdir -p .playwright/database',
-                `rm -f ${e2eDatabasePath}`,
-                `touch ${e2eDatabasePath}`,
-                `${e2eEnvPrefix} php artisan config:clear --no-interaction`,
-                `${e2eEnvPrefix} php artisan migrate:fresh --force --seed --seeder=E2eSeeder --no-interaction`,
-                `${e2eEnvPrefix} php artisan serve --host=127.0.0.1 --port=8010 --no-reload`,
-            ].join(' && '),
-            url: appUrl,
-            reuseExistingServer: false,
-        },
+        ...appServers,
         {
             command: `${e2eEnvPrefix} npm run dev -- --host 127.0.0.1 --port 5174 --strictPort`,
             url: `${viteUrl}/@vite/client`,

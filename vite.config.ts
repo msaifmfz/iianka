@@ -13,19 +13,26 @@ export default defineConfig(({ mode }) => {
     const devServerOrigin = env.VITE_DEV_SERVER_ORIGIN || undefined;
     const hmrHost = env.VITE_HMR_HOST || undefined;
     const hmrProtocol = env.VITE_HMR_PROTOCOL || undefined;
-    const hmrClientPort = env.VITE_HMR_CLIENT_PORT ? Number(env.VITE_HMR_CLIENT_PORT) : undefined;
+    const hmrClientPort = env.VITE_HMR_CLIENT_PORT
+        ? Number(env.VITE_HMR_CLIENT_PORT)
+        : undefined;
     const appHost = env.APP_URL ? new URL(env.APP_URL).hostname : undefined;
-    const devServerOriginHost = devServerOrigin ? new URL(devServerOrigin).hostname : undefined;
+    const devServerOriginHost = devServerOrigin
+        ? new URL(devServerOrigin).hostname
+        : undefined;
     const allowedHosts = [
         'localhost',
         '127.0.0.1',
         appHost,
         devServerOriginHost,
         hmrHost,
-        ...(env.VITE_ALLOWED_HOSTS ? env.VITE_ALLOWED_HOSTS.split(',').map((host) => host.trim()) : []),
+        ...(env.VITE_ALLOWED_HOSTS
+            ? env.VITE_ALLOWED_HOSTS.split(',').map((host) => host.trim())
+            : []),
     ].filter((host): host is string => Boolean(host));
 
     return {
+        cacheDir: env.VITE_CACHE_DIR || 'node_modules/.vite',
         // The CRM map loads Leaflet lazily. Discovered mid-session, Vite would
         // re-bundle it and load a second Leaflet copy, replacing the global
         // `L` that leaflet.markercluster registers its classes on.
@@ -39,16 +46,18 @@ export default defineConfig(({ mode }) => {
             cors: true,
             origin: devServerOrigin,
             allowedHosts,
-            hmr: hmrHost || hmrProtocol || hmrClientPort
-                ? {
-                    host: hmrHost,
-                    protocol: hmrProtocol,
-                    clientPort: hmrClientPort ?? devServerPort,
-                }
-                : undefined,
+            hmr:
+                hmrHost || hmrProtocol || hmrClientPort
+                    ? {
+                          host: hmrHost,
+                          protocol: hmrProtocol,
+                          clientPort: hmrClientPort ?? devServerPort,
+                      }
+                    : undefined,
         },
         plugins: [
             laravel({
+                hotFile: env.VITE_HOT_FILE || 'public/hot',
                 input: ['resources/css/app.css', 'resources/js/app.tsx'],
                 refresh: true,
             }),

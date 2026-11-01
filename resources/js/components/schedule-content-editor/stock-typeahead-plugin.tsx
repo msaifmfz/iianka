@@ -112,6 +112,9 @@ export default function StockTypeaheadPlugin({
 
     return (
         <LexicalTypeaheadMenuPlugin<StockMenuOption>
+            // The menu has its own width. Keep the observed caret anchor fixed
+            // so repositioning cannot resize it inside ResizeObserver (Safari).
+            anchorClassName="w-0!"
             onQueryChange={setQuery}
             onSelectOption={onSelectOption}
             triggerFn={checkForTriggerMatch}

@@ -189,6 +189,10 @@ test.describe('schedule search return flow', () => {
         await expect(page).toHaveURL(/\/schedule-search\?/);
         await expect(page).not.toHaveURL(/selected_type=/);
 
+        await expect(
+            page.getByRole('region', { name: '検索結果' }),
+        ).toHaveAttribute('aria-busy', 'false');
+
         await expect
             .poll(async () => page.evaluate(() => window.scrollY))
             .toBeGreaterThanOrEqual(Math.max(scrollBeforeNavigate - 20, 0));
@@ -232,6 +236,10 @@ test.describe('schedule search return flow', () => {
 
         await page.getByRole('button', { name: '検索へ戻る' }).click();
         await expect(page).toHaveURL(/\/schedule-search\?/);
+
+        await expect(
+            page.getByRole('region', { name: '検索結果' }),
+        ).toHaveAttribute('aria-busy', 'false');
 
         await expect
             .poll(async () => page.evaluate(() => window.scrollY))

@@ -11,8 +11,16 @@ test.use({
             '--use-fake-device-for-media-stream',
             '--use-fake-ui-for-media-stream',
         ],
+        firefoxUserPrefs: {
+            'media.navigator.streams.fake': true,
+            'media.navigator.permission.disabled': true,
+        },
     },
-    permissions: ['microphone'],
+    permissions: async ({ browserName }, providePermissions) => {
+        await providePermissions(
+            browserName === 'firefox' ? [] : ['microphone'],
+        );
+    },
 });
 
 async function login(page: Page, userLoginId: string): Promise<void> {
@@ -113,6 +121,7 @@ test.describe('CRM map', () => {
         await page
             .getByRole('button', { name: '顧客を編集', exact: true })
             .click();
+        await expect(page).toHaveURL(/\/crm\/clients\/\d+$/);
         await expect(
             page.getByText('色の選択なしで編集できます'),
         ).toBeVisible();
@@ -610,6 +619,7 @@ test.describe('CRM map', () => {
     test('recording stops, previews, uploads and can be started again in Strict Mode', async ({
         page,
     }, testInfo) => {
+        const summary = `E2E 録音の保存確認 ${testInfo.testId}-${testInfo.retry}`;
         await page.setViewportSize({ width: 390, height: 844 });
         await login(page, 'e2e-admin');
         await openSeededOffice(page);
@@ -617,7 +627,7 @@ test.describe('CRM map', () => {
         await panel
             .getByRole('button', { name: '記録を追加', exact: true })
             .click();
-        await panel.getByLabel('内容').fill('E2E 録音の保存確認');
+        await panel.getByLabel('内容').fill(summary);
 
         for (let index = 0; index < 2; index++) {
             await panel
@@ -651,9 +661,7 @@ test.describe('CRM map', () => {
         await panel
             .getByRole('button', { name: '記録する', exact: true })
             .click();
-        const entry = panel
-            .getByRole('listitem')
-            .filter({ hasText: 'E2E 録音の保存確認' });
+        const entry = panel.getByRole('listitem').filter({ hasText: summary });
         await expect(entry.locator('audio')).toHaveCount(2);
         const audioUrl = await entry
             .locator('audio')
@@ -1073,7 +1081,7 @@ test.describe('CRM map', () => {
         page,
         context,
     }, testInfo) => {
-        await context.grantPermissions(['geolocation', 'microphone']);
+        await context.grantPermissions(['geolocation']);
         await context.setGeolocation({
             latitude: 34.7025,
             longitude: 135.4959,
@@ -1176,6 +1184,10 @@ test.describe('CRM map', () => {
         });
         await login(page, 'e2e-login');
         await page.goto('/crm/map');
+        // The staff legend moves the controls when the lazy map finishes loading.
+        await expect(
+            page.getByText('表示中の担当者（タップで地点を絞り込み）'),
+        ).toBeVisible();
         const archive = page.getByRole('checkbox', {
             name: 'アーカイブも表示',
         });

@@ -24,6 +24,7 @@ async function selectItem(page: Page, code: string) {
 test('creates a quotation with item-aware inputs and downloads both Japanese PDFs', async ({
     page,
 }, testInfo) => {
+    const companyName = `${testInfo.project.name} 株式会社 山田建設`;
     await login(page);
     await expect(
         page.getByLabel('真空ポンプ使用', { exact: true }),
@@ -31,7 +32,7 @@ test('creates a quotation with item-aware inputs and downloads both Japanese PDF
     await expect(
         page.getByRole('button', { name: 'PDFを確認', exact: true }),
     ).toBeDisabled();
-    await page.getByLabel(/^得意先/).fill('株式会社 山田建設');
+    await page.getByLabel(/^得意先/).fill(companyName);
     await page.getByLabel(/^工事名/).fill('栗東倉庫 アンカー取付工事');
     await selectItem(page, '0001');
     await page.getByLabel(/^数量（本）/).fill('100');
@@ -121,9 +122,7 @@ test('creates a quotation with item-aware inputs and downloads both Japanese PDF
 
     const detailUrl = page.url();
     await page.getByRole('link', { name: '一覧へ', exact: true }).click();
-    const card = page
-        .locator('article')
-        .filter({ hasText: '株式会社 山田建設' });
+    const card = page.locator('article').filter({ hasText: companyName });
 
     for (const label of ['見積書PDF', '内訳書PDF']) {
         const downloadPromise = page.waitForEvent('download');
