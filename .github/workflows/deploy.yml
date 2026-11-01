@@ -55,7 +55,7 @@ jobs:
           php artisan key:generate --ansi
 
       - name: Build frontend assets
-        run: npm run build:ssr
+        run: npm run build
 
       - name: Run backend tests
         run: ./vendor/bin/pest --ci
@@ -206,7 +206,7 @@ jobs:
           php artisan wayfinder:generate
 
           npm ci
-          npm run build:ssr
+          npm run build
 
           php artisan queue:restart
           php artisan reload || true
@@ -295,7 +295,7 @@ jobs:
           php artisan wayfinder:generate
 
           npm ci
-          npm run build:ssr
+          npm run build
 
           php artisan queue:restart
           php artisan reload || true
