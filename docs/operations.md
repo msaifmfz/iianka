@@ -30,7 +30,7 @@ Tracked GitHub workflows:
 | `.github/workflows/tests.yml`           | Install, build, and Pest                                           |
 | `.github/workflows/lint.yml`            | Pint, frontend formatting/lint, Wayfinder generation               |
 | `.github/workflows/static-analysis.yml` | PHPStan, Psalm, Rector, taint analysis, Composer/npm audits        |
-| `.github/workflows/deploy.yml`          | Combined CI, release validation, staging deploy, production deploy |
+| `.github/workflows/deploy.yml`          | CI artifact build, release validation, guarded environment deployment |
 
 Releases drive deployment:
 
@@ -39,7 +39,16 @@ Releases drive deployment:
 - Both forms require a matching final-version section in `CHANGELOG.md`.
 - A final release should point at the same commit validated by its release candidate.
 
-The current remote deploy runs over SSH in `DEPLOY_PATH`:
+The artifact workflow builds and tests a complete production release in CI,
+then downloads that exact same-run archive for deployment. The host prepares a
+new release and atomically switches `current` only after owner approval and
+readiness checks. It does not install dependencies, build assets or migrate
+automatically on the host. Missing readiness fails closed; no old-flow fallback
+is enabled. See [artifact deployment](deploy-memory-proposal.md) for required
+owner preparation, memory/disk limits, migration handling, retention and rollback.
+Host readiness and real deployment remain unverified until the owner runs them.
+
+Before this change, the remote deploy ran over SSH in `DEPLOY_PATH`:
 
 1. Enter maintenance mode.
 2. Fetch tags and check out the release tag.
@@ -127,7 +136,8 @@ The repository currently has:
 - No `db:backup` or restore Artisan command.
 - No `config/backup.php`.
 - No scheduled backup or verification task.
-- No pre-migration snapshot step in `.github/workflows/deploy.yml`.
+- No automated pre-migration snapshot step; the artifact workflow also refuses
+  automatic activation when migrations are pending.
 - No tracked off-site backup configuration or restore-drill record.
 
 Therefore, backups are an external operational responsibility today. Do not claim that deploys
@@ -259,8 +269,8 @@ Before enabling it:
 
 | Gap                                           | Evidence                                                                                    | Required decision                                                             |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| No automated backup or pre-migration snapshot | No command/config/schedule; deploy calls `migrate --force` directly                         | Implement tracked automation or an externally monitored equivalent            |
-| Deployment topology mismatch                  | Server guide uses release directories/current symlink; workflow checks out in `DEPLOY_PATH` | Choose atomic releases or in-place checkout and align both documents/workflow |
+| No automated backup or pre-migration snapshot | No automatic snapshot; artifact deployment blocks pending migrations                         | Implement tracked automation or an externally monitored equivalent            |
+| Deployment topology mismatch                  | Artifact deploy requires release directories/current symlink; actual host layout remains unverified | Confirm the atomic-release prerequisites before enabling artifact deployment |
 | Scheduler provisioned with no app tasks       | `schedule:list` reports none                                                                | Keep service for future use or remove unnecessary operational surface         |
 | Nightly automation targets missing branch     | Default `develop`; remote currently only has `main`                                         | Configure the actual base branch before enabling                              |
 | Local schema drift                            | Current local DB lacks `work_memo`; fresh migrations include it                             | Check persistent environments and add a forward migration if affected         |

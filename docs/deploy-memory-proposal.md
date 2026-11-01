@@ -1,151 +1,181 @@
-# Deploy memory failure: proposed artifact releases
+# Artifact deployment after the shared-host memory failure
 
-Status: proposal for owner review, 2026-11-01. No workflow or host behavior
-changes in this PR. Base reviewed: `313c7f824b9a39945794fb904a6d0c54bd479274`.
+Status: direction approved by the owner on 2026-11-01; repository implementation
+in draft PR #102. Staging verification is deliberately deferred until the work
+is finished. No host preparation, deployment, release or merge was performed.
+The owner also confirmed that email and Slack notifications are unused.
 
-## Finding and recommendation
+## What changes
 
-[Run 41300996787](https://github.com/msaifmfz/iianka/actions/runs/41300996787)
-passed CI and release validation, failed in staging's “Deploy over SSH” step,
-and skipped production. Those statuses were checked through the GitHub API;
-the memory-exhaustion diagnosis and successful manual recovery are the owner's
-observations, not a new host inspection. Raw deploy logs were not retrieved.
+The old workflow changed the serving checkout, ran migrations, then installed
+Node dependencies and built on the shared host. Its exit trap could expose an
+unsuccessful deployment. [Run 41300996787](https://github.com/msaifmfz/iianka/actions/runs/41300996787)
+passed CI/release validation and failed in staging's SSH step. The npm memory
+exhaustion and manual recovery are owner-provided findings; no raw host logs
+were retrieved.
 
-Both remote blocks in `.github/workflows/deploy.yml` currently check out code
-in `DEPLOY_PATH`, install Composer dependencies, migrate the database, cache
-Laravel state, then run `npm ci` and `npm run build:ssr`. An EXIT trap brings
-that directory out of maintenance even if a late build fails. The CI job has
-already built assets, but does not transfer them. The separate SSR follow-up
-changes builds to `npm run build` after the owner's choice to disable SSR.
+The new workflow builds in CI and ships a complete release: application code,
+**production-only locked PHP dependencies**, tested client assets, revision,
+and file hashes. The host runs **no npm, Composer installation, Vite build or
+Wayfinder generation**. No application dependency versions change.
 
-Recommend **CI-built immutable application artifacts, prepared in a new release
-directory, with a separately approved atomic activation**. Include production
-`vendor/` as well as client assets: moving only npm off-host leaves Composer's
-memory cost. Do not mutate the serving checkout or run npm, Vite or Composer
-on the shared host. Keep the old release and its hashed assets for rollback.
+The separate SSR PR #103 disables SSR in Laravel and Vite. This workflow builds
+the client only and excludes SSR bundles from the artifact. Both approved PRs
+must be included before a release. If their workflow edits overlap during
+landing, preserve the artifact workflow and its client-only build.
 
-This needs owner work, so this PR is deliberately a proposal rather than a
-partial workflow fix. `docs/operations.md` already records the mismatch between
-the guide's symlink layout and the workflow's in-place checkout. Actual paths,
-symlinks, filesystem, cgroup support, PHP extensions, permissions, free disk,
-SELinux labels, workload peaks and database compatibility are unverified.
-Enabling an automatic cutover based on those assumptions is unsafe.
+| Alternative | Assessment |
+| --- | --- |
+| CI artifacts and isolated releases | Implemented direction: removes dependency installation/build peaks from the host; validates before switching code; retains previous code and assets. |
+| `NODE_OPTIONS=--max-old-space-size=384 npm ci --maxsockets=2 --no-audit --no-fund` | Process-local recovery workaround only. V8's heap cap does not cap native allocations, total RSS or Composer. It does not repair in-place deployment. No fallback to this is implemented. |
+| Swap, more RAM, or separate staging | Owner actions, never performed here. Swap does not solve partial deployments; separate capacity is required for a literal guarantee of no production memory contention. |
 
-No repository change can guarantee that an additional process uses **zero**
-RAM or never competes with production on a shared 1.7 GB host. CI removes the
-large install/build peak. The owner must approve and verify a bounded deploy
-budget with adequate production headroom, or move staging/deployment preparation
-to separate capacity. If “never take memory away” is literal, separate capacity
-is required. Do not enable the automatic deploy while this gate is unresolved.
+## Implemented release contract
 
-## Options compared
+1. CI records the exact checked-out commit. Release validation verifies the
+   tag resolves to the event commit and checks the existing release/changelog
+   rules. Existing backend, frontend and production-browser checks remain.
+2. CI exports tracked runtime inputs into a clean temporary directory, installs
+   production Composer dependencies without scripts/plugins, and copies the
+   tested build. Generated Composer platform checks include required extensions.
+   No existing configuration, credentials, databases, storage, hot files or CI
+   caches are copied. Hidden distribution metadata is removed.
+   The only frontend build-time application setting found is `VITE_APP_NAME`.
+   CI uses the repository variable of that name, falling back to `iianka`.
+   Set the intended public title there before release; no server configuration
+   or private key is copied into the build. That repository setting was not
+   read or changed in this task.
+3. The archive validator requires the complete production package set from the
+   lock and every referenced Vite asset/import, including the JavaScript PDF
+   worker. It rejects development vendor, traversal, links, devices, duplicate
+   members, runtime files, missing hashes and incorrect revisions. Compressed
+   input is limited to 256 MiB, extracted input to 1 GiB and members to 50,000.
+4. CI unpacks the exact production artifact and boots it using a generated test
+   key, process-local synthetic configuration and a disposable SQLite database.
+   It also verifies rejection of a different environment's database path.
+5. Only release-event artifacts are uploaded, with identity
+   `release-<40-hex-commit>-<run-id>-<run-attempt>`. Deploy downloads that exact
+   same-run name and verifies the archive checksum. Downstream jobs use the
+   producer CI job's captured identity, including when only failed jobs rerun. There is no cross-run or
+   missing-artifact fallback. Pull-request builds cannot be deployed.
+6. Staging and production deploy jobs share one workflow concurrency group.
+   A separate host-wide file lock covers transfer, preparation and activation.
+7. The owner-installed, root-owned launcher validates arguments and host
+   readiness, then executes the helper as `iianka:nginx` inside a finite shared
+   systemd memory slice. It checks current available memory and free disk.
+   Preparation reserves 2 GiB in addition to the owner's free-disk floor.
+   After release validation, a separate job attaches the same tested bundle and
+   checksum to the owner's existing published GitHub Release under an immutable
+   commit/run/attempt filename. Only that job has `contents: write`; it never
+   creates or publishes a release. Deployment also requires archival success.
+   The existing v0.5.5-rc.2 release metadata was read-only checked and reports
+   `immutable: false`. Published immutable releases cannot accept new assets;
+   that case fails before host access and needs a pre-publication asset flow,
+   not automatic disabling of immutability. See [GitHub's guidance](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases).
+8. Preparation creates a new release directory, validates the payload, carries
+   old hashed assets forward without overwriting different bytes under the same
+   URL, links shared runtime paths, checks PHP compatibility and warms caches.
+   Caches are forced to per-release paths. Compiled views are per-release: `view:cache` must not clear the serving
+   release's shared views. Retained hashed assets are capped at 256 MiB; above
+   that, stop for owner-reviewed cleanup rather than fill the filesystem.
+9. Only the owner's existing SELinux file-context mappings are applied to the
+   candidate. The helper changes no policy, boolean, Nginx or PHP-FPM settings.
+   READY is written only after preparation succeeds. The serving pointer and
+   services remain unchanged throughout preparation.
+10. Activation uses the existing owner-published release and GitHub environment
+    authorization, with one-time owner-completed host readiness. It rechecks
+    boot, verifies the expected local SQLite path, and uses Laravel 13's `migrate:status --pending=17` to reject pending
+    migrations **before** maintenance or service changes. No migration or
+    database rollback is automated.
+11. Activation records the previous release, enters maintenance, stops only the
+    selected environment's queue/scheduler, records their active state, atomically renames `current`, checks
+    health, starts only previously active services and exits maintenance. Shared PHP-FPM/Nginx
+    are never restarted. Catchable activation failures restore previous code;
+    failed recovery leaves maintenance on and the job failed.
 
-| Option | Benefit | Limits and recommendation |
-| --- | --- | --- |
-| Build in CI; ship code, production vendor and assets | Removes host npm/install/build memory; failures happen before activation; reproducible artifact tied to the tested commit | Recommended, with isolated release preparation, integrity checks, host preflight and owner-controlled migration/activation below. Runner PHP/extensions must match the host. |
-| Workflow-local `NODE_OPTIONS=--max-old-space-size=384`, `npm ci --maxsockets=2 --no-audit --no-fund` | Reproduces manual recovery without persistent settings | A V8 heap ceiling is not a total RSS/cgroup limit; sockets limit concurrency, not all allocations. Vite, Composer, native allocations and running web pools still compete. Does not repair in-place deployment or database rollback. Temporary owner-approved fallback only, not the durable recommendation. |
-| Swap or more host capacity | Can provide headroom for all services | Owner action on the shared host. Swap can introduce latency and disk pressure and does not fix partial deployments. More RAM or separate staging is preferable if load cannot fit a verified budget; no sizing claim is possible from code. Not a substitute for artifacts/atomic activation. |
+A cgroup kill, host crash or power loss may prevent shell cleanup. Current is
+always either the old or a fully prepared release; it is never an extracted
+half-release. Maintenance/services may still need owner recovery. The explicit
+rollback below uses the recorded previous target. Database compatibility and
+restorable backups remain prerequisites, not consequences of a symlink rename.
 
-If the owner deliberately uses the temporary fallback, scope it to the two
-commands in the workflow, not a profile, systemd service or shared environment:
+The memory boundary caps deployment processes; it **does not reserve RAM for
+production** or prove zero contention. Worker/scheduler units must run as `iianka:nginx` in that environment's current
+directory; the launcher verifies these properties before service operations. Actual load, cgroup behavior, disk,
+SELinux labels, FPM OPcache behavior and live deployment remain unverified.
+Fail closed until the owner confirms these conditions. Do not enable the old
+in-place workflow as an automatic fallback.
+
+## Retention and recovery
+
+Actions artifacts have **30-day retention** in this workflow, subject to the
+repository's limits. They are the build-to-deploy transfer copy. The separate
+GitHub Release asset archive is not governed by Actions artifact retention; it
+remains available until explicitly removed along with normal release/repository
+management. Expiry of the Actions copy does not delete that archive or extracted
+server files.
+Prepared payloads are retained at
+`shared/deploy-artifacts/<release-id>.tar.gz`, and previous release directories
+remain available. Neither local bundle nor old-release cleanup is automatic.
+The free-space gate will refuse further deployments rather than silently prune
+rollback material.
+
+The release asset job provides the retained off-host build archive. Additional
+independent backup remains advisable for repository deletion/account loss.
+Before schema work, verify a current database/files snapshot under
+[the operations recovery procedure](operations.md#backup-status-and-required-procedure).
+An Actions artifact or a second file on the same server is insufficient disaster
+recovery. Release bundles contain no runtime data and are not database/files
+backups. Data backup retention and restore drills remain owner-managed.
+
+## Owner host preparation — review only, not executed
+
+Use a reviewed checkout of this PR. First confirm the guide's layout is real:
+`/var/www/iianka/<environment>/current` must be a symlink into that environment's
+`releases` directory, with real `shared/.env`, `shared/storage` and
+`shared/database/database.sqlite` paths. The helper rejects in-place checkouts, cross-environment paths, and non-file
+maintenance drivers. FPM must use the normal per-release bootstrap cache paths;
+confirm no pool-level cache-path or storage-path overrides bypass those paths. If the actual topology differs, stop and prepare
+a separate owner-reviewed conversion; do not move a serving checkout blindly.
+
+Required host tools: PHP 8.5 with the locked production extensions, Python 3.11+
+(standard library only), Bash, GNU coreutils, util-linux/flock, curl, sudo,
+systemd with cgroup v2, and SELinux restorecon/semanage. No Node or Composer is
+needed for normal deployment. Verify production PHP/extensions and FPM OPcache
+behavior against the package on an isolated copy before enabling activation.
+
+Install the fixed helpers; the CI account must never install or overwrite them:
 
 ```bash
-NODE_OPTIONS=--max-old-space-size=384 npm ci --maxsockets=2 --no-audit --no-fund
-NODE_OPTIONS=--max-old-space-size=384 npm run build
-```
+sudo install -d -o root -g root -m 0755 /usr/local/libexec/iianka-deploy
+sudo install -o root -g root -m 0755 .github/deploy/launcher.sh /usr/local/sbin/iianka-artifact-deploy
+sudo install -o root -g root -m 0755 .github/deploy/host.sh /usr/local/libexec/iianka-deploy/host.sh
+sudo install -o root -g root -m 0644 .github/deploy/artifact.py /usr/local/libexec/iianka-deploy/artifact.py
+sudo install -o root -g root -m 0644 .github/deploy/runtime.php /usr/local/libexec/iianka-deploy/runtime.php
+sudo restorecon -Rv /usr/local/libexec/iianka-deploy /usr/local/sbin/iianka-artifact-deploy
 
-Rollback of that fallback is removing those command-local options; there is no
-persistent setting to undo. It still carries the risks above.
-
-## Repository implementation after host readiness
-
-1. Resolve and explicitly check out the validated release tag's commit in the
-   same workflow run. The artifact identity must contain the resolved 40-hex
-   commit, `github.run_id` and `github.run_attempt`, not just a mutable tag.
-   Pull-request artifacts must never be eligible for deployment.
-2. In the existing CI job, install locked dependencies and build/test with PHP
-   8.5 and Node 22. Keep all current backend, lint, format, type and production
-   Playwright checks. Build the client only after the SSR PR is incorporated.
-   Generate Wayfinder in CI with `--with-form`; do not generate it on the host.
-3. In a clean packaging directory, export tracked application files from that
-   exact commit. Install locked production Composer dependencies there with
-   `--no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts`.
-   Copy the **tested** `public/build` into it. Do not ship CI's dev vendor tree.
-   Preserve executable modes by archiving to tar before upload.
-4. Exclude environment files, keys, auth files, node_modules, Git metadata,
-   hot files, application logs, caches and database files. Do not copy runtime
-   storage from CI. Include required empty storage/bootstrap directories and
-   package-discovery metadata only if generated against production vendor.
-   Do not ship config/route/view caches generated with CI values or paths.
-5. Include `REVISION` and a manifest of payload file SHA-256 hashes; create
-   `release.tar.gz` and `release.tar.gz.sha256`. Upload once with a unique
-   artifact name. Deploy jobs must `needs: ci, validate_release`, download the
-   exact same-run artifact by that name, verify checksum, revision and payload
-   manifest, and fail on absence/mismatch. A checksum beside the payload checks
-   transfer integrity; trust comes from the authenticated same-run artifact,
-   not a checksum supplied by an arbitrary party.
-6. Verify every client manifest import/dynamic import/asset exists (including
-   PDF.js worker), and test the unpacked artifact with a disposable database.
-   Verify production vendor platform requirements against the host's PHP 8.5
-   and extensions before accepting it. No install/build fallback on the host.
-7. Serialize staging and production preparation/cutover with **one host-wide**
-   workflow concurrency group, plus a host lock. The existing separate
-   `deploy-staging` and `deploy-production` groups permit simultaneous work.
-8. Transfer to a non-serving incoming directory. Extract to a unique release
-   on the same filesystem as `current`; never extract over `current`. Validate
-   archive members (no absolute paths, traversal, devices, or escaping links).
-   Check disk space and required files before any application/database change.
-9. Fail closed unless the owner-approved layout, memory boundary, labels,
-   artifact identity and migration/rollback plan are confirmed. Prepare
-   caches within the release; preserve old hashed assets for browser sessions
-   that survive the switch. Do not use `optimize:clear` to clear shared caches
-   while the old production release is serving traffic.
-10. Only then activate in an owner-approved window. Never use a generic EXIT
-    trap that automatically exposes an unsuccessful migration or mixed release.
-    Keep maintenance on for a failure after database work until recovery is
-    verified. The real deploy path remains unverified until the owner runs it.
-
-Artifacts can be passed between jobs without rebuilding, as described in
-[GitHub's artifact documentation](https://docs.github.com/en/actions/tutorials/store-and-share-data).
-
-## Owner host preflight and preparation commands (not executed)
-
-These commands use the guide's layout. Run as the owner, substitute the approved
-environment, and stop if the actual host differs. Do not paste configuration,
-database contents, keys or user records into this PR. No command here should be
-run merely to review/merge this proposal.
-
-```bash
-# Review both environments. These inspect paths/resources, not environment files.
+sudo install -d -o root -g root -m 0755 /etc/iianka/artifact-deploy
 for environment in staging production; do
     root="/var/www/iianka/$environment"
     test -L "$root/current" || exit 1
-    readlink -f "$root/current"
-    test -d "$root/releases" || exit 1
-    test -d "$root/shared/storage" || exit 1
-    stat -c '%d %n' "$root" "$root/releases"
-    ls -Zd "$root" "$root/releases" "$root/shared/storage"
+    sudo install -d -o iianka -g nginx -m 0750 "$root/shared/deploy-incoming" "$root/shared/deploy-artifacts"
 done
-free -m
-swapon --show
-stat -fc %T /sys/fs/cgroup
-systemd --version
-php -v
-php -m
-df -h /var/www/iianka
+sudo touch /var/www/iianka/.artifact-deploy.lock
+sudo chown iianka:nginx /var/www/iianka/.artifact-deploy.lock
+sudo chmod 0600 /var/www/iianka/.artifact-deploy.lock
 ```
 
-The owner must measure production peak usage and decide a deploy budget. The
-following **192 MiB example is unvalidated**, not permission to reserve it on
-this host. If it does not fit, stop and provide capacity. Verify supported
-systemd properties before applying; use a dedicated slice shared by all deploy
-jobs so parallel processes cannot each consume the full budget:
+Choose budgets from measured peak production usage and disk requirements. The
+following **192 MiB ceiling, 512 MiB available-memory gate and 2 GiB disk floor
+are unvalidated examples**, not a claim that this host has that capacity. If
+they do not fit, provide capacity or separate staging. Preparation additionally
+requires its bounded 2 GiB workspace reserve. The shared slice ceiling must be
+finite and no higher than the configured per-environment ceiling.
 
 ```bash
-sudo install -d -m 0755 /etc/systemd/system
 sudo tee /etc/systemd/system/iianka-deploy.slice >/dev/null <<'UNIT'
 [Unit]
-Description=Bounded iianka deployment preparation
+Description=Bounded iianka artifact deployment
 [Slice]
 MemoryAccounting=yes
 MemoryHigh=160M
@@ -156,167 +186,124 @@ IOWeight=10
 UNIT
 sudo systemctl daemon-reload
 sudo systemctl start iianka-deploy.slice
-sudo systemctl show iianka-deploy.slice -p MemoryHigh -p MemoryMax -p MemorySwapMax
+sudo systemctl show iianka-deploy.slice -p MemoryMax -p MemorySwapMax
+
+# Replace examples with measured owner-approved values and the real HTTPS host.
+sudo tee /etc/iianka/artifact-deploy/staging.conf >/dev/null <<'CONFIG'
+MEMORY_MAX_BYTES=201326592
+MIN_AVAILABLE_BYTES=536870912
+MIN_FREE_DISK_BYTES=2147483648
+HEALTH_URL=https://staging.example.com/up
+CONFIG
+sudo chown root:root /etc/iianka/artifact-deploy/staging.conf
+sudo chmod 0644 /etc/iianka/artifact-deploy/staging.conf
+# Create production.conf separately with the production health URL and reviewed budgets.
 ```
 
-All deploy preparation children (including extraction, Composer platform check,
-package discovery and cache commands) must run inside this slice, for example
-using a bounded owner shell below. Transfer must also be serialized and
-bounded; putting only a shell wrapper in the slice is insufficient if it starts
-processes elsewhere. Do not grant unrestricted `systemd-run` or sudo to the
-CI account; a root-owned fixed launcher with validated environment/release IDs
-and a reviewed narrow sudo rule is required before workflow integration.
+Use `visudo` to grant only the fixed validating launcher, not a shell, arbitrary
+systemd-run, arbitrary systemctl or arbitrary restorecon. The launcher accepts
+only reviewed operations, the two fixed environments, hex digests and numeric
+run identities; app/bootstrap code always runs as iianka, never root:
 
 ```bash
-# Owner-only preparation shell. Run the reviewed preparation commands inside it.
-sudo systemd-run --wait --collect --pty --uid=iianka --gid=nginx \
-    --slice=iianka-deploy.slice \
-    --property=MemoryOOMGroup=yes \
-    --property=OOMPolicy=stop \
-    /bin/bash --noprofile --norc
+sudo visudo -f /etc/sudoers.d/iianka-artifact-deploy
+# Add: iianka ALL=(root) NOPASSWD: /usr/local/sbin/iianka-artifact-deploy
+sudo visudo -cf /etc/sudoers.d/iianka-artifact-deploy
 ```
 
-`MemoryMax` limits the deploy cgroup, not other services. It does not reserve
-memory for production or eliminate global pressure. See
-[systemd resource controls](https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html).
-Use separate capacity if the required protection cannot be demonstrated.
-
-Inside that shell, the owner must create `releases/$release_id`, validate and
-extract the trusted artifact, link the environment's existing shared storage
-and environment configuration without printing it, then run the following PHP preparation commands (no install or build):
+Review existing mappings first. Add these only if absent; preserve pre-existing
+entries instead of overwriting them. Repeat for production only after review.
+The launcher applies them to new candidates; it does not create these mappings:
 
 ```bash
-# Inside the NEW release, with the owner's normal application environment.
-php -d memory_limit=128M vendor/composer/platform_check.php
-php -d memory_limit=128M artisan package:discover --no-interaction
-php -d memory_limit=128M artisan config:cache --no-interaction
-php -d memory_limit=128M artisan route:cache --no-interaction
-php -d memory_limit=128M artisan view:cache --no-interaction
-php -d memory_limit=128M artisan event:cache --no-interaction
-```
-
-Before accepting it, the owner must run `composer check-platform-reqs --no-dev`
-on a representative isolated copy with host PHP/extensions; the generated
-platform_check alone may not include every extension requirement. Composer is
-not needed for normal subsequent deploys once compatibility is validated and
-revalidated whenever the lock or host PHP/extensions change.
-
-New releases also need approved SELinux file-context mappings. After reviewing
-that none conflict with existing mappings, the owner can add these patterns
-for **each** environment and relabel the prepared release; this grants no
-network permissions and does not touch the HTTPS egress module:
-
-```bash
-environment=staging # repeat for production only after separate review
+environment=staging
 root="/var/www/iianka/$environment"
 sudo semanage fcontext -a -t httpd_sys_content_t "$root/releases(/.*)?"
 sudo semanage fcontext -a -t httpd_sys_rw_content_t "$root/releases/[^/]+/bootstrap/cache(/.*)?"
-sudo restorecon -Rv "$root/releases/APPROVED_RELEASE_ID"
 ```
 
-## Activation and rollback commands for owner review (not executed)
+Ensure shared runtime paths retain their existing correct mappings. Do not
+change `httpd_can_network_connect` or the HTTPS egress module. Do not allow SSR
+port 13714. In GitHub, configure each environment's existing SSH settings and
+review protection, then set `DEPLOY_ARTIFACTS_READY=true` only after host
+readiness is established. `DEPLOY_PATH` is no longer used: the launcher fixes
+the reviewed per-environment root. No repository/environment settings were
+changed by this task.
 
-Use the existing guide and `docs/operations.md` backup/restore procedure. The
-owner must verify a restorable off-host snapshot and determine whether this
-release's migrations are backward compatible **before** choosing activation.
-A symlink rollback does not undo database changes. Reject automated activation
-of incompatible migrations until a release-specific restore plan is reviewed.
-Stop all writers in the selected environment; long-running web requests must
-also be drained before migration. If that cannot be isolated from production,
-move staging to separate capacity rather than restart shared PHP-FPM.
+## Release authorization and migration procedure
+
+The normal release/environment authorization remains the deploy authorization;
+there is no additional manual checksum-approval file for every deployment.
+The CI summary and archived release asset expose the exact commit, run, attempt
+and checksum for review. Before publishing/approving a release, review code and
+database backward compatibility for both activation and code rollback. This task
+does not publish or approve any release or change environment protection rules.
+
+If migrations are pending, automatic activation stops without maintenance,
+service changes or a pointer switch. The owner must use the documented backup
+procedure, stop that environment's writers, drain in-flight web requests, and
+run the prepared release's migrations during an approved maintenance window.
+For an incompatible migration, do not resume the old application against the
+new schema: keep maintenance on and use a release-specific cutover/recovery
+plan. No generic database rollback or schema compatibility guess is provided.
+The no-pending-migration automatic path intentionally refuses an already
+maintenance-mode environment.
+
+Example owner-only migration invocation, after the snapshot/drain/maintenance
+steps and with the exact prepared release path reviewed:
 
 ```bash
-# Example for staging; explicitly approve production separately.
-set -euo pipefail
-environment=staging
-root="/var/www/iianka/$environment"
-release="$root/releases/APPROVED_RELEASE_ID"
-previous="$(readlink -f "$root/current")"
-test -d "$release" && test -L "$root/current"
-# Save previous outside the release for recovery; never overwrite an existing record.
-( set -o noclobber; printf '%s\n' "$previous" > "$root/shared/APPROVED_RELEASE_ID.previous" )
-cd "$previous"
-php artisan down --retry=60 --no-interaction
-sudo systemctl stop "iianka-queue@$environment" "iianka-scheduler@$environment"
-# Owner drains existing web requests and takes/verifies the documented snapshot here.
-# Do not continue until the snapshot and database rollback gate are satisfied.
-cd "$release"
-php -d memory_limit=128M artisan migrate --force --no-interaction
-# GNU mv on the host: same-filesystem rename, after preparation succeeds.
-ln -s "$release" "$root/current.APPROVED_RELEASE_ID"
-mv -Tf "$root/current.APPROVED_RELEASE_ID" "$root/current"
-# No shared PHP-FPM restart. Owner verifies OPcache follows the new realpath.
-# Owner verifies cached config, assets, and application boot before enabling traffic.
-php artisan up --no-interaction
-sudo systemctl start "iianka-queue@$environment" "iianka-scheduler@$environment"
+sudo systemd-run --wait --pipe --collect --uid=iianka --gid=nginx \
+    --slice=iianka-deploy.slice --property=MemorySwapMax=0 \
+    --property=MemoryOOMGroup=yes --property=OOMPolicy=stop \
+    --working-directory=/var/www/iianka/staging/releases/APPROVED_RELEASE_ID \
+    /usr/bin/php -d memory_limit=128M artisan migrate --force --no-interaction
 ```
 
-This is an activation sequence for review, **not** an unattended production
-script. A failed migration must leave maintenance on. Gate `up` on verified
-boot/asset checks, then perform real authenticated smoke tests and inspect
-logs. Staging must pass before production is considered. Maintain a common
-host lock throughout preparation and activation. Reuse old hashed assets until
-old browser sessions expire; otherwise an atomic symlink can still break
-lazy-loaded chunks in already open pages.
+This command is not part of CI and must not be run without its snapshot,
+compatibility and writer-drain gates. If recovery is required, preserve the
+failed database and use the reviewed restore procedure. Do not blindly run
+`migrate:rollback`, automatically retry activation, or expose failed schema work. Rerun all jobs
+to create a fresh artifact identity after reviewing recovery state; rerunning
+only failed deploy jobs retains the producer identity and will reject an
+already-created candidate instead of overwriting it.
 
-For a code-only failure with a compatible database, keep writers stopped and
-restore the saved previous target with the same atomic rename:
+## Code rollback and interrupted-deploy recovery
+
+For a current artifact release with compatible schema, the owner can roll back to its recorded previous target. Supply the exact
+current identity, its source revision and its original artifact checksum:
 
 ```bash
-set -euo pipefail
-environment=staging # use the SAME approved environment as activation
-root="/var/www/iianka/$environment"
-# Keep the same approved release ID from activation.
-cd "$root/current"
-php artisan down --retry=60 --no-interaction
-sudo systemctl stop "iianka-queue@$environment" "iianka-scheduler@$environment"
-previous="$(cat "$root/shared/APPROVED_RELEASE_ID.previous")"
-test -d "$previous"
-ln -s "$previous" "$root/current.APPROVED_RELEASE_ID.rollback"
-mv -Tf "$root/current.APPROVED_RELEASE_ID.rollback" "$root/current"
-cd "$previous"
-# For incompatible/failed migrations, restore the verified DB/files snapshot here
-# using docs/operations.md. Do not blindly migrate:rollback or bring traffic up.
-php artisan config:cache --no-interaction
-# Owner verifies recovered application/database/assets before continuing.
-php artisan up --no-interaction
-sudo systemctl start "iianka-queue@$environment" "iianka-scheduler@$environment"
+sudo /usr/local/sbin/iianka-artifact-deploy rollback staging \
+    APPROVED_RELEASE_ID SOURCE_COMMIT ORIGINAL_ARTIFACT_SHA256
 ```
 
-To roll back new host preparation, first stop/disable the proposed deploy
-launcher and wait for all its units to exit. Keep the original deployment
-workflow disabled until the owner accepts its memory/partial-deploy risks.
-Only remove mappings that this rollout added (restore any pre-existing
-mapping instead of deleting it). Keep the release mappings while any served
-release relies on them; do not execute their removal against an active release:
+The rollback performs the same boot/migration-status/health checks, scoped
+service handling and atomic switch. It does not restore a database snapshot.
+If the process was killed while maintenance was active, first identify current,
+READY and PREVIOUS without changing them. Use the operations recovery procedure
+and an owner-reviewed manual switch if the automatic maintenance gate rejects
+recovery; do not simply run `artisan up` on an unknown state.
 
-```bash
-set -euo pipefail
-environment=staging # use the SAME approved environment as preparation
-root="/var/www/iianka/$environment"
-sudo systemctl stop iianka-deploy.slice
-sudo rm /etc/systemd/system/iianka-deploy.slice
-sudo systemctl daemon-reload
-# Use the same environment root as the preparation block, only for new mappings.
-sudo semanage fcontext -d "$root/releases/[^/]+/bootstrap/cache(/.*)?"
-sudo semanage fcontext -d "$root/releases(/.*)?"
-sudo restorecon -Rv "$root/releases/APPROVED_RELEASE_ID"
-```
+To disable this deployment mechanism, set `DEPLOY_ARTIFACTS_READY=false` in both
+GitHub environments first, wait for all
+transient deploy units to exit, and remove the launcher sudo rule with visudo.
+Only then remove helper files/configuration and stop/remove the deploy slice.
+Keep all served release mappings, release directories and archived bundles
+until the owner verifies that no serving/rollback state relies on them. Restore
+any prior unit/configuration rather than delete pre-existing owner settings.
+Do not re-enable the old in-place deploy without accepting its original risks.
 
-No swap, RAM, server policy, services, deployments, databases or environment
-files were changed in preparing this proposal. No host commands were executed.
+## Validation boundary
 
-## Validation and remaining decision
+Repository tests exercise synthetic filesystem states and stub PHP/services/
+health calls. Linux CI uses real GNU rename/readlink/flock; local macOS tests
+adapt those primitives. A simulated child exit 137 is not a physical cgroup OOM
+drill. The unpacked-artifact smoke uses actual production dependencies and a
+throwaway database. Shell syntax, ShellCheck, PHP lint/static analysis, normal
+repository checks and CI apply.
 
-Review the command blocks with Bash syntax checking and ShellCheck; no shell
-block should be executed as part of documentation validation. Run repository
-commit/push checks. This documentation-only proposal adds no dependencies and
-changes no application behavior, so no application regression tests are needed.
-
-Owner decision: approve the artifact/atomic-release direction, verify the
-actual layout and memory/isolation budget (or provide separate capacity), and
-review a fixed launcher plus migration/rollback gates before a workflow changes
-production. No automatic deployment safety claim is made until these gates and
-failure-injection tests (bad artifact, OOM, disk exhaustion, migration failure,
-failed activation, incompatible database rollback) pass on an isolated host.
-The real deploy path is unverified until the owner runs it.
+Real systemd/cgroup/SELinux/FPM behavior, live activation/rollback, off-host
+backup recovery and business-flow staging verification are **unverified** until
+the owner performs them after implementation, as requested. No host changes,
+server access, existing environment files or production data were used here.
