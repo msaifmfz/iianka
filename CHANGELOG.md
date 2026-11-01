@@ -5,6 +5,23 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Only final releases are listed; `-rc.N` pre-releases fold into their final version.
 
+## [0.5.5](https://github.com/msaifmfz/iianka/compare/v0.5.4...v0.5.5) - 2026-11-01
+
+### Added
+
+- Add quotation creation, saving, and Japanese quotation and itemized PDF previews/downloads ([#96](https://github.com/msaifmfz/iianka/issues/96))
+
+### Changed
+
+- Refresh PHP and JavaScript dependencies and pin Devbox PHP 8.5 ([#97](https://github.com/msaifmfz/iianka/issues/97))
+- Upgrade ESLint 10, Babel 8, TypeScript 7, Lexical 0.53, and the Laravel Passkeys browser client 0.4 ([#98](https://github.com/msaifmfz/iianka/issues/98))
+
+### Fixed
+
+- Preserve search-result scroll position when returning from the calendar and prevent interrupted navigation ([#98](https://github.com/msaifmfz/iianka/issues/98))
+- Prevent Safari stock-picker ResizeObserver errors ([#98](https://github.com/msaifmfz/iianka/issues/98))
+- Update Symfony MIME to resolve CVE-2026-45070 ([#94](https://github.com/msaifmfz/iianka/issues/94))
+
 ## [0.5.4](https://github.com/msaifmfz/iianka/compare/v0.5.3...v0.5.4) - 2026-10-22
 
 ### Added
