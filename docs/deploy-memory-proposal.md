@@ -81,7 +81,9 @@ landing, preserve the artifact workflow and its client-only build.
 9. Only the owner's existing SELinux file-context mappings are applied to the
    candidate. The helper changes no policy, boolean, Nginx or PHP-FPM settings.
    READY is written only after preparation succeeds. The serving pointer and
-   services remain unchanged throughout preparation.
+   services remain unchanged throughout preparation. Activation also refuses a
+   candidate if current changed since preparation, preserving hashed-asset and
+   rollback continuity across separately invoked operations.
 10. Activation uses the existing owner-published release and GitHub environment
     authorization, with one-time owner-completed host readiness. It rechecks
     boot, verifies the expected local SQLite path, and uses Laravel 13's `migrate:status --pending=17` to reject pending

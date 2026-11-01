@@ -303,6 +303,20 @@ except BlockingIOError: sys.exit(1)
         self.assertEqual(self.current.resolve(), self.previous)
         self.assertTrue(all(command[-1] == "staging" for command in self.commands() if command[0] == "services"))
 
+    def test_stale_preparation_cannot_overwrite_a_later_release(self):
+        self.prepare()
+        later = self.environment_root / "releases/later"
+        later.mkdir()
+        self.current.unlink()
+        self.current.symlink_to(later)
+
+        result = self.run_host("activate")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.current.resolve(), later)
+        self.assertFalse((self.environment_root / "shared/storage/framework/down").exists())
+        self.assertFalse(any(command[0] == "services" for command in self.commands()))
+
     def test_activation_preserves_inactive_worker_services(self):
         self.prepare()
         self.environment["TEST_SERVICE_STATE"] = "0 0"

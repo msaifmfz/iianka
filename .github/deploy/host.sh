@@ -89,6 +89,7 @@ if [[ "$operation" == prepare ]]; then
     # Store the exact payload for owner-controlled off-host archival/recovery.
     install -m 0640 "$archive" "$root/shared/deploy-artifacts/$release_id.tar.gz"
     printf '%s\n' "$checksum" >"$release/ARTIFACT_SHA256"
+    printf '%s\n' "$previous" >"$release/PREPARED_FROM"
     printf '%s\n' "$revision" >"$release/READY"
     printf 'Prepared %s; current was not changed.\n' "$release_id"
     exit 0
@@ -105,6 +106,7 @@ if [[ "$operation" == rollback ]]; then
     [[ "$(dirname "$target")" == "$root/releases" && -d "$target" && ! -L "$target" ]] || fail 'Previous release is unavailable.'
 else
     [[ "$previous" != "$release" ]] || fail 'Release is already current.'
+    [[ -f "$release/PREPARED_FROM" && "$(cat "$release/PREPARED_FROM")" == "$previous" ]] || fail 'Current changed after preparation; prepare a fresh release identity.'
     [[ ! -e "$release/PREVIOUS" ]] || fail 'Activation was already attempted; review recovery before retrying.'
 fi
 boot "$target"
