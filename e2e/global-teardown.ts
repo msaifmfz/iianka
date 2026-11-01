@@ -1,6 +1,6 @@
 import { rmSync } from 'node:fs';
 
-const e2eDatabasePaths = ['chromium', 'firefox', 'webkit'].map(
+const e2eDatabasePaths = ['chromium', 'firefox', 'webkit', 'production'].map(
     (browser) => `.playwright/database/e2e-${browser}.sqlite`,
 );
 

@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
@@ -24,7 +25,24 @@ async function selectItem(page: Page, code: string) {
 test('creates a quotation with item-aware inputs and downloads both Japanese PDFs', async ({
     page,
 }, testInfo) => {
-    const companyName = `${testInfo.project.name} 株式会社 山田建設`;
+    const companyName = `QA_RC1_20261101 ${testInfo.project.name} 株式会社 山田建設`;
+    const workerResponses: { status: number; contentType: string }[] = [];
+    const workerUrls: string[] = [];
+    const fakeWorkerWarnings: string[] = [];
+    page.on('worker', (worker) => workerUrls.push(worker.url()));
+    page.on('response', (response) => {
+        if (response.url().includes('pdf.worker')) {
+            workerResponses.push({
+                status: response.status(),
+                contentType: response.headers()['content-type'] ?? '',
+            });
+        }
+    });
+    page.on('console', (message) => {
+        if (message.text().includes('Setting up fake worker')) {
+            fakeWorkerWarnings.push(message.text());
+        }
+    });
     await login(page);
     await expect(
         page.getByLabel('真空ポンプ使用', { exact: true }),
@@ -102,6 +120,15 @@ test('creates a quotation with item-aware inputs and downloads both Japanese PDF
     await expect(
         dialog.getByRole('img', { name: '内訳書 1ページ', exact: true }),
     ).toHaveAttribute('data-rendered', 'true');
+    expect(workerUrls.some((url) => url.includes('pdf.worker'))).toBe(true);
+    expect(workerResponses.length).toBeGreaterThan(0);
+
+    for (const response of workerResponses) {
+        expect(response.status).toBe(200);
+        expect(response.contentType).toMatch(/javascript/);
+    }
+
+    expect(fakeWorkerWarnings).toEqual([]);
     await expect(page).toHaveURL(/\/quotations\/create$/);
     await page.keyboard.press('Escape');
     await expect(page.getByLabel(/^数量（本）/)).toHaveValue('100');
@@ -118,6 +145,8 @@ test('creates a quotation with item-aware inputs and downloads both Japanese PDF
         const download = await downloadPromise;
         await download.saveAs(testInfo.outputPath(file));
         expect(await download.failure()).toBeNull();
+        const content = await readFile(testInfo.outputPath(file));
+        expect(content.subarray(0, 5).toString()).toBe('%PDF-');
     }
 
     const detailUrl = page.url();

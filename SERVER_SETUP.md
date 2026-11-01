@@ -483,6 +483,20 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
+JavaScript modules also require a JavaScript MIME type. Older Nginx `mime.types`
+files map `js` but omit `mjs`, causing module workers to fail even with HTTP 200.
+In `/etc/nginx/mime.types`, extend the existing JavaScript entry (do not add a
+duplicate entry):
+
+```nginx
+application/javascript                           js mjs;
+```
+
+Run `sudo nginx -t` before reloading. Check a deployed worker URL with `curl -I`;
+its `Content-Type` must contain `javascript`, never `application/octet-stream`.
+The quotation viewer now uses Vite's worker build to emit a hashed `.js` module,
+so deploying the rebuilt application also works with the older MIME table.
+
 ## 14. Add TLS Certificates
 
 Install Certbot if it is available from your enabled repositories:
@@ -623,6 +637,52 @@ sudo restorecon -Rv /var/www/iianka/staging
 ```
 
 If you serve user-uploaded files from storage through Nginx, review additional SELinux rules for that path.
+
+### CRM address search outbound HTTPS
+
+CRM geocoding calls `https://msearch.gsi.go.jp/address-search/AddressSearch`
+from PHP-FPM. GSI requires no API key. File labels alone do not permit that
+outbound connection: PHP-FPM runs in `httpd_t`, and SELinux can reject TCP 443
+while the same URL works from an SSH shell. The endpoint correctly returns 503
+and keeps manual map selection available when the provider is unreachable.
+
+Diagnose the web request before changing policy:
+
+```bash
+getenforce
+getsebool httpd_can_network_connect
+sudo ausearch -m AVC -ts recent -i
+```
+
+Correlate `GSI address search failed to connect` in the staging Laravel log with
+`comm="php-fpm"`, `denied { name_connect }`, `dest=443`, and `httpd_t` in the audit
+log. CLI success alone does not verify the web pool's permissions.
+
+Where outbound connections from the web domain are approved, persist the
+standard SELinux allowance:
+
+```bash
+sudo setsebool -P httpd_can_network_connect on
+```
+
+This boolean is **host-wide**, including other PHP-FPM pools and production on
+the same host. Have the server owner approve that scope, or supply a reviewed
+narrower egress policy. Keep SELinux enforcing; do not disable certificate
+verification or substitute coordinates. No Laravel `.env` key or config-cache
+refresh fixes an SELinux denial. Roll back the boolean with
+`sudo setsebool -P httpd_can_network_connect off` if required.
+
+After applying policy, search both `東京駅` and `大阪市北区梅田3丁目1番1号` through
+the authenticated new-place form. Verify `/crm/geocode` returns 200 with genuine
+GSI candidates, choose a candidate, and test manual map placement and saving
+using clearly marked synthetic records. A successful CLI request is insufficient.
+
+For the PDF build regression locally or in CI, install Nginx and the existing
+Playwright Chromium browser, then run `npm run test:e2e:production`. This builds
+the application and serves `/build` directly from Nginx with staging's legacy
+MIME mapping (`js` only), proxies application requests to Laravel, and uses a
+dedicated disposable SQLite database. It does not start a Vite development or
+preview server.
 
 ## 18. First Deploy Checklist
 

@@ -73,7 +73,40 @@ test('the geocoder returns 503 and logs the status when GSI answers with an erro
 })->with([
     'server error' => ['oops', 500],
     'HTML page with 200' => ['<html>maintenance</html>', 200],
+    'JSON error object with 200' => ['{"error":"maintenance"}', 200],
+    'redirect without a result' => ['[]', 302],
 ]);
+
+test('landmark matches beyond the candidate limit are retained ahead of broad GSI matches', function (): void {
+    Http::preventStrayRequests();
+    Http::fake([
+        GeocodeAddress::ENDPOINT.'*' => Http::response([
+            ...array_fill(0, 6, [
+                'geometry' => ['coordinates' => [141.363617, 43.076111]],
+                'properties' => ['title' => '北海道札幌市東区'],
+            ]),
+            [
+                'geometry' => ['coordinates' => [139.76556506, 35.68064139]],
+                'properties' => ['title' => '丸の内警察署東京駅前交番'],
+            ],
+            [
+                'geometry' => ['coordinates' => [139.766216620278, 35.6812588186111]],
+                'properties' => ['title' => '東京駅'],
+            ],
+        ]),
+    ]);
+
+    $this->actingAs(User::factory()->create())
+        ->getJson(route('crm.geocode', ['address' => '東京駅']))
+        ->assertOk()
+        ->assertJsonCount(5, 'candidates')
+        ->assertJsonPath('candidates.0', [
+            'label' => '東京駅', 'lat' => 35.6812588186111, 'lng' => 139.766216620278,
+        ])
+        ->assertJsonPath('candidates.1.label', '丸の内警察署東京駅前交番');
+
+    Http::assertSentCount(1);
+});
 
 test('the geocoder returns 200 with no candidates when GSI finds no match', function (): void {
     Http::preventStrayRequests();
