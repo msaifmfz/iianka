@@ -25,10 +25,32 @@ jobs:
     name: CI
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    env:
+      VITE_APP_NAME: ${{ vars.VITE_APP_NAME || 'iianka' }}
+    outputs:
+      revision: ${{ steps.identity.outputs.revision }}
+      release_id: ${{ steps.identity.outputs.release_id }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+
+      - name: Record immutable source identity
+        id: identity
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          REVISION="$(git rev-parse HEAD)"
+          [[ "$REVISION" == "$EXPECTED_SHA" ]]
+          echo "revision=$REVISION" >> "$GITHUB_OUTPUT"
+          echo "release_id=$REVISION-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
+
+      - name: Test deployment tooling
+        run: |
+          python3 -m unittest discover -s .github/deploy/tests -v
+          for script in .github/deploy/*.sh; do bash -n "$script"; done
+          shellcheck .github/deploy/*.sh
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -45,6 +67,11 @@ jobs:
 
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Check deploy runtime helper
+        run: |
+          php -l .github/deploy/runtime.php
+          vendor/bin/phpstan analyse .github/deploy/runtime.php --no-progress --memory-limit=1G
 
       - name: Install Node dependencies
         run: npm ci
@@ -72,6 +99,36 @@ jobs:
       - name: Test production PDF previews and CRM location selection
         run: npm run test:e2e:production -- --grep 'creates a quotation|address search'
 
+      - name: Package production release
+        env:
+          REVISION: ${{ steps.identity.outputs.revision }}
+          RELEASE_OUTPUT: ${{ runner.temp }}/iianka-release
+        run: bash .github/deploy/package.sh "$REVISION" "$RELEASE_OUTPUT"
+
+      - name: Smoke test unpacked production release
+        env:
+          REVISION: ${{ steps.identity.outputs.revision }}
+          RELEASE_OUTPUT: ${{ runner.temp }}/iianka-release
+        run: bash .github/deploy/smoke.sh "$RELEASE_OUTPUT/release.tar.gz" "$REVISION"
+
+      - name: Record artifact digest for owner approval
+        env:
+          REVISION: ${{ steps.identity.outputs.revision }}
+          RELEASE_OUTPUT: ${{ runner.temp }}/iianka-release
+        run: |
+          echo "Release identity: $REVISION-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_STEP_SUMMARY"
+          cat "$RELEASE_OUTPUT/release.tar.gz.sha256" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload tested release artifact
+        if: ${{ github.event_name == 'release' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ steps.identity.outputs.release_id }}
+          path: ${{ runner.temp }}/iianka-release/release.tar.gz*
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
   validate_release:
     name: Validate release
     runs-on: ubuntu-24.04
@@ -81,13 +138,19 @@ jobs:
     steps:
       - name: Checkout release tag
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Validate release type and tag
         env:
           TAG: ${{ github.event.release.tag_name }}
           IS_PRERELEASE: ${{ github.event.release.prerelease }}
+          EXPECTED_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
+
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]]
+          [[ "$(git rev-parse --verify "$TAG^{commit}")" == "$EXPECTED_SHA" ]]
 
           echo "Release tag: $TAG"
           echo "Is pre-release: $IS_PRERELEASE"
@@ -126,180 +189,130 @@ jobs:
 
           echo "Changelog section found for $VERSION"
 
-  deploy_staging:
-    name: Deploy staging
+  archive_release:
+    name: Archive approved release bundle
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 10
     needs:
       - ci
       - validate_release
-    if: ${{ github.event_name == 'release' && github.event.release.prerelease == true && contains(github.event.release.tag_name, '-rc.') }}
-    environment: staging
+    if: ${{ github.event_name == 'release' }}
+    permissions:
+      contents: write
+    steps:
+      - name: Download this run's tested artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: release-${{ needs.ci.outputs.release_id }}
+          path: ${{ runner.temp }}/iianka-release
+
+      - name: Attach immutable bundle to the existing published release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          REVISION: ${{ needs.ci.outputs.revision }}
+          RELEASE_ID: ${{ needs.ci.outputs.release_id }}
+          RELEASE_OUTPUT: ${{ runner.temp }}/iianka-release
+        run: |
+          set -euo pipefail
+          [[ "$REVISION" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_RUN_ID" =~ ^[0-9]+$ && "$GITHUB_RUN_ATTEMPT" =~ ^[0-9]+$ ]]
+          cd "$RELEASE_OUTPUT"
+          sha256sum --check release.tar.gz.sha256
+          [[ "$RELEASE_ID" =~ ^${REVISION}-[0-9]+-[0-9]+$ ]]
+          [[ "$(gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG" --jq .immutable)" == false ]] || {
+            echo 'Published immutable releases require a pre-publication archive flow; no deployment was attempted.' >&2
+            exit 1
+          }
+          BUNDLE="iianka-$RELEASE_ID.tar.gz"
+          cp release.tar.gz "$BUNDLE"
+          sha256sum "$BUNDLE" > "$BUNDLE.sha256"
+          gh release upload "$RELEASE_TAG" "$BUNDLE" "$BUNDLE.sha256"
+
+  deploy:
+    name: Deploy artifact
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    needs:
+      - ci
+      - validate_release
+      - archive_release
+    if: ${{ github.event_name == 'release' }}
+    environment: ${{ github.event.release.prerelease && 'staging' || 'production' }}
 
     concurrency:
-      group: deploy-staging
+      group: deploy-iianka-shared-host
       cancel-in-progress: false
 
     env:
-      DEPLOY_ENVIRONMENT: staging
-      DEPLOY_RELEASE_TAG: ${{ github.event.release.tag_name }}
-      DEPLOY_REF: refs/tags/${{ github.event.release.tag_name }}
+      DEPLOY_ENVIRONMENT: ${{ github.event.release.prerelease && 'staging' || 'production' }}
+      DEPLOY_REVISION: ${{ needs.ci.outputs.revision }}
+      DEPLOY_RELEASE_ID: ${{ needs.ci.outputs.release_id }}
+      DEPLOY_ARTIFACTS_READY: ${{ vars.DEPLOY_ARTIFACTS_READY }}
       DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
       DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
-      DEPLOY_TARGET_PATH: ${{ vars.DEPLOY_PATH }}
-      DEPLOY_SHA: ${{ github.sha }}
       DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
       DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
 
     steps:
-      - name: Configure SSH
+      - name: Require owner-completed host preparation
         run: |
           set -euo pipefail
+          [[ "$DEPLOY_ARTIFACTS_READY" == true ]] || {
+            echo 'Artifact deploy is disabled until the owner completes the documented host preparation.' >&2
+            exit 1
+          }
 
-          : "${DEPLOY_HOST:?Missing DEPLOY_HOST secret}"
-          : "${DEPLOY_SSH_KNOWN_HOSTS:?Missing DEPLOY_SSH_KNOWN_HOSTS secret}"
-          : "${DEPLOY_SSH_PRIVATE_KEY:?Missing DEPLOY_SSH_PRIVATE_KEY secret}"
+      - name: Download this run's tested artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: release-${{ needs.ci.outputs.release_id }}
+          path: ${{ runner.temp }}/iianka-release
 
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
+      - name: Verify artifact and configure SSH
+        id: payload
+        env:
+          RELEASE_OUTPUT: ${{ runner.temp }}/iianka-release
+        run: |
+          set -euo pipefail
+          [[ "$DEPLOY_REVISION" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$DEPLOY_RELEASE_ID" =~ ^${DEPLOY_REVISION}-[0-9]+-[0-9]+$ ]]
+          [[ "$GITHUB_RUN_ID" =~ ^[0-9]+$ && "$GITHUB_RUN_ATTEMPT" =~ ^[0-9]+$ ]]
+          [[ "$DEPLOY_HOST" =~ ^[a-zA-Z0-9.-]+$ ]]
+          DEPLOY_PORT="${DEPLOY_PORT:-22}"
+          [[ "$DEPLOY_PORT" =~ ^[0-9]+$ ]] && (( DEPLOY_PORT > 0 && DEPLOY_PORT <= 65535 ))
+          cd "$RELEASE_OUTPUT"
+          sha256sum --check release.tar.gz.sha256
+          CHECKSUM="$(sha256sum release.tar.gz | cut -d ' ' -f1)"
+          echo "checksum=$CHECKSUM" >> "$GITHUB_OUTPUT"
+          : "${DEPLOY_SSH_KNOWN_HOSTS:?Missing known hosts}"
+          : "${DEPLOY_SSH_PRIVATE_KEY:?Missing deploy key}"
+          install -d -m 0700 ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
           printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/known_hosts ~/.ssh/deploy_key
+          chmod 0600 ~/.ssh/known_hosts ~/.ssh/deploy_key
 
-      - name: Deploy over SSH
+      - name: Prepare isolated release on host
+        env:
+          RELEASE_OUTPUT: ${{ runner.temp }}/iianka-release
+          CHECKSUM: ${{ steps.payload.outputs.checksum }}
         run: |
           set -euo pipefail
+          RELEASE_ID="$DEPLOY_RELEASE_ID"
+          ssh -T -i ~/.ssh/deploy_key -p "${DEPLOY_PORT:-22}" \
+            -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            -o ConnectTimeout=15 -o ServerAliveInterval=15 "iianka@$DEPLOY_HOST" \
+            "sudo -n /usr/local/sbin/iianka-artifact-deploy prepare '$DEPLOY_ENVIRONMENT' '$RELEASE_ID' '$DEPLOY_REVISION' '$CHECKSUM'" \
+            < "$RELEASE_OUTPUT/release.tar.gz"
 
-          DEPLOY_PORT="${DEPLOY_PORT:-22}"
-          DEPLOY_PATH="${DEPLOY_TARGET_PATH:?Missing target path}"
-
-          ssh \
-            -i ~/.ssh/deploy_key \
-            -p "$DEPLOY_PORT" \
-            -o IdentitiesOnly=yes \
-            -o StrictHostKeyChecking=yes \
-            "iianka@$DEPLOY_HOST" \
-            "DEPLOY_ENVIRONMENT='$DEPLOY_ENVIRONMENT' DEPLOY_REF='$DEPLOY_REF' DEPLOY_RELEASE_TAG='$DEPLOY_RELEASE_TAG' DEPLOY_PATH='$DEPLOY_PATH' DEPLOY_SHA='$DEPLOY_SHA' bash -se" <<'REMOTE'
-          set -Eeuo pipefail
-
-          cd "$DEPLOY_PATH"
-
-          php artisan down --render="errors::503" --retry=60 || true
-          trap 'php artisan up || true' EXIT
-
-          git fetch --prune --tags origin
-
-          RELEASE_COMMIT="$(git rev-parse --verify "$DEPLOY_REF^{commit}")"
-          echo "Deploying $DEPLOY_RELEASE_TAG ($RELEASE_COMMIT) to $DEPLOY_ENVIRONMENT"
-
-          git checkout "$DEPLOY_REF"
-
-          composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
-
-          php artisan migrate --force
-          php artisan optimize:clear
-          php artisan config:cache
-          php artisan route:cache
-          php artisan view:cache
-          php artisan event:cache
-          php artisan optimize
-          php artisan wayfinder:generate
-
-          npm ci
-          npm run build
-
-          php artisan queue:restart
-          php artisan reload || true
-
-          php artisan up
-          trap - EXIT
-          REMOTE
-
-  deploy_production:
-    name: Deploy production
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    needs:
-      - ci
-      - validate_release
-    if: ${{ github.event_name == 'release' && github.event.release.prerelease == false && !contains(github.event.release.tag_name, '-rc.') }}
-    environment: production
-
-    concurrency:
-      group: deploy-production
-      cancel-in-progress: false
-
-    env:
-      DEPLOY_ENVIRONMENT: production
-      DEPLOY_RELEASE_TAG: ${{ github.event.release.tag_name }}
-      DEPLOY_REF: refs/tags/${{ github.event.release.tag_name }}
-      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-      DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
-      DEPLOY_TARGET_PATH: ${{ vars.DEPLOY_PATH }}
-      DEPLOY_SHA: ${{ github.sha }}
-      DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
-      DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
-
-    steps:
-      - name: Configure SSH
+      - name: Activate owner-approved release
+        env:
+          CHECKSUM: ${{ steps.payload.outputs.checksum }}
         run: |
           set -euo pipefail
-
-          : "${DEPLOY_HOST:?Missing DEPLOY_HOST secret}"
-          : "${DEPLOY_SSH_KNOWN_HOSTS:?Missing DEPLOY_SSH_KNOWN_HOSTS secret}"
-          : "${DEPLOY_SSH_PRIVATE_KEY:?Missing DEPLOY_SSH_PRIVATE_KEY secret}"
-
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/known_hosts ~/.ssh/deploy_key
-
-      - name: Deploy over SSH
-        run: |
-          set -euo pipefail
-
-          DEPLOY_PORT="${DEPLOY_PORT:-22}"
-          DEPLOY_PATH="${DEPLOY_TARGET_PATH:?Missing target path}"
-
-          ssh \
-            -i ~/.ssh/deploy_key \
-            -p "$DEPLOY_PORT" \
-            -o IdentitiesOnly=yes \
-            -o StrictHostKeyChecking=yes \
-            "iianka@$DEPLOY_HOST" \
-            "DEPLOY_ENVIRONMENT='$DEPLOY_ENVIRONMENT' DEPLOY_REF='$DEPLOY_REF' DEPLOY_RELEASE_TAG='$DEPLOY_RELEASE_TAG' DEPLOY_PATH='$DEPLOY_PATH' DEPLOY_SHA='$DEPLOY_SHA' bash -se" <<'REMOTE'
-          set -Eeuo pipefail
-
-          cd "$DEPLOY_PATH"
-
-          php artisan down --render="errors::503" --retry=60 || true
-          trap 'php artisan up || true' EXIT
-
-          git fetch --prune --tags origin
-
-          RELEASE_COMMIT="$(git rev-parse --verify "$DEPLOY_REF^{commit}")"
-          echo "Deploying $DEPLOY_RELEASE_TAG ($RELEASE_COMMIT) to $DEPLOY_ENVIRONMENT"
-
-          git checkout "$DEPLOY_REF"
-
-          composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
-
-          php artisan migrate --force
-          php artisan optimize:clear
-          php artisan config:cache
-          php artisan route:cache
-          php artisan view:cache
-          php artisan event:cache
-          php artisan optimize
-          php artisan wayfinder:generate
-
-          npm ci
-          npm run build
-
-          php artisan queue:restart
-          php artisan reload || true
-
-          php artisan up
-          trap - EXIT
-          REMOTE
+          RELEASE_ID="$DEPLOY_RELEASE_ID"
+          ssh -T -i ~/.ssh/deploy_key -p "${DEPLOY_PORT:-22}" \
+            -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            -o ConnectTimeout=15 -o ServerAliveInterval=15 "iianka@$DEPLOY_HOST" \
+            "sudo -n /usr/local/sbin/iianka-artifact-deploy activate '$DEPLOY_ENVIRONMENT' '$RELEASE_ID' '$DEPLOY_REVISION' '$CHECKSUM'"
