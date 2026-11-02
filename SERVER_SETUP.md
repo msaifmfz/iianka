@@ -654,28 +654,73 @@ getsebool httpd_can_network_connect
 sudo ausearch -m AVC -ts recent -i
 ```
 
-Correlate `GSI address search failed to connect` in the staging Laravel log with
+Correlate `GSI address search failed to connect` in the target environment's Laravel log with
 `comm="php-fpm"`, `denied { name_connect }`, `dest=443`, and `httpd_t` in the audit
-log. CLI success alone does not verify the web pool's permissions.
+log. Port 443 denials are the geocoding signal. Port 13714 denials are the
+separate Inertia SSR issue; this policy does not allow that port. CLI success
+alone does not verify the web pool's permissions.
 
-Where outbound connections from the web domain are approved, persist the
-standard SELinux allowance:
+The current shared staging/production host uses the local module
+`iianka_httpd_https_egress` version 1.0, installed with the owner's approval on
+2026-11-01 at 20:43:50 JST at priority 400. `httpd_can_network_connect` remains
+off. Preserve the following source as `iianka_httpd_https_egress.te` when
+rebuilding the host:
 
-```bash
-sudo setsebool -P httpd_can_network_connect on
+```text
+module iianka_httpd_https_egress 1.0;
+
+# Lets httpd_t (nginx and all PHP-FPM pools, including production) connect
+# to ports labelled http_port_t. Needed for CRM geocoding calls to GSI on 443.
+# Rollback: sudo semodule -r iianka_httpd_https_egress
+
+require {
+        type httpd_t;
+        type http_port_t;
+        class tcp_socket name_connect;
+}
+
+allow httpd_t http_port_t:tcp_socket name_connect;
 ```
 
-This boolean is **host-wide**, including other PHP-FPM pools and production on
-the same host. Have the server owner approve that scope, or supply a reviewed
-narrower egress policy. Keep SELinux enforcing; do not disable certificate
-verification or substitute coordinates. No Laravel `.env` key or config-cache
-refresh fixes an SELinux denial. Roll back the boolean with
-`sudo setsebool -P httpd_can_network_connect off` if required.
+Build and install the reviewed module on the host:
+
+```bash
+checkmodule -M -m -o iianka_httpd_https_egress.mod iianka_httpd_https_egress.te
+semodule_package -o iianka_httpd_https_egress.pp -m iianka_httpd_https_egress.mod
+sudo semodule -i iianka_httpd_https_egress.pp
+```
+
+This module is **host-wide and applies to production**: Nginx and all PHP-FPM
+pools share `httpd_t`. It allows connections only to ports labelled
+`http_port_t`: TCP 80, 81, 443, 488, 8008, 8009, 8443 and 9000 on the current
+host. It allows **any destination host** on those ports and does not restrict
+traffic to GSI. Review port labels if rebuilding on a different policy version.
+
+Rollback:
+
+```bash
+sudo semodule -r iianka_httpd_https_egress
+```
+
+The broader alternative, `sudo setsebool -P httpd_can_network_connect on`,
+allows all TCP ports from the web domain, host-wide. It is **not applied here**
+and is not needed alongside this module. If separately approved and enabled,
+roll it back with `sudo setsebool -P httpd_can_network_connect off`.
+
+Keep SELinux enforcing; do not disable certificate verification or substitute
+coordinates. No Laravel `.env` key or config-cache refresh fixes an SELinux
+denial. Verify the installed module:
+
+```bash
+sudo semodule -lfull | grep iianka_
+```
 
 After applying policy, search both `東京駅` and `大阪市北区梅田3丁目1番1号` through
 the authenticated new-place form. Verify `/crm/geocode` returns 200 with genuine
 GSI candidates, choose a candidate, and test manual map placement and saving
-using clearly marked synthetic records. A successful CLI request is insufficient.
+using clearly marked synthetic records. Check the corresponding Laravel and
+audit logs for those real authenticated requests, confirming that geocoding
+succeeds without new port 443 denials. A successful CLI request is insufficient.
 
 For the PDF build regression locally or in CI, install Nginx and the existing
 Playwright Chromium browser, then run `npm run test:e2e:production`. This builds

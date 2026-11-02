@@ -56,12 +56,55 @@ Before this change, the remote deploy ran over SSH in `DEPLOY_PATH`:
 4. Run migrations.
 5. Clear/cache Laravel configuration, routes, views, events, and optimization.
 6. Generate Wayfinder definitions.
-7. Install Node dependencies and build client plus SSR assets.
+7. Install Node dependencies and build client assets.
 8. Restart queues/reload long-running Laravel processes.
 9. Leave maintenance mode, including through an exit trap.
 
 GitHub environment secrets and variables supply host, SSH key, known hosts, port, and target path.
 Never put them in repository files.
+
+### Inertia SSR decision
+
+The owner chose to disable SSR after the v0.5.5-rc.2 staging verification on
+2026-11-01. Both the Laravel adapter and the Inertia Vite plugin disable SSR;
+the deploy workflow builds only the client bundle. The optional `build:ssr`
+script remains available for a future reviewed SSR setup, but no deploy job
+calls it. Re-enabling SSR would also require changing both configurations.
+
+No application feature was found to require SSR. Operational routes require
+authentication, indexing is blocked by middleware, robots.txt and the root
+template, and quotation PDFs are rendered separately by PHP/mPDF. Browser-only
+map components already defer rendering until mounted. Client rendering was
+already the fallback when the configured SSR endpoint had no listener.
+
+The owner reported no SSR service on the shared 1.7 GB host and reproduced
+port 13714 SELinux denials on staging (74 by mid-evening on 2026-11-01).
+Production's contribution is unverified because the web pools share `httpd_t`.
+Do not allow port 13714 merely to replace a denial with connection refused.
+
+A real SSR service would need an owner-approved Node.js service bound to
+loopback, supervision, health checks, release coordination and a separately
+reviewed SELinux design. Its RSS is unmeasured; budget at least 128–256 MiB
+per environment as an initial planning estimate, then measure under load.
+That is 256–512 MiB for two single-process services before headroom, and
+clustering would multiply it. The estimate is not a capacity guarantee on
+this shared host with no swap. Disabling SSR avoids that persistent cost.
+
+After deploying this change, the owner should refresh each environment's
+configuration cache in its current release:
+
+```bash
+php artisan config:cache --no-interaction
+```
+
+Verify authenticated page loads and the CRM/PDF browser flows, then correlate
+Laravel and audit logs: no new port 13714 connection attempts should result
+from those page loads. Port 443 geocoding remains separate. No new service or
+SELinux change is needed. These host checks have not been performed here.
+
+Rollback is a normal reviewed deployment of the preceding release followed
+by `php artisan config:cache --no-interaction`. This restores the previous
+SSR attempts and build cost; it does not create a working SSR service.
 
 ## Release checklist
 

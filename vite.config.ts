@@ -66,7 +66,7 @@ export default defineConfig(({ mode }) => {
                 input: ['resources/css/app.css', 'resources/js/app.tsx'],
                 refresh: true,
             }),
-            inertia(),
+            inertia({ ssr: false }),
             react(),
             babel({ presets: [reactCompilerPreset()] }),
             tailwindcss(),
