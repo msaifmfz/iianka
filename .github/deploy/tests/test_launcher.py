@@ -24,6 +24,7 @@ QUEUE_ARGUMENTS = "queue:work --sleep=1 --tries=3 --timeout=120 --max-time=3600"
 INSTALLED_BACKUP = "/usr/local/sbin/iianka-backup"
 BACKUP_ANCESTORS = 'for path in "$backup_entrypoint" /usr/local/sbin /usr/local /usr /; do'
 INSTALLED_LOCK = "/var/www/iianka/.artifact-deploy.lock"
+INSTALLED_BACKUP_STATUS = "/var/log/iianka-backup/last-status"
 
 
 class LauncherTests(unittest.TestCase):
@@ -67,7 +68,7 @@ class LauncherTests(unittest.TestCase):
         source = source.replace(ENTRYPOINT_ANCESTORS, "for path in / " + " ".join(str(self.root / p) for p in ("usr", "usr/local", "usr/local/sbin")) + " ")
         self.environment["TEST_ENTRYPOINT"] = str(self.entrypoint)
         # The backup entrypoint, its ancestors and the shared deploy lock move too.
-        for installed in (INSTALLED_BACKUP, BACKUP_ANCESTORS, INSTALLED_LOCK):
+        for installed in (INSTALLED_BACKUP, BACKUP_ANCESTORS, INSTALLED_LOCK, INSTALLED_BACKUP_STATUS):
             self.assertEqual(source.count(installed), 1)
         self.backup = self.sbin / "iianka-backup"
         self.backup.write_text("#!/bin/bash\nexit 0\n")
@@ -77,6 +78,13 @@ class LauncherTests(unittest.TestCase):
         self.lock = self.root / ".artifact-deploy.lock"
         self.lock.touch()
         source = source.replace(INSTALLED_LOCK, str(self.lock))
+        self.backup_status = self.root / "var/log/iianka-backup/last-status"
+        self.backup_status.parent.mkdir(parents=True)
+        self.backup_status.parent.chmod(0o755)
+        self.backup_status.write_text("2026-11-03T03:30:00+09:00 OK tag=scheduled envs=production staging snapshots=aaaaaaaa,bbbbbbbb\n")
+        self.backup_status.chmod(0o644)
+        source = source.replace(INSTALLED_BACKUP_STATUS, str(self.backup_status))
+        self.environment["TEST_BACKUP_STATUS"] = str(self.backup_status)
         self.launcher = self.root / "launcher.sh"
         self.launcher.write_text(source)
         self.command("stat", '''
@@ -116,9 +124,14 @@ import fcntl,sys
 try: fcntl.flock(int(sys.argv[-1]),fcntl.LOCK_EX|fcntl.LOCK_NB)
 except BlockingIOError: sys.exit(1)
 ''')
+        # A pre-migration backup unit reports through its status line, as on the host.
         self.command("systemd-run", '''
 import json,os,sys
 with open(os.environ['TEST_LOG'],'a') as out: out.write(json.dumps(['systemd-run',*sys.argv[1:]])+'\\n')
+if '--deploy-lock-held' in sys.argv:
+    line=os.environ.get('TEST_SNAPSHOT_STATUS','2026-11-03T20:00:00+09:00 OK tag=pre-migration envs=staging snapshots=0123abcd')
+    if line: open(os.environ['TEST_BACKUP_STATUS'],'w').write(line+'\\n')
+    sys.exit(int(os.environ.get('TEST_SNAPSHOT_RC','0')))
 ''')
         # Prove negative cases start from a usable fixture, including on macOS
         # where the real /etc is a symlink and must not stand in for Linux /etc.
@@ -178,11 +191,52 @@ with open(os.environ['TEST_LOG'],'a') as out: out.write(json.dumps(['systemd-run
             result = self.run_launcher(arguments=["snapshot", "staging"])
 
         self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "snapshot 0123abcd saved\n")
         args = self.commands()[-1]
         self.assertEqual(args[0], "systemd-run")
         self.assertIn("--property=MemoryMax=400M", args)
         self.assertNotIn("--slice=iianka-deploy.slice", args)
+        # A nested --pipe inside the deploy unit's --pipe unit cannot reach systemd.
+        self.assertNotIn("--pipe", args)
         self.assertEqual(args[-6:], [str(self.backup), "--tag", "pre-migration", "--env", "staging", "--deploy-lock-held"])
+
+    def test_snapshot_requires_a_new_matching_status_from_a_successful_backup(self):
+        import fcntl
+        scheduled = self.backup_status.read_text().strip()
+        earlier = "2026-11-02T20:00:00+09:00 OK tag=pre-migration envs=staging snapshots=feedbeef"
+        cases = {
+            "backup unit failed": {"TEST_SNAPSHOT_RC": "1"},
+            "status not rewritten": {"TEST_SNAPSHOT_STATUS": ""},
+            "failed backup": {"TEST_SNAPSHOT_STATUS": "2026-11-03T20:00:00+09:00 FAIL tag=pre-migration step=upload-staging rc=1"},
+            "other environment": {"TEST_SNAPSHOT_STATUS": "2026-11-03T20:00:00+09:00 OK tag=pre-migration envs=production snapshots=0123abcd"},
+            "other tag": {"TEST_SNAPSHOT_STATUS": "2026-11-03T20:00:00+09:00 OK tag=manual envs=staging snapshots=0123abcd"},
+            "no snapshot ID": {"TEST_SNAPSHOT_STATUS": "2026-11-03T20:00:00+09:00 OK tag=pre-migration envs=staging snapshots="},
+        }
+        with self.lock.open() as held:
+            fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            for name, overrides in cases.items():
+                with self.subTest(name):
+                    # An earlier deploy's valid line must never stand in for this run's.
+                    self.backup_status.write_text(earlier + "\n")
+                    saved_environment = self.environment
+                    self.environment = dict(saved_environment, **overrides)
+                    try:
+                        result = self.run_launcher(arguments=["snapshot", "staging"])
+                    finally:
+                        self.environment = saved_environment
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertNotIn("saved", result.stdout)
+            for path in (self.backup_status, self.backup_status.parent):
+                with self.subTest(untrusted=path.name):
+                    self.backup_status.write_text(scheduled + "\n")
+                    original = path.stat().st_mode & 0o777
+                    path.chmod(original | 0o002)
+                    try:
+                        result = self.run_launcher(arguments=["snapshot", "staging"])
+                        self.assertNotEqual(result.returncode, 0)
+                        self.assertNotIn("saved", result.stdout)
+                    finally:
+                        path.chmod(original)
 
     def test_snapshot_refuses_untrusted_backup_entrypoint_or_extra_arguments(self):
         import fcntl
