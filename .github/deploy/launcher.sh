@@ -84,12 +84,31 @@ if [[ "$operation" == snapshot ]]; then
         exit 1
     fi
     exec 8<&-
-    # Own unit and limits: restic does not fit inside the deploy slice.
-    exec systemd-run --quiet --wait --pipe --collect --service-type=exec \
+    backup_status=/var/log/iianka-backup/last-status
+    previous_status="$(cat "$backup_status" 2>/dev/null || true)"
+    # Own unit and limits: restic does not fit inside the deploy slice. No --pipe:
+    # this runs inside the deploy unit's own --pipe unit, and a nested --pipe loses
+    # its descriptors on the way to systemd (staging, 2026-11-03). Output goes to
+    # the journal; the snapshot ID comes from the backup's root-owned status line.
+    if ! systemd-run --quiet --wait --collect --service-type=exec \
         --property=MemoryHigh=250M --property=MemoryMax=400M --property=MemorySwapMax=0 \
         --property=RuntimeMaxSec=900 --nice=10 --property=IOSchedulingClass=idle \
         --setenv=GOGC=50 \
-        "$backup_entrypoint" --tag pre-migration --env "$environment" --deploy-lock-held
+        "$backup_entrypoint" --tag pre-migration --env "$environment" --deploy-lock-held; then
+        echo 'Pre-migration backup failed; see journalctl for its unit.' >&2
+        exit 1
+    fi
+    for path in "$(dirname "$backup_status")" "$backup_status"; do
+        trusted_owner_and_mode "$path" || { echo 'Backup status must be root-owned and not group/other-writable.' >&2; exit 1; }
+    done
+    status="$(cat "$backup_status")"
+    status_pattern="^[^ ]+ OK tag=pre-migration envs=$environment snapshots=([0-9a-f]{8,})$"
+    if [[ "$status" == "$previous_status" || ! "$status" =~ $status_pattern ]]; then
+        echo 'Backup reported no new pre-migration snapshot.' >&2
+        exit 1
+    fi
+    echo "snapshot ${BASH_REMATCH[1]} saved"
+    exit 0
 fi
 [[ $# == 5 && "$operation" =~ ^(prepare|activate|rollback|labels)$ ]] || exit 1
 release_id="$3"

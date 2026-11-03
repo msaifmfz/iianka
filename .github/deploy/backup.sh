@@ -18,6 +18,7 @@ readonly lock_wait_seconds=1800
 environments=(production staging)
 run_tag=scheduled
 current_step=start
+snapshot_ids=()
 deploy_lock_held=0
 min_mem_mib=600
 
@@ -64,7 +65,7 @@ on_exit() {
 	local rc=$?
 	rm -rf "${stage_root:?}"/*
 	if [ "$rc" -eq 0 ]; then
-		write_status OK "tag=$run_tag envs=${environments[*]}"
+		write_status OK "tag=$run_tag envs=${environments[*]} snapshots=$(IFS=,; echo "${snapshot_ids[*]}")"
 		ping_healthcheck ''
 	else
 		write_status FAIL "tag=$run_tag step=$current_step rc=$rc"
@@ -112,9 +113,13 @@ for env in "${environments[@]}"; do
 	readlink -f "$app_base/$env/current" >"$env_stage/current-release.txt"
 
 	current_step="upload-$env"
-	restic backup --host iianka --tag "$env" --tag "$run_tag" --no-scan \
+	backup_output="$(restic backup --host iianka --tag "$env" --tag "$run_tag" --no-scan \
 		--exclude "$app_base/$env/shared/storage/app/private/quotation-pdf-cache" \
-		"$env_stage" "$app_base/$env/shared/storage/app"
+		"$env_stage" "$app_base/$env/shared/storage/app")"
+	printf '%s\n' "$backup_output"
+	# The deploy launcher reads this ID back from last-status.
+	[[ "$backup_output" =~ snapshot\ ([0-9a-f]{8,})\ saved ]] || fail "restic reported no $env snapshot ID"
+	snapshot_ids+=("${BASH_REMATCH[1]}")
 done
 
 if [ "${#environments[@]}" -eq 2 ]; then
