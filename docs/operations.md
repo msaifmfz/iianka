@@ -46,7 +46,8 @@ readiness checks. It does not install dependencies, build assets or migrate
 automatically on the host. Missing readiness fails closed; no old-flow fallback
 is enabled. See [artifact deployment](deploy-memory-proposal.md) for required
 owner preparation, memory/disk limits, migration handling, retention and rollback.
-Host readiness and real deployment remain unverified until the owner runs them.
+Staging artifact deploys, including automatic migrations, were verified on
+2026-11-03; production artifact deploys are not enabled yet.
 
 Before this change, the remote deploy ran over SSH in `DEPLOY_PATH`:
 
@@ -384,7 +385,7 @@ Before enabling it:
 
 | Gap                                       | Evidence                                                                                            | Required decision                                                            |
 | ----------------------------------------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| Deployment topology mismatch              | Artifact deploy requires release directories/current symlink; actual host layout remains unverified | Confirm the atomic-release prerequisites before enabling artifact deployment |
+| Production artifact deploy not enabled    | Staging verified 2026-11-03; production lacks `production.conf`, sudo rules and the GitHub variable | Prepare and review production before enabling production artifact deploys    |
 | No production deploy sudo rule            | Blanket iianka sudo removed 2026-11-03; only staging launcher rules exist                           | Add a reviewed production rule before enabling production artifact deploys   |
 | Scheduler provisioned with no app tasks   | `schedule:list` reports none                                                                        | Keep service for future use or remove unnecessary operational surface        |
 | Nightly automation targets missing branch | Default `develop`; remote currently only has `main`                                                 | Configure the actual base branch before enabling                             |

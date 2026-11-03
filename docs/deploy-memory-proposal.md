@@ -1,15 +1,22 @@
 # Artifact deployment after the shared-host memory failure
 
-Status: artifact deployment and SSR changes merged in PRs #102 and #103.
-The owner's 2026-11-03 staging setup report found an unsupported systemd
-property, pinned worker directories and access-control issues. This follow-up
-corrects repository code and instructions; installed helpers still need an
-owner update. Keep `DEPLOY_ARTIFACTS_READY` unset until host readiness is
-reviewed. Live deployment and staging business checks remain unverified.
-A second staging report found that `WorkingDirectory=…/current` fails with
-`200/CHDIR` under SELinux; the [worker startup contract](#worker-startup-contract)
-below replaces that unit layout and needs its own owner installation.
-Email and Slack notifications are unused, as confirmed by the owner.
+Status (2026-11-03): **staging artifact deploys are live; production stays
+disabled.** The launcher, `host.sh`, `backup.sh`, the
+[worker startup contract](#worker-startup-contract) and the staging sudoers rules
+are installed, `staging.conf` sets `AUTO_MIGRATE=1`, and
+`DEPLOY_ARTIFACTS_READY=true` is set on the GitHub `staging` environment only.
+Verified on staging:
+
+| Release | Result |
+| --- | --- |
+| v0.5.5-rc.3 | First artifact activation (no migrations); workers follow `current`; ~1 s maintenance |
+| v0.5.5-rc.4 | Snapshot step failed (nested `--pipe`, fixed in #110); nothing migrated, previous release restored |
+| v0.5.5-rc.5 | Automatic migration: local copy, restic snapshot `ba8a5d7b`, migrate, `MIGRATED`, health 200; ~12 s maintenance |
+
+Production has no `production.conf`, production sudo rules or
+`DEPLOY_ARTIFACTS_READY`, so a production release fails before reaching the
+host. Staging business-flow checks remain unverified. Email and Slack
+notifications are unused, as confirmed by the owner.
 
 ## What changes
 
@@ -121,9 +128,10 @@ and [termination behavior](https://www.freedesktop.org/software/systemd/man/257/
 The memory boundary caps deployment processes; it **does not reserve RAM for
 production** or prove zero contention. Worker/scheduler units must run as `iianka:nginx`
 through the [worker startup contract](#worker-startup-contract); the launcher
-verifies it before service operations. Actual load, cgroup behavior, disk,
-SELinux labels, FPM OPcache behavior and live deployment remain unverified.
-Fail closed until the owner confirms these conditions. Do not enable the old
+verifies it before service operations. Cgroup limits, SELinux labels and live
+deployment were verified on staging on 2026-11-03; production load, disk and FPM
+OPcache behavior remain unverified. Production stays fail-closed until the owner
+confirms these conditions. Do not enable the old
 in-place workflow as an automatic fallback.
 
 ## Retention and recovery
@@ -494,8 +502,11 @@ environment's queue/scheduler:
 2. `sudo -n iianka-artifact-deploy snapshot <env>`: the launcher refuses unless
    the shared deploy lock is held, then runs `/usr/local/sbin/iianka-backup
    --tag pre-migration --env <env> --deploy-lock-held` in its own transient unit
-   (`MemoryMax=400M`, outside the 192 MiB deploy slice). The restic snapshot ID
-   must be reported.
+   (`MemoryMax=400M`, outside the 192 MiB deploy slice). It waits without
+   `--pipe`: the deploy unit already runs under `--pipe`, and a nested one
+   loses its descriptors on the way to systemd. The launcher reports the
+   restic snapshot ID only from a new `OK tag=pre-migration envs=<env>
+   snapshots=<id>` line in the backup's root-owned `last-status`.
 3. `artisan migrate --force` from the prepared release; `migrate:status` must
    then report nothing pending.
 4. `MIGRATED` in the release records the restic snapshot ID and local copy.
@@ -595,9 +606,9 @@ by the owner-run `worker-probe.sh` on the host. The unpacked-artifact smoke uses
 dependencies and a throwaway database. Shell syntax, ShellCheck, PHP
 lint/static analysis, normal repository checks and CI apply.
 
-Real systemd/cgroup/SELinux/FPM behavior, live activation/rollback, off-host
-backup recovery and business-flow staging verification are **unverified** until
-the owner performs them after implementation, as requested. The staging setup
-report is owner-supplied evidence; this repository correction did not access
-the server, read existing environment files or production data, or run any
-host changes. Keep deployment disabled pending the reviewed host update.
+Verified live on staging (2026-11-03, see Status): cgroup limits, SELinux
+worker startup, activation, activation-failure recovery and automatic
+migration with an off-host snapshot. Off-host restore was drilled separately
+(see [operations](operations.md#backups)). Still **unverified**: the
+`rollback` operation and a failing migration on the host (tests only), FPM
+OPcache behavior, staging business flows, and every production step.
