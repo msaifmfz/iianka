@@ -27,6 +27,8 @@ services="${IIANKA_DEPLOY_LAUNCHER:-/usr/local/sbin/iianka-artifact-deploy}"
 : "${IIANKA_DEPLOY_HEALTH_URL:?Launcher must provide the approved health URL}"
 : "${IIANKA_DEPLOY_MIN_FREE_BYTES:?Launcher must provide the approved disk floor}"
 [[ "$IIANKA_DEPLOY_MIN_FREE_BYTES" =~ ^[0-9]+$ ]]
+auto_migrate="${IIANKA_DEPLOY_AUTO_MIGRATE:-0}"
+[[ "$auto_migrate" =~ ^[01]$ ]]
 
 fail() { printf '%s\n' "$*" >&2; exit 1; }
 # All environments share one lock, including transfer, preparation and cutover.
@@ -107,6 +109,8 @@ fi
 target="$release"
 if [[ "$operation" == rollback ]]; then
     [[ "$previous" == "$release" && -f "$release/PREVIOUS" ]] || fail 'Rollback must name the current artifact release.'
+    # Old code against a migrated schema is not a safe automatic rollback.
+    [[ ! -e "$release/MIGRATED" ]] || fail 'This release ran migrations; restore its pre-migration snapshot (see MIGRATED) instead of a code-only rollback.'
     target="$(cat "$release/PREVIOUS")"
     [[ "$(dirname "$target")" == "$root/releases" && -d "$target" && ! -L "$target" ]] || fail 'Previous release is unavailable.'
 else
@@ -116,14 +120,30 @@ else
 fi
 boot "$target"
 # Laravel 13 returns 17 for pending migrations with this explicit option.
-# Never migrate automatically: schema work requires an owner-run maintenance window.
-(cd "$target" && php_command artisan migrate:status --pending=17 --no-interaction) || fail 'Pending migrations or migration-status failure; current was not changed.'
+# Migrations run only when the owner enabled AUTO_MIGRATE, and only inside the
+# maintenance window below, after a verified local and off-host snapshot.
+migrations_pending=no
+migration_status=0
+(cd "$target" && php_command artisan migrate:status --pending=17 --no-interaction) || migration_status=$?
+case "$migration_status" in
+    0) ;;
+    17)
+        [[ "$operation" == activate && "$auto_migrate" == 1 ]] || fail 'Pending migrations; current was not changed.'
+        migrations_pending=yes
+        ;;
+    *) fail 'Migration-status failure; current was not changed.' ;;
+esac
 [[ ! -e "$root/shared/storage/framework/down" ]] || fail 'Environment is already in maintenance; owner recovery is required.'
 
 service_state="$(service_action services-state)"
 [[ "$service_state" =~ ^[01]\ [01]$ ]] || fail 'Unexpected worker state.'
 read -r queue_active scheduler_active <<<"$service_state"
 maintenance=no
+reopened=no
+# unchanged | changed: whether the database may differ from the local snapshot.
+database_state=unchanged
+database="$root/shared/database/database.sqlite"
+local_snapshot="$root/shared/database/pre-migration-$release_id.sqlite"
 recover() {
     local result=$?
     trap - EXIT
@@ -131,7 +151,19 @@ recover() {
     trap '' TERM INT HUP
     if (( result != 0 )) && [[ "$maintenance" == yes ]]; then
         printf 'Activation failed; recovering the previous code release.\n' >&2
-        # No migrations were run, so recovery does not guess at database rollback.
+        if [[ "$database_state" == changed ]]; then
+            # Once workers restarted, the migrated schema may hold new writes:
+            # restoring would discard them, so hand over to the owner instead.
+            if [[ "$reopened" == yes ]] \
+                || ! service_action services-stop \
+                || ! sqlite3 "$database" ".restore '$local_snapshot'" \
+                || [[ "$(sqlite3 "$database" 'PRAGMA integrity_check;')" != ok ]]; then
+                (cd "$root/current" && php_command artisan down --retry=60 --no-interaction) || true
+                printf 'Migrated database was not restored; maintenance must remain on for owner intervention. Snapshot: %s\n' "$local_snapshot" >&2
+                exit "$result"
+            fi
+            printf 'Database restored from %s.\n' "$local_snapshot" >&2
+        fi
         if service_action services-stop \
             && { [[ "$(readlink -f "$root/current")" == "$previous" ]] || point_current "$previous"; } \
             && boot "$previous" \
@@ -154,11 +186,35 @@ fi
 maintenance=yes
 (cd "$previous" && php_command artisan down --retry=60 --no-interaction)
 service_action services-stop
+if [[ "$migrations_pending" == yes ]]; then
+    # Writers are stopped: the local copy is the exact pre-migration state.
+    sqlite3 "$database" ".backup '$local_snapshot'"
+    [[ "$(sqlite3 "$local_snapshot" 'PRAGMA integrity_check;')" == ok ]] || fail 'Local pre-migration snapshot failed integrity_check; nothing was migrated.'
+    snapshot_output="$(sudo -n "$services" snapshot "$environment")" || fail 'Off-host pre-migration snapshot failed; nothing was migrated.'
+    snapshot_id="$(grep -oE 'snapshot [0-9a-f]{8,} saved' <<<"$snapshot_output" | tail -n 1 | cut -d ' ' -f 2)"
+    [[ -n "$snapshot_id" ]] || fail 'Off-host snapshot ID missing; nothing was migrated.'
+    printf 'Pre-migration snapshot %s (local copy %s).\n' "$snapshot_id" "$local_snapshot"
+    database_state=changed
+    (cd "$target" && php_command artisan migrate --force --no-interaction)
+    (cd "$target" && php_command artisan migrate:status --pending=17 --no-interaction) || fail 'Migrations still pending after migrate.'
+    (set -o noclobber; printf 'restic %s\nlocal %s\n' "$snapshot_id" "$local_snapshot" >"$release/MIGRATED")
+fi
 point_current "$target"
 boot "$target"
 health
+# From here workers or users may write to the new schema.
+reopened=yes
 service_action services-start
 (cd "$target" && php_command artisan up --no-interaction)
 health
 maintenance=no
+if [[ "$migrations_pending" == yes ]]; then
+    # Keep the three newest local pre-migration copies; restic keeps 90 days.
+    shopt -s nullglob
+    local_snapshots=("$root"/shared/database/pre-migration-*.sqlite)
+    if (( ${#local_snapshots[@]} > 3 )); then
+        # shellcheck disable=SC2012 # Names are fixed: pre-migration-<release id>.sqlite.
+        ls -1t "${local_snapshots[@]}" | tail -n +4 | while IFS= read -r stale; do rm -f -- "$stale"; done
+    fi
+fi
 printf '%s succeeded: %s\n' "$operation" "$(basename "$target")"
