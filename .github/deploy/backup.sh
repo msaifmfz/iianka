@@ -37,8 +37,9 @@ for env in "${environments[@]}"; do
 done
 if [ "$deploy_lock_held" -eq 1 ]; then
 	# Called by the deploy launcher while activation holds the lock with workers stopped.
-	[ "$run_tag" = pre-migration ] && [ "${#environments[@]}" -eq 1 ] ||
+	if [ "$run_tag" != pre-migration ] || [ "${#environments[@]}" -ne 1 ]; then
 		fail '--deploy-lock-held requires --tag pre-migration and one --env'
+	fi
 	min_mem_mib=400
 fi
 
