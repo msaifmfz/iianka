@@ -6,6 +6,9 @@ property, pinned worker directories and access-control issues. This follow-up
 corrects repository code and instructions; installed helpers still need an
 owner update. Keep `DEPLOY_ARTIFACTS_READY` unset until host readiness is
 reviewed. Live deployment and staging business checks remain unverified.
+A second staging report found that `WorkingDirectory=…/current` fails with
+`200/CHDIR` under SELinux; the [worker startup contract](#worker-startup-contract)
+below replaces that unit layout and needs its own owner installation.
 Email and Slack notifications are unused, as confirmed by the owner.
 
 ## What changes
@@ -115,8 +118,9 @@ the latter requests a group kill that prevents shell recovery. See the
 and [termination behavior](https://www.freedesktop.org/software/systemd/man/257/systemd.kill.html#KillMode=).
 
 The memory boundary caps deployment processes; it **does not reserve RAM for
-production** or prove zero contention. Worker/scheduler units must run as `iianka:nginx` in that environment's current
-directory; the launcher verifies these properties before service operations. Actual load, cgroup behavior, disk,
+production** or prove zero contention. Worker/scheduler units must run as `iianka:nginx`
+through the [worker startup contract](#worker-startup-contract); the launcher
+verifies it before service operations. Actual load, cgroup behavior, disk,
 SELinux labels, FPM OPcache behavior and live deployment remain unverified.
 Fail closed until the owner confirms these conditions. Do not enable the old
 in-place workflow as an automatic fallback.
@@ -241,16 +245,9 @@ application, not the real CI artifact. Re-measure available memory after the
 interactive coding agent exits; an estimate is not a passing gate. Do not
 lower the gate just to force a deployment through.
 
-Worker units must use `WorkingDirectory=/var/www/iianka/staging/current` and
-their `ExecStart` commands must resolve that current release's artisan, not a
-pinned historical release. Inspect effective values and drop-ins first. Record
-the exact prior units, check `NeedDaemonReload` for unrelated pending edits,
-and apply only a reviewed staging correction (a narrowly scoped drop-in is
-preferable to broad text replacement). `systemctl daemon-reload` does not
-restart running workers; their new directory takes effect on the next start,
-including an automatic worker restart. Do not restart them during setup or
-modify production units. Roll back the exact edited file/drop-in and reload
-the daemon again. If unrelated pending edits exist, stop for owner review.
+Worker units follow the [worker startup contract](#worker-startup-contract);
+install it as described there before the updated launcher. Do not restart
+workers during setup or modify production units.
 
 Use `visudo` to grant only the fixed validating launcher, not a shell, arbitrary
 systemd-run, arbitrary systemctl or arbitrary restorecon. The launcher accepts
@@ -298,6 +295,160 @@ review protection, then set `DEPLOY_ARTIFACTS_READY=true` only after host
 readiness is established. `DEPLOY_PATH` is no longer used: the launcher fixes
 the reviewed per-environment root. No repository/environment settings were
 changed by this task.
+
+## Worker startup contract
+
+`WorkingDirectory=/var/www/iianka/<environment>/current` does not work on the
+SELinux-enforcing host. systemd changes into `WorkingDirectory` in its forked
+child **before** exec, while that child is still `init_t`. Policy denies
+`init_t` `read` on the `httpd_sys_content_t` `current` symlink, so every start
+failed with `200/CHDIR` (staging, 2026-11-03). Traversal and access as `iianka`
+succeed. After exec, `init_t` running a `bin_t` file transitions to
+`unconfined_service_t`, the domain the existing pinned workers run in. A
+pinned release directory works but never follows `current`, so a deployment
+or rollback leaves workers on old code. Using a shell does not fix this by
+itself: it only helps when the symlink is resolved **after** the exec
+transition.
+
+The permanent contract is:
+
+1. The unit's `WorkingDirectory` is the real environment root,
+   `/var/www/iianka/<environment>`, never `current` or a pinned release.
+2. `ExecStart` is the root-owned entrypoint
+   `/usr/local/sbin/iianka-worker-start` (default label `bin_t`), followed by
+   the environment, `queue:work` or `schedule:work`, and the existing
+   arguments unchanged. The unit keeps `User=iianka`, `Group=nginx`,
+   `Restart=always`, `RestartSec=5`, `KillSignal` and `TimeoutStopSec`.
+3. On every start, the entrypoint refuses root and any identity other than
+   `iianka:nginx`. It requires the environment root and `releases` to be real
+   directories, and `current` to be a symlink resolving to a direct child of
+   that environment's own `releases` that contains a real `artisan`. Missing,
+   broken, in-place, cross-environment and out-of-tree targets exit 78; PHP is
+   not started and `Restart=always` retries. It then enters the release by its
+   physical path, logs the selected release and its security context, and
+   `exec`s `/usr/bin/php artisan <arguments>`. PHP stays systemd's MainPID,
+   so stop signals reach it directly.
+4. Each start therefore runs whatever `current` names at that moment. That
+   includes activation, rollback and `queue:work --max-time=3600` restarts.
+   Running workers are never switched mid-process.
+5. The launcher refuses `services-state|stop|start` unless both units use
+   `iianka:nginx`, the environment-root `WorkingDirectory`, and exactly one
+   `ExecStart` that starts with the trusted entrypoint, the same environment
+   and the role's command. The entrypoint and `/`, `/usr`, `/usr/local`,
+   `/usr/local/sbin` must be real, root-owned and not group/other-writable.
+   A pinned or `current` `WorkingDirectory`, a direct `php` `ExecStart` or a
+   copied entrypoint is refused before any stop or start.
+
+The repository template examples in [server setup](../SERVER_SETUP.md#15-configure-always-running-queue-workers)
+follow this contract. On the prepared staging host, keep the recovered base
+units and add drop-ins.
+
+### Staging installation — commands for owner review
+
+Run from a reviewed checkout of this change, after interactive coding agents
+have exited. First record state and stop if anything unrelated is pending:
+
+```bash
+backup="/root/iianka-worker-entrypoint-$(date +%Y%m%d-%H%M%S)"
+sudo install -d -o root -g root -m 0700 "$backup"
+for unit in iianka-queue@staging iianka-scheduler@staging; do
+    systemctl cat "$unit" --no-pager | sudo tee "$backup/$unit.before" >/dev/null
+    systemctl show "$unit" -p NeedDaemonReload -p WorkingDirectory -p ExecStart -p MainPID -p NRestarts
+done
+readlink -f /var/www/iianka/staging/current
+sudo cp -a /usr/local/sbin/iianka-artifact-deploy "$backup/iianka-artifact-deploy.before"
+sha256sum /usr/local/sbin/iianka-artifact-deploy | sudo tee "$backup/launcher.sha256" >/dev/null
+test ! -e /usr/local/sbin/iianka-worker-start || exit 1
+```
+
+Install the entrypoint and prove the contract on this host with the bounded
+probe. The probe uses the launcher's memory gate (exit 75 means insufficient
+headroom: wait, do not lower the gate). It starts only uniquely named
+transient units against a synthetic scratch tree, never a real worker.
+
+```bash
+sudo install -o root -g root -m 0755 .github/deploy/worker-start.sh /usr/local/sbin/iianka-worker-start
+sudo restorecon -v /usr/local/sbin/iianka-worker-start
+ls -Z /usr/local/sbin/iianka-worker-start   # expect system_u:object_r:bin_t:s0
+sha256sum /usr/local/sbin/iianka-worker-start .github/deploy/worker-start.sh
+sudo bash .github/deploy/worker-probe.sh .github/deploy/worker-start.sh
+```
+
+Proceed only if the probe shows all of the following:
+
+- The control unit fails with `ExecMainStatus=200`.
+- `queue-a`, `queue-b` and `scheduler-rollback` exit 0 and print JSON with
+  releases `probe-a`, `probe-b` and `probe-a`, `uid`/`gid` of
+  `iianka`/`nginx`, the exact arguments, and a context of
+  `system_u:system_r:unconfined_service_t:s0`.
+- The entrypoint's own log line shows the same context.
+- `cross-environment` exits 78 without JSON.
+- The only new denial is the control's `lnk_file` read.
+
+Then add the staging drop-ins. These do not edit the base units or touch
+production.
+
+```bash
+for role in queue scheduler; do
+    case "$role" in
+        queue) command='queue:work --sleep=1 --tries=3 --timeout=120 --max-time=3600' ;;
+        scheduler) command='schedule:work' ;;
+    esac
+    sudo install -d -o root -g root -m 0755 "/etc/systemd/system/iianka-$role@staging.service.d"
+    printf '%s\n' '# Worker startup contract: enter current after exec, never via WorkingDirectory.' \
+        '[Service]' 'WorkingDirectory=/var/www/iianka/staging' 'ExecStart=' \
+        "ExecStart=/usr/local/sbin/iianka-worker-start staging $command" \
+        | sudo install -o root -g root -m 0644 /dev/stdin "/etc/systemd/system/iianka-$role@staging.service.d/20-worker-entrypoint.conf"
+done
+sudo systemctl daemon-reload
+for unit in iianka-queue@staging iianka-scheduler@staging; do
+    systemctl show "$unit" -p User -p Group -p WorkingDirectory -p ExecStart -p NeedDaemonReload
+done
+sudo install -o root -g root -m 0755 .github/deploy/launcher.sh /usr/local/sbin/iianka-artifact-deploy
+sudo restorecon -v /usr/local/sbin/iianka-artifact-deploy
+sudo /usr/local/sbin/iianka-artifact-deploy services-state staging   # expect "1 1"
+```
+
+`daemon-reload` does not restart running workers. The new contract takes
+effect at each unit's next start; for the queue that is at most
+`--max-time=3600` later. Restart a worker only in an owner-approved window.
+After that start, verify:
+
+```bash
+journalctl -u iianka-queue@staging -u iianka-scheduler@staging --since -2h --no-pager | grep iianka-worker-start
+for unit in iianka-queue@staging iianka-scheduler@staging; do
+    pid="$(systemctl show "$unit" -p MainPID --value)"
+    systemctl show "$unit" -p ActiveState -p SubState -p NRestarts
+    ps -o label=,user=,group=,args= -p "$pid"
+    sudo readlink "/proc/$pid/cwd"   # the release current names
+done
+sudo ausearch -m AVC -ts recent -i | grep -F 'name=current' || echo 'no current-symlink denials'
+```
+
+Keep `DEPLOY_ARTIFACTS_READY` unset until this and the other host-readiness
+checks pass. A separately reviewed equivalent is required for production.
+
+### Rollback
+
+Rollback returns to the pinned base units (the 2026-11-03 recovery state):
+workers keep running and restart into the pinned release.
+
+```bash
+backup=/root/iianka-worker-entrypoint-YYYYMMDD-HHMMSS   # the directory recorded above
+for role in queue scheduler; do
+    sudo mv "/etc/systemd/system/iianka-$role@staging.service.d/20-worker-entrypoint.conf" "$backup/$role-20-worker-entrypoint.conf"
+done
+sudo systemctl daemon-reload
+sudo install -o root -g root -m 0755 "$backup/iianka-artifact-deploy.before" /usr/local/sbin/iianka-artifact-deploy
+sudo restorecon -v /usr/local/sbin/iianka-artifact-deploy
+sha256sum /usr/local/sbin/iianka-artifact-deploy; sudo cat "$backup/launcher.sha256"
+systemctl show iianka-queue@staging iianka-scheduler@staging -p WorkingDirectory -p ExecStart
+# Optional, once no unit references it:
+sudo mv /usr/local/sbin/iianka-worker-start "$backup/"
+```
+
+Never restore the `10-artifact-current.conf` drop-ins; that layout is the
+known `200/CHDIR` failure.
 
 ## Release authorization and migration procedure
 
@@ -377,7 +528,13 @@ during synthetic activation, checking restoration of the previous pointer and
 maintenance state. No serving host or application service is involved. Local
 macOS skips these two systemd checks. A simulated child exit 137 alone is not
 an OOM drill, and the CI drill does not validate this host's aggregate slice
-or memory budget. The unpacked-artifact smoke uses actual production
+or memory budget. Worker entrypoint tests run a copy of `worker-start.sh`
+against synthetic release trees with stubbed `php`/`id`. They cover argument
+preservation, `exec`, release changes and rollback between starts, and
+rejection of missing, broken, in-place, cross-environment and out-of-tree
+targets, symlinked roots and non-worker identities. Launcher tests cover the
+startup contract and the trusted entrypoint. SELinux behaviour is proven only
+by the owner-run `worker-probe.sh` on the host. The unpacked-artifact smoke uses actual production
 dependencies and a throwaway database. Shell syntax, ShellCheck, PHP
 lint/static analysis, normal repository checks and CI apply.
 

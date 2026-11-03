@@ -522,6 +522,22 @@ If your AlmaLinux repositories do not provide those packages, use your preferred
 
 ## 15. Configure Always-Running Queue Workers
 
+Workers start through the root-owned entrypoint
+`/usr/local/sbin/iianka-worker-start`, which selects the release `current`
+names after systemd has executed it. Do not set `WorkingDirectory` to
+`current`: under SELinux, systemd changes directory in `init_t` before exec and
+is denied reading that symlink (`200/CHDIR`). Do not pin a release directory
+either; workers would never follow a deployment or rollback. See the
+[worker startup contract](docs/deploy-memory-proposal.md#worker-startup-contract).
+
+Install the entrypoint first:
+
+```bash
+sudo install -o root -g root -m 0755 .github/deploy/worker-start.sh /usr/local/sbin/iianka-worker-start
+sudo restorecon -v /usr/local/sbin/iianka-worker-start
+ls -Z /usr/local/sbin/iianka-worker-start   # expect bin_t
+```
+
 Create a systemd template unit at `/etc/systemd/system/iianka-queue@.service`:
 Replace %i with production/staging accordingly.
 
@@ -537,8 +553,8 @@ After=network.target
 Type=simple
 User=iianka
 Group=nginx
-WorkingDirectory=/var/www/iianka/%i/current
-ExecStart=/usr/bin/php artisan queue:work --sleep=1 --tries=3 --timeout=120 --max-time=3600
+WorkingDirectory=/var/www/iianka/%i
+ExecStart=/usr/local/sbin/iianka-worker-start %i queue:work --sleep=1 --tries=3 --timeout=120 --max-time=3600
 Restart=always
 RestartSec=5
 KillSignal=SIGTERM
@@ -585,8 +601,8 @@ After=network.target
 Type=simple
 User=iianka
 Group=nginx
-WorkingDirectory=/var/www/iianka/%i/current
-ExecStart=/usr/bin/php artisan schedule:work
+WorkingDirectory=/var/www/iianka/%i
+ExecStart=/usr/local/sbin/iianka-worker-start %i schedule:work
 Restart=always
 RestartSec=5
 KillSignal=SIGTERM

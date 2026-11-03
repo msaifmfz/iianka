@@ -9,13 +9,41 @@ operation="$1"
 environment="$2"
 [[ "$environment" =~ ^(staging|production)$ ]] || exit 1
 
+trusted_owner_and_mode() {
+    [[ ! -L "$1" && "$(stat -c %u "$1")" == 0 ]] || return 1
+    (( (8#$(stat -c %a "$1") & 8#022) == 0 ))
+}
+
 if [[ "$operation" =~ ^services-(stop|start|state)$ ]]; then
     [[ $# == 2 || ( "$operation" == services-start && $# == 4 ) ]] || exit 1
+    # Worker startup contract: systemd enters the real environment root (never the
+    # current symlink, which init_t may not read under SELinux) and execs the
+    # root-owned entrypoint; it selects and enters current after the exec.
+    worker_entrypoint=/usr/local/sbin/iianka-worker-start
+    for path in / /usr /usr/local /usr/local/sbin "$worker_entrypoint"; do
+        if [[ ! -e "$path" ]] || ! trusted_owner_and_mode "$path"; then
+            echo 'Worker entrypoint and its ancestors must be real, root-owned and not group/other-writable.' >&2
+            exit 1
+        fi
+    done
+    [[ -f "$worker_entrypoint" && -x "$worker_entrypoint" ]] || { echo 'Worker entrypoint is not an executable file.' >&2; exit 1; }
     for service in queue scheduler; do
         unit="iianka-$service@$environment"
+        case "$service" in
+            queue) command=queue:work ;;
+            scheduler) command=schedule:work ;;
+        esac
         [[ "$(systemctl show "$unit" -p User --value)" == iianka ]]
         [[ "$(systemctl show "$unit" -p Group --value)" == nginx ]]
-        [[ "$(systemctl show "$unit" -p WorkingDirectory --value)" == "/var/www/iianka/$environment/current" ]]
+        [[ "$(systemctl show "$unit" -p WorkingDirectory --value)" == "/var/www/iianka/$environment" ]] \
+            || { echo "$unit must use WorkingDirectory=/var/www/iianka/$environment." >&2; exit 1; }
+        # Exactly one ExecStart: the trusted entrypoint, this environment, this role.
+        exec_start="$(systemctl show "$unit" -p ExecStart --value)"
+        prefix="{ path=$worker_entrypoint ; argv[]=$worker_entrypoint $environment $command"
+        if [[ "$exec_start" != "$prefix "* || "$exec_start" == *"{ path="*"{ path="* ]]; then
+            echo "$unit must ExecStart=$worker_entrypoint $environment $command ..." >&2
+            exit 1
+        fi
     done
     case "$operation" in
         services-state)
@@ -44,10 +72,6 @@ revision="$4"
 checksum="$5"
 [[ "$revision" =~ ^[0-9a-f]{40}$ && "$release_id" =~ ^${revision}-[0-9]+-[0-9]+$ && "$checksum" =~ ^[0-9a-f]{64}$ ]] || exit 1
 
-trusted_owner_and_mode() {
-    [[ ! -L "$1" && "$(stat -c %u "$1")" == 0 ]] || return 1
-    (( (8#$(stat -c %a "$1") & 8#022) == 0 ))
-}
 for directory in / /etc /etc/iianka-artifact-deploy; do
     if [[ ! -d "$directory" ]] || ! trusted_owner_and_mode "$directory"; then
         echo 'Deploy configuration ancestors must be real, root-owned, non-writable directories.' >&2

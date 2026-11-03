@@ -18,6 +18,9 @@ REVISION = test_deployment.REVISION
 RELEASE_ID = test_deployment.RELEASE_ID
 CHECKSUM = "b" * 64
 SYSTEMD_TESTS = os.environ.get("IIANKA_TEST_SYSTEMD") == "1"
+INSTALLED_ENTRYPOINT = "/usr/local/sbin/iianka-worker-start"
+ENTRYPOINT_ANCESTORS = "for path in / /usr /usr/local /usr/local/sbin "
+QUEUE_ARGUMENTS = "queue:work --sleep=1 --tries=3 --timeout=120 --max-time=3600"
 
 
 class LauncherTests(unittest.TestCase):
@@ -47,6 +50,19 @@ class LauncherTests(unittest.TestCase):
         source = source.replace('"$EUID"', '"${TEST_EUID:?}"')
         source = source.replace("export PATH=", "export PATH=" + str(self.bin) + ":", 1)
         source = source.replace("/etc", str(self.root / "etc"))
+        # The trusted worker entrypoint and its ancestors move into the fixture too.
+        self.assertEqual(source.count(INSTALLED_ENTRYPOINT), 1)
+        self.assertEqual(source.count(ENTRYPOINT_ANCESTORS), 1)
+        self.sbin = self.root / "usr/local/sbin"
+        self.sbin.mkdir(parents=True)
+        for path in (self.root / "usr", self.root / "usr/local", self.sbin):
+            path.chmod(0o755)
+        self.entrypoint = self.sbin / "iianka-worker-start"
+        self.entrypoint.write_text("#!/bin/bash\nexit 0\n")
+        self.entrypoint.chmod(0o755)
+        source = source.replace(INSTALLED_ENTRYPOINT, str(self.entrypoint))
+        source = source.replace(ENTRYPOINT_ANCESTORS, "for path in / " + " ".join(str(self.root / p) for p in ("usr", "usr/local", "usr/local/sbin")) + " ")
+        self.environment["TEST_ENTRYPOINT"] = str(self.entrypoint)
         self.launcher = self.root / "launcher.sh"
         self.launcher.write_text(source)
         self.command("stat", '''
@@ -65,9 +81,17 @@ import json,os,sys
 args=sys.argv[1:]
 with open(os.environ['TEST_LOG'],'a') as out: out.write(json.dumps(['systemctl',*args])+'\\n')
 if args[0]=='show':
-    property=args[args.index('-p')+1]
+    unit=args[1]; property=args[args.index('-p')+1]
+    role='queue' if unit.startswith('iianka-queue@') else 'scheduler'
+    environment=unit.split('@',1)[-1]
+    entry=os.environ['TEST_ENTRYPOINT']
+    command={'queue':'queue:work --sleep=1 --tries=3 --timeout=120 --max-time=3600','scheduler':'schedule:work'}[role]
+    exec_start=('{ path='+entry+' ; argv[]='+entry+' '+environment+' '+command+
+                ' ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }')
     values={'MemoryMax':os.environ.get('TEST_SLICE_MAX','201326592'),'MemorySwapMax':os.environ.get('TEST_SLICE_SWAP','0'),
-            'User':'iianka','Group':'nginx','WorkingDirectory':os.environ.get('TEST_WORKING_DIRECTORY','/var/www/iianka/staging/current')}
+            'User':os.environ.get('TEST_USER','iianka'),'Group':os.environ.get('TEST_GROUP','nginx'),
+            'WorkingDirectory':os.environ.get('TEST_WORKING_DIRECTORY','/var/www/iianka/'+environment),
+            'ExecStart':os.environ.get('TEST_EXEC_START_'+role.upper(),exec_start).replace('ENTRY',entry)}
     print(values[property])
 elif args[0]=='is-active':
     sys.exit(0 if os.environ.get('TEST_ACTIVE','1')=='1' else 3)
@@ -196,13 +220,105 @@ with open(os.environ['TEST_LOG'],'a') as out: out.write(json.dumps(['systemd-run
                 finally:
                     self.environment.pop(key)
 
-    def test_pinned_worker_directory_refuses_service_actions(self):
-        self.environment["TEST_WORKING_DIRECTORY"] = "/var/www/iianka/staging/releases/old"
+    def assert_service_actions_refused(self):
         for operation in ("services-state", "services-stop", "services-start"):
             with self.subTest(operation=operation):
                 args = [operation, "staging"] + (["1", "1"] if operation == "services-start" else [])
-                self.assert_refused(self.run_launcher(arguments=args))
-        self.assertFalse(any(command[1] in ("start", "stop") for command in self.commands()))
+                result = self.run_launcher(arguments=args)
+                self.assertNotEqual(result.returncode, 0, result.stdout)
+                self.assertEqual(result.stdout, "")
+        self.assertFalse(any(command[1] in ("start", "stop", "is-active") for command in self.commands()))
+
+    def test_entrypoint_contract_allows_service_actions(self):
+        result = self.run_launcher(arguments=["services-state", "staging"])
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "1 1\n")
+        queried = {(command[2], command[4]) for command in self.commands() if command[1] == "show"}
+        for unit in ("iianka-queue@staging", "iianka-scheduler@staging"):
+            for prop in ("User", "Group", "WorkingDirectory", "ExecStart"):
+                self.assertIn((unit, prop), queried)
+
+    def test_pinned_or_current_symlink_working_directory_refuses_service_actions(self):
+        # current is the configuration SELinux refused (200/CHDIR); pinned never follows a release.
+        for directory in ("/var/www/iianka/staging/releases/old", "/var/www/iianka/staging/current", "/var/www/iianka/production", "/"):
+            with self.subTest(directory=directory):
+                self.environment["TEST_WORKING_DIRECTORY"] = directory
+                self.assert_service_actions_refused()
+
+    def test_exec_start_must_be_the_trusted_entrypoint_for_this_environment_and_role(self):
+        tail = " ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }"
+        cases = {
+            "direct php": "{ path=/usr/bin/php ; argv[]=/usr/bin/php artisan " + QUEUE_ARGUMENTS + tail,
+            "other environment": "{ path=ENTRY ; argv[]=ENTRY production " + QUEUE_ARGUMENTS + tail,
+            "scheduler role": "{ path=ENTRY ; argv[]=ENTRY staging schedule:work" + tail,
+            "other command": "{ path=ENTRY ; argv[]=ENTRY staging tinker" + tail,
+            "extended command": "{ path=ENTRY ; argv[]=ENTRY staging queue:workx" + tail,
+            "untrusted copy": "{ path=/tmp/iianka-worker-start ; argv[]=/tmp/iianka-worker-start staging " + QUEUE_ARGUMENTS + tail,
+            "second ExecStart": "{ path=ENTRY ; argv[]=ENTRY staging " + QUEUE_ARGUMENTS + tail + " { path=/usr/bin/php ; argv[]=/usr/bin/php -r 1" + tail,
+            "missing": "",
+        }
+        for name, exec_start in cases.items():
+            with self.subTest(case=name):
+                self.environment["TEST_EXEC_START_QUEUE"] = exec_start
+                try:
+                    self.assert_service_actions_refused()
+                finally:
+                    self.environment.pop("TEST_EXEC_START_QUEUE")
+
+    def test_worker_identity_must_remain_iianka_nginx(self):
+        for key, value in (("TEST_USER", "root"), ("TEST_USER", ""), ("TEST_GROUP", "root")):
+            with self.subTest(key=key, value=value):
+                self.environment[key] = value
+                try:
+                    self.assert_service_actions_refused()
+                finally:
+                    self.environment.pop(key)
+
+    def test_untrusted_or_replaced_entrypoint_refuses_service_actions(self):
+        for path in (self.entrypoint, self.sbin, self.sbin.parent, self.sbin.parent.parent):
+            for defect in ("owner", "group-write", "world-write"):
+                with self.subTest(path=str(path), defect=defect):
+                    original = path.stat().st_mode & 0o777
+                    try:
+                        if defect == "owner":
+                            self.environment["TEST_UNTRUSTED"] = str(path)
+                        else:
+                            path.chmod(original | (0o020 if defect == "group-write" else 0o002))
+                        self.assert_service_actions_refused()
+                    finally:
+                        path.chmod(original)
+                        self.environment.pop("TEST_UNTRUSTED", None)
+        moved = self.entrypoint.with_name("moved")
+        self.entrypoint.rename(moved)
+        try:
+            with self.subTest(defect="missing"):
+                self.assert_service_actions_refused()
+            with self.subTest(defect="symlink"):
+                self.entrypoint.symlink_to(moved)
+                self.assert_service_actions_refused()
+                self.entrypoint.unlink()
+            with self.subTest(defect="directory"):
+                self.entrypoint.mkdir()
+                self.assert_service_actions_refused()
+                self.entrypoint.rmdir()
+        finally:
+            moved.rename(self.entrypoint)
+        with self.subTest(defect="not executable"):
+            self.entrypoint.chmod(0o644)
+            self.assert_service_actions_refused()
+            self.entrypoint.chmod(0o755)
+
+    def test_installed_entrypoint_path_matches_the_helper_and_documentation(self):
+        helper = (TOOLS / "worker-start.sh").read_text()
+        self.assertIn("as " + INSTALLED_ENTRYPOINT, helper.splitlines()[1])
+        repository = TOOLS.parents[1]
+        for document in ("docs/deploy-memory-proposal.md", "SERVER_SETUP.md"):
+            with self.subTest(document=document):
+                text = (repository / document).read_text()
+                self.assertIn("ExecStart=" + INSTALLED_ENTRYPOINT, text)
+                self.assertNotIn("WorkingDirectory=/var/www/iianka/%i/current", text)
+                self.assertNotIn("WorkingDirectory=/var/www/iianka/staging/current\n", text)
 
     def test_services_restart_only_the_previously_active_staging_unit(self):
         result = self.run_launcher(arguments=["services-start", "staging", "1", "0"])
