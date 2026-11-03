@@ -21,6 +21,9 @@ SYSTEMD_TESTS = os.environ.get("IIANKA_TEST_SYSTEMD") == "1"
 INSTALLED_ENTRYPOINT = "/usr/local/sbin/iianka-worker-start"
 ENTRYPOINT_ANCESTORS = "for path in / /usr /usr/local /usr/local/sbin "
 QUEUE_ARGUMENTS = "queue:work --sleep=1 --tries=3 --timeout=120 --max-time=3600"
+INSTALLED_BACKUP = "/usr/local/sbin/iianka-backup"
+BACKUP_ANCESTORS = 'for path in "$backup_entrypoint" /usr/local/sbin /usr/local /usr /; do'
+INSTALLED_LOCK = "/var/www/iianka/.artifact-deploy.lock"
 
 
 class LauncherTests(unittest.TestCase):
@@ -63,6 +66,17 @@ class LauncherTests(unittest.TestCase):
         source = source.replace(INSTALLED_ENTRYPOINT, str(self.entrypoint))
         source = source.replace(ENTRYPOINT_ANCESTORS, "for path in / " + " ".join(str(self.root / p) for p in ("usr", "usr/local", "usr/local/sbin")) + " ")
         self.environment["TEST_ENTRYPOINT"] = str(self.entrypoint)
+        # The backup entrypoint, its ancestors and the shared deploy lock move too.
+        for installed in (INSTALLED_BACKUP, BACKUP_ANCESTORS, INSTALLED_LOCK):
+            self.assertEqual(source.count(installed), 1)
+        self.backup = self.sbin / "iianka-backup"
+        self.backup.write_text("#!/bin/bash\nexit 0\n")
+        self.backup.chmod(0o755)
+        source = source.replace(INSTALLED_BACKUP, str(self.backup))
+        source = source.replace(BACKUP_ANCESTORS, 'for path in "$backup_entrypoint" ' + " ".join(str(self.root / p) for p in ("usr/local/sbin", "usr/local", "usr")) + " /; do")
+        self.lock = self.root / ".artifact-deploy.lock"
+        self.lock.touch()
+        source = source.replace(INSTALLED_LOCK, str(self.lock))
         self.launcher = self.root / "launcher.sh"
         self.launcher.write_text(source)
         self.command("stat", '''
@@ -95,6 +109,12 @@ if args[0]=='show':
     print(values[property])
 elif args[0]=='is-active':
     sys.exit(0 if os.environ.get('TEST_ACTIVE','1')=='1' else 3)
+''')
+        if sys.platform != "linux":
+            self.command("flock", '''
+import fcntl,sys
+try: fcntl.flock(int(sys.argv[-1]),fcntl.LOCK_EX|fcntl.LOCK_NB)
+except BlockingIOError: sys.exit(1)
 ''')
         self.command("systemd-run", '''
 import json,os,sys
@@ -135,6 +155,51 @@ with open(os.environ['TEST_LOG'],'a') as out: out.write(json.dumps(['systemd-run
             self.assertIn(expected, args)
         self.assertFalse(any("MemoryOOMGroup" in arg for arg in args))
         self.assertEqual(args[-6:], ["/usr/local/libexec/iianka-deploy/host.sh", "prepare", "staging", RELEASE_ID, REVISION, CHECKSUM])
+
+    def test_auto_migrate_is_optional_literal_and_handed_to_the_host(self):
+        for value, expected in ((None, "0"), ("0", "0"), ("1", "1")):
+            with self.subTest(value=value):
+                self.config.write_text(self.settings + (f"AUTO_MIGRATE={value}\n" if value else ""))
+                result = self.run_launcher()
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("--setenv=IIANKA_DEPLOY_AUTO_MIGRATE=" + expected, self.commands()[-1])
+        for value in ("yes", "2", "1;true"):
+            with self.subTest(value=value):
+                self.log.unlink(missing_ok=True)
+                self.config.write_text(self.settings + f"AUTO_MIGRATE={value}\n")
+                self.assert_refused(self.run_launcher())
+
+    def test_snapshot_runs_only_while_a_deployment_holds_the_lock(self):
+        self.assert_refused(self.run_launcher(arguments=["snapshot", "staging"]))
+        import fcntl
+        with self.lock.open() as held:
+            fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+            result = self.run_launcher(arguments=["snapshot", "staging"])
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        args = self.commands()[-1]
+        self.assertEqual(args[0], "systemd-run")
+        self.assertIn("--property=MemoryMax=400M", args)
+        self.assertNotIn("--slice=iianka-deploy.slice", args)
+        self.assertEqual(args[-6:], [str(self.backup), "--tag", "pre-migration", "--env", "staging", "--deploy-lock-held"])
+
+    def test_snapshot_refuses_untrusted_backup_entrypoint_or_extra_arguments(self):
+        import fcntl
+        with self.lock.open() as held:
+            fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            self.assert_refused(self.run_launcher(arguments=["snapshot", "staging", "extra"]))
+            self.assert_refused(self.run_launcher(arguments=["snapshot", "other"]))
+            for path in (self.backup, self.sbin):
+                with self.subTest(path=path.name):
+                    original = path.stat().st_mode & 0o777
+                    path.chmod(original | 0o002)
+                    try:
+                        self.assert_refused(self.run_launcher(arguments=["snapshot", "staging"]))
+                    finally:
+                        path.chmod(original)
+            self.environment["TEST_UNTRUSTED"] = str(self.backup)
+            self.assert_refused(self.run_launcher(arguments=["snapshot", "staging"]))
 
     def test_nonroot_and_malformed_arguments_never_reach_systemd(self):
         self.environment["TEST_EUID"] = "1000"

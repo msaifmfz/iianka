@@ -3,6 +3,7 @@
 # backup.timer as /etc/systemd/system/iianka-backup.{service,timer}.
 # Encrypted restic backup of iianka app data and host config to Cloudflare R2.
 # Usage: iianka-backup [--tag scheduled|pre-migration|manual] [--env production|staging]
+#        iianka-backup --tag pre-migration --env ENV --deploy-lock-held  (launcher only)
 set -euo pipefail
 export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
@@ -12,12 +13,13 @@ readonly stage_root=/var/lib/iianka-backup/stage
 readonly status_dir=/var/log/iianka-backup
 readonly lock_file=/var/www/iianka/.artifact-deploy.lock
 readonly app_base=/var/www/iianka
-readonly min_mem_mib=600
 readonly lock_wait_seconds=1800
 
 environments=(production staging)
 run_tag=scheduled
 current_step=start
+deploy_lock_held=0
+min_mem_mib=600
 
 fail() { echo "iianka-backup: $*" >&2; exit 1; }
 
@@ -25,6 +27,7 @@ while [ $# -gt 0 ]; do
 	case "$1" in
 	--tag) run_tag="${2:-}"; shift 2 ;;
 	--env) environments=("${2:-}"); shift 2 ;;
+	--deploy-lock-held) deploy_lock_held=1; shift ;;
 	*) fail "unknown argument: $1" ;;
 	esac
 done
@@ -32,6 +35,13 @@ done
 for env in "${environments[@]}"; do
 	[[ "$env" =~ ^(production|staging)$ ]] || fail "invalid --env: $env"
 done
+if [ "$deploy_lock_held" -eq 1 ]; then
+	# Called by the deploy launcher while activation holds the lock with workers stopped.
+	if [ "$run_tag" != pre-migration ] || [ "${#environments[@]}" -ne 1 ]; then
+		fail '--deploy-lock-held requires --tag pre-migration and one --env'
+	fi
+	min_mem_mib=400
+fi
 
 write_status() {
 	install -d -m 0755 "$status_dir"
@@ -83,9 +93,11 @@ available_mib="$(awk '/^MemAvailable:/ { printf "%d", $2 / 1024 }' /proc/meminfo
 
 # Share the deploy lock (read-only fd, never create it) so backups and deploys never overlap.
 current_step=deploy-lock
-[ -f "$lock_file" ] || fail "missing deploy lock file $lock_file"
-exec 9<"$lock_file"
-flock -w "$lock_wait_seconds" 9 || fail 'deploy lock busy'
+if [ "$deploy_lock_held" -eq 0 ]; then
+	[ -f "$lock_file" ] || fail "missing deploy lock file $lock_file"
+	exec 9<"$lock_file"
+	flock -w "$lock_wait_seconds" 9 || fail 'deploy lock busy'
+fi
 
 restic unlock >/dev/null 2>&1 || true
 

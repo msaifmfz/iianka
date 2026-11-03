@@ -186,7 +186,8 @@ class HostStateTests(unittest.TestCase):
         for name in ("storage/framework", "storage/app/public", "database", "deploy-incoming", "deploy-artifacts"):
             (self.environment_root / "shared" / name).mkdir(parents=True, exist_ok=True)
         (self.environment_root / "shared/.env").touch()
-        (self.environment_root / "shared/database/database.sqlite").touch()
+        self.database = self.environment_root / "shared/database/database.sqlite"
+        self.database.write_text("original")
         self.payload = self.base / "payload"
         self.payload.mkdir()
         application(self.payload)
@@ -208,6 +209,10 @@ root=Path(os.environ['TEST_ROOT']); failures=Path(os.environ['TEST_FAILURES'])
 with open(os.environ['TEST_LOG'],'a') as out: out.write(json.dumps(['php',str(Path.cwd()),*args])+'\\n')
 if 'config:cache' in args and (failures/'cache').exists(): sys.exit(137)
 if 'migrate:status' in args and (failures/'migration').exists(): sys.exit(17)
+if 'migrate' in args:
+    database=root/'shared/database/database.sqlite'
+    if (failures/'migrate-fails').exists(): database.write_text('partial'); sys.exit(1)
+    database.write_text('migrated'); (failures/'migration').unlink(missing_ok=True)
 if any(arg.endswith('runtime.php') for arg in args) and (failures/'boot').exists() and root.joinpath('current').resolve().name.startswith('a'*40): sys.exit(1)
 if any(arg.endswith('runtime.php') for arg in args) and (failures/'oom').exists() and root.joinpath('current').resolve().name.startswith('a'*40):
     (failures/'oom').unlink()
@@ -224,16 +229,31 @@ if 'up' in args: root.joinpath('shared/storage/framework/down').unlink(missing_o
         self.command("sudo", '''
 import json,os,sys
 from pathlib import Path
-action=sys.argv[3]; marker=Path(os.environ['TEST_FAILURES'])/'services'
-with open(os.environ['TEST_LOG'],'a') as out: out.write(json.dumps(['services' if action.startswith('services-') else 'labels',action,*sys.argv[5:],sys.argv[4]])+'\\n')
+action=sys.argv[3]; failures=Path(os.environ['TEST_FAILURES']); marker=failures/'services'
+kind='services' if action.startswith('services-') else 'snapshot' if action=='snapshot' else 'labels'
+with open(os.environ['TEST_LOG'],'a') as out: out.write(json.dumps([kind,action,*sys.argv[5:],sys.argv[4]])+'\\n')
 if action=='services-state': print(os.environ.get('TEST_SERVICE_STATE','1 1'))
+if action=='snapshot':
+    if (failures/'snapshot').exists(): sys.exit(1)
+    print('Added to the repository: 1 KiB\\nsnapshot 0123abcd saved')
 if action=='services-start' and marker.exists(): marker.unlink(); sys.exit(1)
 ''')
         self.command("curl", '''
 import os,sys
 from pathlib import Path
-marker=Path(os.environ['TEST_FAILURES'])/'health'
+failures=Path(os.environ['TEST_FAILURES']); marker=failures/'health'
 if marker.exists(): marker.unlink(); sys.exit(22)
+reopened=not Path(os.environ['TEST_ROOT'],'shared/storage/framework/down').exists()
+if reopened and (failures/'health-after-up').exists(): (failures/'health-after-up').unlink(); sys.exit(22)
+''')
+        self.command("sqlite3", '''
+import json,os,shutil,sys
+from pathlib import Path
+database,statement=sys.argv[1],sys.argv[2]
+with open(os.environ['TEST_LOG'],'a') as out: out.write(json.dumps(['sqlite3',database,statement])+'\\n')
+if statement.startswith('.backup '): shutil.copyfile(database,statement.split("'")[1])
+elif statement.startswith('.restore '): shutil.copyfile(statement.split("'")[1],database)
+elif 'integrity_check' in statement: print('bad' if (Path(os.environ['TEST_FAILURES'])/'integrity').exists() else 'ok')
 ''')
         # Use real GNU primitives in CI. macOS adapters exercise the same transitions locally.
         if sys.platform != "linux":
@@ -298,6 +318,85 @@ except BlockingIOError: sys.exit(1)
         self.assertEqual(self.current.resolve(), self.previous)
         self.assertFalse((self.environment_root / "shared/storage/framework/down").exists())
         self.assertFalse(any(command[0] == "services" for command in self.commands()))
+
+    def auto_migrate(self, *failures):
+        self.prepare()
+        self.environment["IIANKA_DEPLOY_AUTO_MIGRATE"] = "1"
+        for failure in ("migration", *failures):
+            (self.failures / failure).touch()
+        return self.run_host("activate")
+
+    def local_snapshot(self):
+        return self.environment_root / "shared/database" / ("pre-migration-" + RELEASE_ID + ".sqlite")
+
+    def test_auto_migration_snapshots_inside_maintenance_before_migrating(self):
+        result = self.auto_migrate()
+
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        self.assertEqual(self.current.resolve(), self.release)
+        self.assertEqual(self.database.read_text(), "migrated")
+        self.assertEqual(self.local_snapshot().read_text(), "original")
+        self.assertIn("restic 0123abcd", (self.release / "MIGRATED").read_text())
+        self.assertFalse((self.environment_root / "shared/storage/framework/down").exists())
+        def step(command):
+            if command[0] == "php" and "artisan" in command:
+                return "artisan " + command[command.index("artisan") + 1]
+            return command[1] if command[0] in ("services", "snapshot") else command[0]
+        names = [step(command) for command in self.commands()]
+        order = [names.index(name) for name in ("artisan down", "services-stop", "sqlite3", "snapshot", "artisan migrate", "services-start", "artisan up")]
+        self.assertEqual(order, sorted(order))
+        self.assertIn(["snapshot", "snapshot", "staging"], self.commands())
+
+    def test_failed_migration_restores_database_and_previous_release(self):
+        result = self.auto_migrate("migrate-fails")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.database.read_text(), "original")
+        self.assertEqual(self.current.resolve(), self.previous)
+        self.assertFalse((self.environment_root / "shared/storage/framework/down").exists())
+        self.assertIn(b"Database restored", result.stderr)
+        self.assertIn(b"Previous release restored", result.stderr)
+
+    def test_failure_after_migration_before_reopening_restores_database(self):
+        result = self.auto_migrate("boot")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.database.read_text(), "original")
+        self.assertEqual(self.current.resolve(), self.previous)
+        self.assertIn(b"Previous release restored", result.stderr)
+
+    def test_failed_snapshot_never_migrates(self):
+        for failure in ("snapshot", "integrity"):
+            with self.subTest(failure=failure):
+                fixture = HostStateTests()
+                fixture.setUp()
+                try:
+                    result = fixture.auto_migrate(failure)
+
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(fixture.database.read_text(), "original")
+                    self.assertEqual(fixture.current.resolve(), fixture.previous)
+                    self.assertFalse(any(command[0] == "php" and "migrate" in command for command in fixture.commands()))
+                    self.assertFalse((fixture.environment_root / "shared/storage/framework/down").exists())
+                finally:
+                    fixture.doCleanups()
+
+    def test_failure_after_reopening_keeps_migrated_data_in_maintenance(self):
+        result = self.auto_migrate("health-after-up")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.database.read_text(), "migrated")
+        self.assertTrue((self.environment_root / "shared/storage/framework/down").exists())
+        self.assertIn(b"owner intervention", result.stderr)
+
+    def test_migrated_release_refuses_code_only_rollback(self):
+        self.assertEqual(self.auto_migrate().returncode, 0)
+
+        result = self.run_host("rollback")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.current.resolve(), self.release)
+        self.assertIn(b"pre-migration snapshot", result.stderr)
 
     def test_successful_activation_can_be_rolled_back(self):
         self.prepare()

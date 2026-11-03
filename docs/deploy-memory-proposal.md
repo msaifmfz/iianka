@@ -92,8 +92,9 @@ currently serving release until a separately authorized deployment.
 10. Activation uses the existing owner-published release and GitHub environment
     authorization, with one-time owner-completed host readiness. It rechecks
     boot, verifies the expected local SQLite path, and uses Laravel 13's `migrate:status --pending=17` to reject pending
-    migrations **before** maintenance or service changes. No migration or
-    database rollback is automated.
+    migrations **before** maintenance or service changes, unless the owner set
+    `AUTO_MIGRATE=1` for that environment (see
+    [automatic migrations](#automatic-migrations-opt-in)).
 11. Activation records the previous release, enters maintenance, stops only the
     selected environment's queue/scheduler, records their active state, atomically renames `current`, checks
     health, starts only previously active services and exits maintenance. Shared PHP-FPM/Nginx
@@ -260,6 +261,7 @@ validates the argument vector and matching release/revision. Review with
 ```sudoers
 iianka ALL=(root) NOPASSWD: /usr/local/sbin/iianka-artifact-deploy ^(prepare|activate|rollback|labels) staging [0-9a-f]{40}-[0-9]+-[0-9]+ [0-9a-f]{40} [0-9a-f]{64}$
 iianka ALL=(root) NOPASSWD: /usr/local/sbin/iianka-artifact-deploy ^services-(state|stop) staging$
+iianka ALL=(root) NOPASSWD: /usr/local/sbin/iianka-artifact-deploy ^snapshot staging$
 iianka ALL=(root) NOPASSWD: /usr/local/sbin/iianka-artifact-deploy ^services-start staging [01] [01]$
 ```
 
@@ -478,8 +480,54 @@ plan. No generic database rollback or schema compatibility guess is provided.
 The no-pending-migration automatic path intentionally refuses an already
 maintenance-mode environment.
 
-Example owner-only migration invocation, after the snapshot/drain/maintenance
-steps and with the exact prepared release path reviewed:
+### Automatic migrations (opt-in)
+
+With `AUTO_MIGRATE=1` in `/etc/iianka-artifact-deploy/<env>.conf`, publishing a
+release is the whole procedure: activation with pending migrations proceeds
+instead of refusing. Default (key absent or `0`) keeps the refusal above.
+
+Inside the existing maintenance window, after `artisan down` and stopping that
+environment's queue/scheduler:
+
+1. `sqlite3 .backup` to `shared/database/pre-migration-<release id>.sqlite`;
+   `PRAGMA integrity_check` must be `ok`.
+2. `sudo -n iianka-artifact-deploy snapshot <env>`: the launcher refuses unless
+   the shared deploy lock is held, then runs `/usr/local/sbin/iianka-backup
+   --tag pre-migration --env <env> --deploy-lock-held` in its own transient unit
+   (`MemoryMax=400M`, outside the 192 MiB deploy slice). The restic snapshot ID
+   must be reported.
+3. `artisan migrate --force` from the prepared release; `migrate:status` must
+   then report nothing pending.
+4. `MIGRATED` in the release records the restic snapshot ID and local copy.
+5. The normal switch, boot, health, worker start, `artisan up`, health.
+
+Any failure in steps 1–2 changes nothing: previous code is restored as before.
+A failure after migrating but before workers restart restores the database from
+the local copy, then restores previous code. A failure after workers restart
+keeps maintenance on without restoring, because new writes may exist; recover
+with the operations runbook using the snapshot named in the error. A release
+that ran migrations refuses `rollback`; restore its snapshot instead. The three
+newest local copies are kept; restic keeps `pre-migration` snapshots 90 days.
+
+Still review destructive or slow migrations and rollback compatibility before
+publishing. Enable per environment, staging first. Host prerequisites: the
+backup job from [operations](operations.md#backups) is installed and passing,
+the `snapshot` sudoers rule above, and the updated launcher, `host.sh` and
+`backup.sh`:
+
+```bash
+sudo install -o root -g root -m 0755 .github/deploy/launcher.sh /usr/local/sbin/iianka-artifact-deploy
+sudo install -o root -g root -m 0755 .github/deploy/host.sh /usr/local/libexec/iianka-deploy/host.sh
+sudo install -o root -g root -m 0755 .github/deploy/backup.sh /usr/local/sbin/iianka-backup
+sudo restorecon -v /usr/local/sbin/iianka-artifact-deploy /usr/local/libexec/iianka-deploy/host.sh /usr/local/sbin/iianka-backup
+echo 'AUTO_MIGRATE=1' | sudo tee -a /etc/iianka-artifact-deploy/staging.conf >/dev/null
+```
+
+### Manual migrations
+
+Without `AUTO_MIGRATE=1`, or for a migration that needs a custom cutover plan,
+use the owner-only invocation below after the snapshot/drain/maintenance steps
+and with the exact prepared release path reviewed:
 
 ```bash
 sudo systemd-run --wait --pipe --collect --uid=iianka --gid=nginx \

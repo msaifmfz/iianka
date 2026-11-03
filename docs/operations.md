@@ -123,7 +123,7 @@ Then:
 1. Review and commit the changelog before tagging.
 2. Push the release-candidate tag and publish it as a prerelease.
 3. Verify staging business flows, file access, logs, queue, and `/up`.
-4. If the release contains migrations, take a [pre-migration snapshot](#pre-migration-snapshot).
+4. If the release contains migrations and `AUTO_MIGRATE` is off, take a [pre-migration snapshot](#pre-migration-snapshot).
 5. Point the final tag at the tested commit and publish a final release.
 6. Verify production health and recent audit/application logs.
 
@@ -231,7 +231,12 @@ systemctl list-timers iianka-backup.timer
 
 ### Pre-migration snapshot
 
-Required before any release that contains migrations, before activating it:
+Automatic when the environment's deploy config sets `AUTO_MIGRATE=1`: activation takes a local
+and off-host `pre-migration` snapshot inside its maintenance window before migrating, and records
+the snapshot ID in the release's `MIGRATED` file (see
+[automatic migrations](deploy-memory-proposal.md#automatic-migrations-opt-in)).
+
+Otherwise required before any release that contains migrations, before activating it:
 
 ```bash
 sudo /usr/local/sbin/iianka-backup --tag pre-migration --env production

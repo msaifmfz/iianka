@@ -66,6 +66,31 @@ if [[ "$operation" =~ ^services-(stop|start|state)$ ]]; then
             ;;
     esac
 fi
+if [[ "$operation" == snapshot ]]; then
+    [[ $# == 2 ]] || exit 1
+    backup_entrypoint=/usr/local/sbin/iianka-backup
+    for path in "$backup_entrypoint" /usr/local/sbin /usr/local /usr /; do
+        if [[ ! -e "$path" ]] || ! trusted_owner_and_mode "$path"; then
+            echo 'Backup entrypoint and its ancestors must be real, root-owned and not group/other-writable.' >&2
+            exit 1
+        fi
+    done
+    [[ -f "$backup_entrypoint" && -x "$backup_entrypoint" ]] || { echo 'Backup entrypoint is not an executable file.' >&2; exit 1; }
+    # Pre-migration snapshots belong to a running activation: refuse unless the
+    # shared deploy lock is currently held. The backup then skips that lock.
+    exec 8<"/var/www/iianka/.artifact-deploy.lock"
+    if flock -n 8; then
+        echo 'Snapshots run only inside an active deployment.' >&2
+        exit 1
+    fi
+    exec 8<&-
+    # Own unit and limits: restic does not fit inside the deploy slice.
+    exec systemd-run --quiet --wait --pipe --collect --service-type=exec \
+        --property=MemoryHigh=250M --property=MemoryMax=400M --property=MemorySwapMax=0 \
+        --property=RuntimeMaxSec=900 --nice=10 --property=IOSchedulingClass=idle \
+        --setenv=GOGC=50 \
+        "$backup_entrypoint" --tag pre-migration --env "$environment" --deploy-lock-held
+fi
 [[ $# == 5 && "$operation" =~ ^(prepare|activate|rollback|labels)$ ]] || exit 1
 release_id="$3"
 revision="$4"
@@ -84,11 +109,11 @@ if [[ ! -f "$configuration" ]] || ! trusted_owner_and_mode "$configuration"; the
     exit 1
 fi
 # Treat readiness settings as data, never shell code. Do not inherit missing keys.
-unset MEMORY_MAX_BYTES MIN_AVAILABLE_BYTES MIN_FREE_DISK_BYTES HEALTH_URL
+unset MEMORY_MAX_BYTES MIN_AVAILABLE_BYTES MIN_FREE_DISK_BYTES HEALTH_URL AUTO_MIGRATE
 seen_keys=' '
 while IFS= read -r setting || [[ -n "$setting" ]]; do
     [[ "$setting" =~ ^[[:space:]]*(#.*)?$ ]] && continue
-    [[ "$setting" =~ ^(MEMORY_MAX_BYTES|MIN_AVAILABLE_BYTES|MIN_FREE_DISK_BYTES|HEALTH_URL)=(.+)$ ]] || {
+    [[ "$setting" =~ ^(MEMORY_MAX_BYTES|MIN_AVAILABLE_BYTES|MIN_FREE_DISK_BYTES|HEALTH_URL|AUTO_MIGRATE)=(.+)$ ]] || {
         echo 'Readiness configuration requires literal KEY=value settings.' >&2
         exit 1
     }
@@ -105,6 +130,9 @@ for number in "$MEMORY_MAX_BYTES" "$MIN_AVAILABLE_BYTES" "$MIN_FREE_DISK_BYTES";
     [[ "$number" =~ ^[1-9][0-9]{0,11}$ ]] || exit 1
 done
 [[ "$HEALTH_URL" =~ ^https://[a-zA-Z0-9.-]+/up$ ]] || exit 1
+# Optional: 1 lets activation snapshot and migrate inside its maintenance window.
+AUTO_MIGRATE="${AUTO_MIGRATE:-0}"
+[[ "$AUTO_MIGRATE" =~ ^[01]$ ]] || { echo 'AUTO_MIGRATE must be 0 or 1.' >&2; exit 1; }
 (( MEMORY_MAX_BYTES >= 67108864 && MEMORY_MAX_BYTES <= 1073741824 )) || exit 1
 (( MIN_AVAILABLE_BYTES >= MEMORY_MAX_BYTES && MIN_FREE_DISK_BYTES >= 2147483648 )) || exit 1
 available="$(awk '/^MemAvailable:/ { printf "%.0f", $2 * 1024 }' /proc/meminfo)"
@@ -135,4 +163,5 @@ exec systemd-run --quiet --wait --pipe --collect --service-type=exec \
     --setenv=IIANKA_DEPLOY_LAUNCHER=/usr/local/sbin/iianka-artifact-deploy \
     --setenv=IIANKA_DEPLOY_HEALTH_URL="$HEALTH_URL" \
     --setenv=IIANKA_DEPLOY_MIN_FREE_BYTES="$MIN_FREE_DISK_BYTES" \
+    --setenv=IIANKA_DEPLOY_AUTO_MIGRATE="$AUTO_MIGRATE" \
     /usr/local/libexec/iianka-deploy/host.sh "$operation" "$environment" "$release_id" "$revision" "$checksum"
