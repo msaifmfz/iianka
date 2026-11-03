@@ -272,6 +272,15 @@ leave deployment disabled and present the access transition for owner approval.
 Do not silently restore a broad grant as an automated fallback. A separately
 reviewed production rule is required before production deployment is enabled.
 
+Status (2026-11-03, owner-approved): the broad `iianka ALL=(ALL) NOPASSWD: ALL`
+file `/etc/sudoers.d/iianka` was removed after confirming `alma` keeps
+independent sudo and no production or backup automation runs `sudo` as
+iianka (backups run as root from systemd). Rollback copy:
+`/root/sudoers-removed/iianka.20261103`. Production `.env` was changed from
+0644 to 0640 iianka:iianka (FPM and workers run as iianka). Only the staging
+rules above exist, so production artifact deployment also needs its own
+reviewed rule.
+
 Review `.env` metadata only. Staging's file must not be world-readable; choose
 ownership/group access from the actual FPM and worker identities, retain their
 read access, and record the previous metadata for rollback. Do not print or

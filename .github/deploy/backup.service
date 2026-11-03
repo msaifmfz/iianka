@@ -1,0 +1,16 @@
+[Unit]
+Description=iianka encrypted backup to Cloudflare R2
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/iianka-backup
+Environment=GOGC=50
+Nice=10
+IOSchedulingClass=idle
+MemoryHigh=250M
+MemoryMax=400M
+MemorySwapMax=0
+TimeoutStartSec=2h
+PrivateTmp=yes

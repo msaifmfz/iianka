@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily iianka backup to Cloudflare R2
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+RandomizedDelaySec=10m
+Persistent=true
+
+[Install]
+WantedBy=timers.target
