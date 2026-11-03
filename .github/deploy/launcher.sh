@@ -44,15 +44,35 @@ revision="$4"
 checksum="$5"
 [[ "$revision" =~ ^[0-9a-f]{40}$ && "$release_id" =~ ^${revision}-[0-9]+-[0-9]+$ && "$checksum" =~ ^[0-9a-f]{64}$ ]] || exit 1
 
-trusted_file() {
-    [[ -f "$1" && ! -L "$1" && "$(stat -c %u "$1")" == 0 ]] || return 1
+trusted_owner_and_mode() {
+    [[ ! -L "$1" && "$(stat -c %u "$1")" == 0 ]] || return 1
     (( (8#$(stat -c %a "$1") & 8#022) == 0 ))
 }
-configuration="/etc/iianka/artifact-deploy/$environment.conf"
-trusted_file "$configuration" || { echo 'Owner-reviewed host readiness configuration missing.' >&2; exit 1; }
-# This file is root-owned, non-writable by the deploy account, and contains no secrets.
-# shellcheck source=/dev/null
-source "$configuration"
+for directory in / /etc /etc/iianka-artifact-deploy; do
+    if [[ ! -d "$directory" ]] || ! trusted_owner_and_mode "$directory"; then
+        echo 'Deploy configuration ancestors must be real, root-owned, non-writable directories.' >&2
+        exit 1
+    fi
+done
+configuration="/etc/iianka-artifact-deploy/$environment.conf"
+if [[ ! -f "$configuration" ]] || ! trusted_owner_and_mode "$configuration"; then
+    echo 'Owner-reviewed host readiness configuration missing or unsafe.' >&2
+    exit 1
+fi
+# Treat readiness settings as data, never shell code. Do not inherit missing keys.
+unset MEMORY_MAX_BYTES MIN_AVAILABLE_BYTES MIN_FREE_DISK_BYTES HEALTH_URL
+seen_keys=' '
+while IFS= read -r setting || [[ -n "$setting" ]]; do
+    [[ "$setting" =~ ^[[:space:]]*(#.*)?$ ]] && continue
+    [[ "$setting" =~ ^(MEMORY_MAX_BYTES|MIN_AVAILABLE_BYTES|MIN_FREE_DISK_BYTES|HEALTH_URL)=(.+)$ ]] || {
+        echo 'Readiness configuration requires literal KEY=value settings.' >&2
+        exit 1
+    }
+    key="${BASH_REMATCH[1]}" value="${BASH_REMATCH[2]}"
+    [[ "$seen_keys" != *" $key "* ]] || { echo 'Duplicate readiness setting.' >&2; exit 1; }
+    seen_keys+="$key "
+    printf -v "$key" '%s' "$value"
+done < "$configuration"
 : "${MEMORY_MAX_BYTES:?Owner must choose a memory ceiling}"
 : "${MIN_AVAILABLE_BYTES:?Owner must choose free memory headroom}"
 : "${MIN_FREE_DISK_BYTES:?Owner must choose a disk floor}"
@@ -84,7 +104,7 @@ fi
 exec systemd-run --quiet --wait --pipe --collect --service-type=exec \
     --uid=iianka --gid=nginx --slice=iianka-deploy.slice \
     --property=MemoryMax="$MEMORY_MAX_BYTES" \
-    --property=MemorySwapMax=0 --property=MemoryOOMGroup=yes --property=OOMPolicy=stop \
+    --property=MemorySwapMax=0 --property=OOMPolicy=stop --property=KillMode=control-group \
     --property=RuntimeMaxSec=900 --property=TimeoutStopSec=30 \
     --setenv=PATH=/usr/sbin:/usr/bin:/sbin:/bin \
     --setenv=IIANKA_DEPLOY_BASE=/var/www/iianka \

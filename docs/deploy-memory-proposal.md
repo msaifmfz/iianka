@@ -1,9 +1,12 @@
 # Artifact deployment after the shared-host memory failure
 
-Status: direction approved by the owner on 2026-11-01; repository implementation
-in draft PR #102. Staging verification is deliberately deferred until the work
-is finished. No host preparation, deployment, release or merge was performed.
-The owner also confirmed that email and Slack notifications are unused.
+Status: artifact deployment and SSR changes merged in PRs #102 and #103.
+The owner's 2026-11-03 staging setup report found an unsupported systemd
+property, pinned worker directories and access-control issues. This follow-up
+corrects repository code and instructions; installed helpers still need an
+owner update. Keep `DEPLOY_ARTIFACTS_READY` unset until host readiness is
+reviewed. Live deployment and staging business checks remain unverified.
+Email and Slack notifications are unused, as confirmed by the owner.
 
 ## What changes
 
@@ -19,10 +22,9 @@ The new workflow builds in CI and ships a complete release: application code,
 and file hashes. The host runs **no npm, Composer installation, Vite build or
 Wayfinder generation**. No application dependency versions change.
 
-The separate SSR PR #103 disables SSR in Laravel and Vite. This workflow builds
-the client only and excludes SSR bundles from the artifact. Both approved PRs
-must be included before a release. If their workflow edits overlap during
-landing, preserve the artifact workflow and its client-only build.
+PR #103 disables SSR in Laravel and Vite. This workflow builds the client only
+and excludes SSR bundles from the artifact. Merged changes do not alter the
+currently serving release until a separately authorized deployment.
 
 | Alternative | Assessment |
 | --- | --- |
@@ -93,13 +95,24 @@ landing, preserve the artifact workflow and its client-only build.
     selected environment's queue/scheduler, records their active state, atomically renames `current`, checks
     health, starts only previously active services and exits maintenance. Shared PHP-FPM/Nginx
     are never restarted. Catchable activation failures restore previous code;
-    failed recovery leaves maintenance on and the job failed.
+    failed recovery leaves maintenance on and the job failed. TERM, INT and HUP
+    exit nonzero through the recovery handler. Recovery restores the actual
+    previous pointer even if a signal arrives immediately after atomic rename.
 
 A cgroup kill, host crash or power loss may prevent shell cleanup. Current is
 always either the old or a fully prepared release; it is never an extracted
 half-release. Maintenance/services may still need owner recovery. The explicit
 rollback below uses the recorded previous target. Database compatibility and
 restorable backups remain prerequisites, not consequences of a symlink rename.
+
+The launcher uses `OOMPolicy=stop` and `KillMode=control-group`. An OOM stop can
+signal the shell and its children, allowing a surviving shell to attempt
+cleanup. It cannot promise recovery if the shell itself is killed or the stop
+deadline expires. Do not add `MemoryOOMGroup` (not an accepted systemd-run
+property on the reported systemd 257 host) or switch to `OOMPolicy=kill`:
+the latter requests a group kill that prevents shell recovery. See the
+[systemd 257 OOM policy](https://www.freedesktop.org/software/systemd/man/257/systemd.service.html#OOMPolicy=)
+and [termination behavior](https://www.freedesktop.org/software/systemd/man/257/systemd.kill.html#KillMode=).
 
 The memory boundary caps deployment processes; it **does not reserve RAM for
 production** or prove zero contention. Worker/scheduler units must run as `iianka:nginx` in that environment's current
@@ -130,7 +143,7 @@ An Actions artifact or a second file on the same server is insufficient disaster
 recovery. Release bundles contain no runtime data and are not database/files
 backups. Data backup retention and restore drills remain owner-managed.
 
-## Owner host preparation — review only, not executed
+## Owner host preparation — commands for owner review
 
 Use a reviewed checkout of this PR. First confirm the guide's layout is real:
 `/var/www/iianka/<environment>/current` must be a symlink into that environment's
@@ -146,6 +159,26 @@ systemd with cgroup v2, and SELinux restorecon/semanage. No Node or Composer is
 needed for normal deployment. Verify production PHP/extensions and FPM OPcache
 behavior against the package on an isolated copy before enabling activation.
 
+For an already prepared staging host, do not replay every installation command.
+Compare installed files, retain a root-only copy of replaced helpers and record
+ownership/modes before changing them. Update only the reviewed differences.
+The shared helper and slice must not be overwritten during another deployment.
+Do not prepare production as a side effect of staging setup.
+
+All configuration ancestors (`/`, `/etc`, and `/etc/iianka-artifact-deploy`)
+must be real, root-owned directories with no
+group/other write permission. A root-owned config file inside an app-owned
+parent is insufficient. The follow-up moves readiness configuration out of
+the reported app-owned `/etc/iianka` tree so backup/restic access does not need
+to change. Do not chown that existing tree or move its other files. On the
+prepared host, write the four reviewed non-secret values into
+`/etc/iianka-artifact-deploy/staging.conf` before installing the new launcher;
+the old `/etc/iianka/artifact-deploy/staging.conf` is no longer used, and there
+is no legacy fallback. Record the old/new helper and config state for rollback.
+The launcher refuses an unsafe ancestor. The four readiness entries are
+literal, unquoted `KEY=value` data: no exports, substitutions, extra keys or
+duplicate keys. Missing settings cannot be inherited from a shell environment.
+
 Install the fixed helpers; the CI account must never install or overwrite them:
 
 ```bash
@@ -156,12 +189,10 @@ sudo install -o root -g root -m 0644 .github/deploy/artifact.py /usr/local/libex
 sudo install -o root -g root -m 0644 .github/deploy/runtime.php /usr/local/libexec/iianka-deploy/runtime.php
 sudo restorecon -Rv /usr/local/libexec/iianka-deploy /usr/local/sbin/iianka-artifact-deploy
 
-sudo install -d -o root -g root -m 0755 /etc/iianka/artifact-deploy
-for environment in staging production; do
-    root="/var/www/iianka/$environment"
-    test -L "$root/current" || exit 1
-    sudo install -d -o iianka -g nginx -m 0750 "$root/shared/deploy-incoming" "$root/shared/deploy-artifacts"
-done
+sudo install -d -o root -g root -m 0755 /etc/iianka-artifact-deploy
+root=/var/www/iianka/staging
+test -L "$root/current" || exit 1
+sudo install -d -o iianka -g nginx -m 0750 "$root/shared/deploy-incoming" "$root/shared/deploy-artifacts"
 sudo touch /var/www/iianka/.artifact-deploy.lock
 sudo chown iianka:nginx /var/www/iianka/.artifact-deploy.lock
 sudo chmod 0600 /var/www/iianka/.artifact-deploy.lock
@@ -180,38 +211,74 @@ sudo tee /etc/systemd/system/iianka-deploy.slice >/dev/null <<'UNIT'
 Description=Bounded iianka artifact deployment
 [Slice]
 MemoryAccounting=yes
-MemoryHigh=160M
 MemoryMax=192M
 MemorySwapMax=0
 CPUWeight=10
-IOWeight=10
 UNIT
 sudo systemctl daemon-reload
 sudo systemctl start iianka-deploy.slice
 sudo systemctl show iianka-deploy.slice -p MemoryMax -p MemorySwapMax
 
 # Replace examples with measured owner-approved values and the real HTTPS host.
-sudo tee /etc/iianka/artifact-deploy/staging.conf >/dev/null <<'CONFIG'
+sudo tee /etc/iianka-artifact-deploy/staging.conf >/dev/null <<'CONFIG'
 MEMORY_MAX_BYTES=201326592
 MIN_AVAILABLE_BYTES=536870912
 MIN_FREE_DISK_BYTES=2147483648
 HEALTH_URL=https://staging.example.com/up
 CONFIG
-sudo chown root:root /etc/iianka/artifact-deploy/staging.conf
-sudo chmod 0644 /etc/iianka/artifact-deploy/staging.conf
+sudo chown root:root /etc/iianka-artifact-deploy/staging.conf
+sudo chmod 0644 /etc/iianka-artifact-deploy/staging.conf
 # Create production.conf separately with the production health URL and reviewed budgets.
 ```
 
+`MemoryHigh` is deliberately omitted: the reported no-swap host drill stalled
+under reclaim until timeout with that setting. `MemoryMax` remains the hard
+cap. `IOWeight` is omitted because the report found an unsupported disk
+scheduler for proportional I/O weighting. Do not overwrite the measured host
+settings with these example numbers. The report's 192 MiB cap, 536 MiB
+available-memory gate and 10 GiB disk floor were measured with a synthetic
+application, not the real CI artifact. Re-measure available memory after the
+interactive coding agent exits; an estimate is not a passing gate. Do not
+lower the gate just to force a deployment through.
+
+Worker units must use `WorkingDirectory=/var/www/iianka/staging/current` and
+their `ExecStart` commands must resolve that current release's artisan, not a
+pinned historical release. Inspect effective values and drop-ins first. Record
+the exact prior units, check `NeedDaemonReload` for unrelated pending edits,
+and apply only a reviewed staging correction (a narrowly scoped drop-in is
+preferable to broad text replacement). `systemctl daemon-reload` does not
+restart running workers; their new directory takes effect on the next start,
+including an automatic worker restart. Do not restart them during setup or
+modify production units. Roll back the exact edited file/drop-in and reload
+the daemon again. If unrelated pending edits exist, stop for owner review.
+
 Use `visudo` to grant only the fixed validating launcher, not a shell, arbitrary
 systemd-run, arbitrary systemctl or arbitrary restorecon. The launcher accepts
-only reviewed operations, the two fixed environments, hex digests and numeric
-run identities; app/bootstrap code always runs as iianka, never root:
+only reviewed operations, fixed environments, hex digests and numeric run
+identities; app/bootstrap code always runs as iianka, never root. For staging
+use the following argument-regex rules (sudo 1.9.10+); the launcher additionally
+validates the argument vector and matching release/revision. Review with
+`visudo` and test the allow/deny matrix before installation:
 
-```bash
-sudo visudo -f /etc/sudoers.d/iianka-artifact-deploy
-# Add: iianka ALL=(root) NOPASSWD: /usr/local/sbin/iianka-artifact-deploy
-sudo visudo -cf /etc/sudoers.d/iianka-artifact-deploy
+```sudoers
+iianka ALL=(root) NOPASSWD: /usr/local/sbin/iianka-artifact-deploy ^(prepare|activate|rollback|labels) staging [0-9a-f]{40}-[0-9]+-[0-9]+ [0-9a-f]{40} [0-9a-f]{64}$
+iianka ALL=(root) NOPASSWD: /usr/local/sbin/iianka-artifact-deploy ^services-(state|stop) staging$
+iianka ALL=(root) NOPASSWD: /usr/local/sbin/iianka-artifact-deploy ^services-start staging [01] [01]$
 ```
+
+An existing `NOPASSWD: ALL` grant still wins: adding these rules does not
+constrain the CI key. Before removing a broad grant, verify independent owner
+administrative access and inventory production/backup automation that uses
+the same account. Removing it can affect production even without editing a
+production unit. If that cannot be resolved within staging-only authority,
+leave deployment disabled and present the access transition for owner approval.
+Do not silently restore a broad grant as an automated fallback. A separately
+reviewed production rule is required before production deployment is enabled.
+
+Review `.env` metadata only. Staging's file must not be world-readable; choose
+ownership/group access from the actual FPM and worker identities, retain their
+read access, and record the previous metadata for rollback. Do not print or
+copy secret contents. Production permission changes require separate scope.
 
 Review existing mappings first. Add these only if absent; preserve pre-existing
 entries instead of overwriting them. Repeat for production only after review.
@@ -257,7 +324,7 @@ steps and with the exact prepared release path reviewed:
 ```bash
 sudo systemd-run --wait --pipe --collect --uid=iianka --gid=nginx \
     --slice=iianka-deploy.slice --property=MemorySwapMax=0 \
-    --property=MemoryOOMGroup=yes --property=OOMPolicy=stop \
+    --property=OOMPolicy=stop --property=KillMode=control-group \
     --working-directory=/var/www/iianka/staging/releases/APPROVED_RELEASE_ID \
     /usr/bin/php -d memory_limit=128M artisan migrate --force --no-interaction
 ```
@@ -298,14 +365,25 @@ Do not re-enable the old in-place deploy without accepting its original risks.
 
 ## Validation boundary
 
-Repository tests exercise synthetic filesystem states and stub PHP/services/
-health calls. Linux CI uses real GNU rename/readlink/flock; local macOS tests
-adapt those primitives. A simulated child exit 137 is not a physical cgroup OOM
-drill. The unpacked-artifact smoke uses actual production dependencies and a
-throwaway database. Shell syntax, ShellCheck, PHP lint/static analysis, normal
-repository checks and CI apply.
+Repository tests execute launcher decisions with stubbed system commands and
+synthetic configuration metadata. The unprivileged launcher copy changes only
+the root identity check, fixed configuration location and command lookup; the
+installed launcher has no test override. Host tests use synthetic filesystem
+states and stub PHP/services/health calls, including catchable group signals.
+Linux CI uses real GNU rename/readlink/flock; local macOS tests adapt those
+primitives. With `IIANKA_TEST_SYSTEMD=1`, Linux CI also submits the launcher's
+actual emitted properties to real systemd and triggers a bounded child OOM
+during synthetic activation, checking restoration of the previous pointer and
+maintenance state. No serving host or application service is involved. Local
+macOS skips these two systemd checks. A simulated child exit 137 alone is not
+an OOM drill, and the CI drill does not validate this host's aggregate slice
+or memory budget. The unpacked-artifact smoke uses actual production
+dependencies and a throwaway database. Shell syntax, ShellCheck, PHP
+lint/static analysis, normal repository checks and CI apply.
 
 Real systemd/cgroup/SELinux/FPM behavior, live activation/rollback, off-host
 backup recovery and business-flow staging verification are **unverified** until
-the owner performs them after implementation, as requested. No host changes,
-server access, existing environment files or production data were used here.
+the owner performs them after implementation, as requested. The staging setup
+report is owner-supplied evidence; this repository correction did not access
+the server, read existing environment files or production data, or run any
+host changes. Keep deployment disabled pending the reviewed host update.

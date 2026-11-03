@@ -5,6 +5,7 @@ import importlib.util
 import io
 import json
 import os
+import signal
 from pathlib import Path
 import subprocess
 import sys
@@ -208,6 +209,15 @@ with open(os.environ['TEST_LOG'],'a') as out: out.write(json.dumps(['php',str(Pa
 if 'config:cache' in args and (failures/'cache').exists(): sys.exit(137)
 if 'migrate:status' in args and (failures/'migration').exists(): sys.exit(17)
 if any(arg.endswith('runtime.php') for arg in args) and (failures/'boot').exists() and root.joinpath('current').resolve().name.startswith('a'*40): sys.exit(1)
+if any(arg.endswith('runtime.php') for arg in args) and (failures/'oom').exists() and root.joinpath('current').resolve().name.startswith('a'*40):
+    (failures/'oom').unlink()
+    bytearray(256*1024*1024)
+if 'down' in args and (failures/'signal-before-switch').exists():
+    root.joinpath('shared/storage/framework/down').touch()
+    os.killpg(os.getpgrp(), int(os.environ['TEST_SIGNAL']))
+if any(arg.endswith('runtime.php') for arg in args) and (failures/'signal-after-switch').exists() and root.joinpath('current').resolve().name.startswith('a'*40):
+    (failures/'signal-after-switch').unlink()
+    os.killpg(os.getpgrp(), int(os.environ['TEST_SIGNAL']))
 if 'down' in args: root.joinpath('shared/storage/framework/down').touch()
 if 'up' in args: root.joinpath('shared/storage/framework/down').unlink(missing_ok=True)
 ''')
@@ -241,7 +251,7 @@ except BlockingIOError: sys.exit(1)
         path.chmod(0o755)
 
     def run_host(self, operation, checksum=None, release_id=RELEASE_ID):
-        return subprocess.run(["bash", str(TOOLS / "host.sh"), operation, "staging", release_id, REVISION, checksum or self.checksum], input=self.archive.read_bytes() if operation == "prepare" else b"", env=self.environment, capture_output=True)
+        return subprocess.run(["bash", str(TOOLS / "host.sh"), operation, "staging", release_id, REVISION, checksum or self.checksum], input=self.archive.read_bytes() if operation == "prepare" else b"", env=self.environment, capture_output=True, start_new_session=True, timeout=30)
 
     def prepare(self):
         result = self.run_host("prepare")
@@ -351,6 +361,66 @@ except BlockingIOError: sys.exit(1)
 
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(self.commands(), [])
+
+    def test_catchable_group_signals_recover_before_and_after_the_pointer_switch(self):
+        for when in ("before", "after"):
+            for caught in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+                with self.subTest(when=when, caught=caught):
+                    fixture = HostStateTests()
+                    fixture.setUp()
+                    try:
+                        fixture.prepare()
+                        (fixture.failures / ("signal-" + when + "-switch")).touch()
+                        fixture.environment["TEST_SIGNAL"] = str(int(caught))
+
+                        result = fixture.run_host("activate")
+
+                        self.assertEqual(result.returncode, 128 + int(caught), result.stderr.decode())
+                        self.assertEqual(fixture.current.resolve(), fixture.previous)
+                        self.assertFalse((fixture.environment_root / "shared/storage/framework/down").exists())
+                        self.assertIn(b"Previous release restored", result.stderr)
+                    finally:
+                        fixture.doCleanups()
+
+    def test_signal_immediately_after_atomic_rename_restores_previous_pointer(self):
+        self.prepare()
+        (self.failures / "rename-signal").touch()
+        self.command("mv", '''
+import os,signal,sys
+from pathlib import Path
+os.replace(sys.argv[-2],sys.argv[-1])
+marker=Path(os.environ['TEST_FAILURES'])/'rename-signal'
+if marker.exists():
+    marker.unlink()
+    os.killpg(os.getpgrp(),signal.SIGTERM)
+''')
+
+        result = self.run_host("activate")
+
+        self.assertEqual(result.returncode, 143, result.stderr.decode())
+        self.assertEqual(self.current.resolve(), self.previous)
+        self.assertFalse((self.environment_root / "shared/storage/framework/down").exists())
+        self.assertIn(b"Previous release restored", result.stderr)
+
+    def test_signal_before_atomic_rename_recovers_with_temporary_link_still_present(self):
+        self.prepare()
+        (self.failures / "link-signal").touch()
+        self.command("ln", '''
+import os,signal,sys
+from pathlib import Path
+os.symlink(sys.argv[-2],sys.argv[-1])
+marker=Path(os.environ['TEST_FAILURES'])/'link-signal'
+if marker.exists():
+    marker.unlink()
+    os.killpg(os.getpgrp(),signal.SIGTERM)
+''')
+
+        result = self.run_host("activate")
+
+        self.assertEqual(result.returncode, 143, result.stderr.decode())
+        self.assertEqual(self.current.resolve(), self.previous)
+        self.assertFalse((self.environment_root / "shared/storage/framework/down").exists())
+        self.assertIn(b"Previous release restored", result.stderr)
 
     def test_failed_preparation_cannot_be_activated(self):
         self.release.mkdir()

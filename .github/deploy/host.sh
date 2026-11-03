@@ -2,6 +2,11 @@
 # Installed root-owned; the launcher runs this as iianka inside a bounded cgroup.
 set -Eeuo pipefail
 umask 0027
+# OOMPolicy=stop and unit timeouts send TERM. Convert catchable signals into
+# nonzero exits so the active EXIT cleanup can attempt recovery.
+trap 'exit 143' TERM
+trap 'exit 130' INT
+trap 'exit 129' HUP
 
 operation="${1:?Expected operation}"
 environment="${2:?Expected environment}"
@@ -119,15 +124,16 @@ service_state="$(service_action services-state)"
 [[ "$service_state" =~ ^[01]\ [01]$ ]] || fail 'Unexpected worker state.'
 read -r queue_active scheduler_active <<<"$service_state"
 maintenance=no
-switched=no
 recover() {
     local result=$?
     trap - EXIT
+    # Do not recursively interrupt cleanup; systemd's stop deadline still applies.
+    trap '' TERM INT HUP
     if (( result != 0 )) && [[ "$maintenance" == yes ]]; then
         printf 'Activation failed; recovering the previous code release.\n' >&2
         # No migrations were run, so recovery does not guess at database rollback.
         if service_action services-stop \
-            && { [[ "$switched" == no ]] || point_current "$previous"; } \
+            && { [[ "$(readlink -f "$root/current")" == "$previous" ]] || point_current "$previous"; } \
             && boot "$previous" \
             && service_action services-start \
             && (cd "$previous" && php_command artisan up --no-interaction) \
@@ -149,7 +155,6 @@ maintenance=yes
 (cd "$previous" && php_command artisan down --retry=60 --no-interaction)
 service_action services-stop
 point_current "$target"
-switched=yes
 boot "$target"
 health
 service_action services-start

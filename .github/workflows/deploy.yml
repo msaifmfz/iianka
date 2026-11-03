@@ -47,6 +47,8 @@ jobs:
           echo "release_id=$REVISION-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
 
       - name: Test deployment tooling
+        env:
+          IIANKA_TEST_SYSTEMD: '1'
         run: |
           python3 -m unittest discover -s .github/deploy/tests -v
           for script in .github/deploy/*.sh; do bash -n "$script"; done
