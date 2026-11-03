@@ -1,6 +1,6 @@
 # Operations and recovery
 
-Last verified: 2026-07-30
+Last verified: 2026-11-03
 
 This document records what the tracked repository currently automates and the minimum safe
 operational procedures around it. [SERVER_SETUP.md](../SERVER_SETUP.md) remains the detailed
@@ -25,11 +25,11 @@ separate application keys, databases, Redis namespaces/databases, storage, and c
 
 Tracked GitHub workflows:
 
-| Workflow                                | Responsibilities                                                   |
-| --------------------------------------- | ------------------------------------------------------------------ |
-| `.github/workflows/tests.yml`           | Install, build, and Pest                                           |
-| `.github/workflows/lint.yml`            | Pint, frontend formatting/lint, Wayfinder generation               |
-| `.github/workflows/static-analysis.yml` | PHPStan, Psalm, Rector, taint analysis, Composer/npm audits        |
+| Workflow                                | Responsibilities                                                      |
+| --------------------------------------- | --------------------------------------------------------------------- |
+| `.github/workflows/tests.yml`           | Install, build, and Pest                                              |
+| `.github/workflows/lint.yml`            | Pint, frontend formatting/lint, Wayfinder generation                  |
+| `.github/workflows/static-analysis.yml` | PHPStan, Psalm, Rector, taint analysis, Composer/npm audits           |
 | `.github/workflows/deploy.yml`          | CI artifact build, release validation, guarded environment deployment |
 
 Releases drive deployment:
@@ -123,7 +123,7 @@ Then:
 1. Review and commit the changelog before tagging.
 2. Push the release-candidate tag and publish it as a prerelease.
 3. Verify staging business flows, file access, logs, queue, and `/up`.
-4. Verify a current database snapshot exists off-host.
+4. If the release contains migrations, take a [pre-migration snapshot](#pre-migration-snapshot).
 5. Point the final tag at the tested commit and publish a final release.
 6. Verify production health and recent audit/application logs.
 
@@ -170,70 +170,137 @@ reports.
 
 Do not treat a running scheduler service as evidence that backups or maintenance jobs exist.
 
-## Backup status and required procedure
+## Backups
 
-### Current tracked status
+### What runs
 
-The repository currently has:
+Host-level automation outside Laravel (no `db:backup` command or scheduled app task). Sources
+are tracked in `.github/deploy/backup.sh`, `backup.service` and `backup.timer`; install them by
+hand as described in each file header, then `systemctl daemon-reload`.
 
-- No `db:backup` or restore Artisan command.
-- No `config/backup.php`.
-- No scheduled backup or verification task.
-- No automated pre-migration snapshot step; the artifact workflow also refuses
-  automatic activation when migrations are pending.
-- No tracked off-site backup configuration or restore-drill record.
+| Item          | Value                                                                                                                                                                                                          |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tool          | restic (AlmaLinux package), encrypted client-side, S3 backend                                                                                                                                                  |
+| Destination   | Cloudflare R2 bucket `iianka-backups` (Standard class, no public access), restic repo `2109ebf3ea`                                                                                                             |
+| Script        | `/usr/local/sbin/iianka-backup` (root)                                                                                                                                                                         |
+| Units         | `iianka-backup.service` (oneshot, `MemoryHigh=250M`, `MemoryMax=400M`) and `iianka-backup.timer`                                                                                                               |
+| Schedule      | Daily 03:30 JST + up to 10 min random delay; Sunday runs also prune and `check` 5% of data                                                                                                                     |
+| Retention     | `scheduled`: 14 daily, 8 weekly, 6 monthly. `pre-migration`: 90 days. `manual`: 30 days                                                                                                                        |
+| Status        | `journalctl -u iianka-backup` and `/var/log/iianka-backup/last-status` (`OK`/`FAIL` line)                                                                                                                      |
+| R2 credential | `/etc/iianka-backup/r2.env`, root:root 0600 (`AWS_*` keys and `RESTIC_REPOSITORY`). Account API token `iianka-alma restic backup`: Object Read & Write on this bucket only, restricted to the host's IPv4/IPv6 |
+| Repo password | `/etc/iianka-backup/restic.pass`, root:root 0600; a copy must exist outside the host                                                                                                                           |
+| Alert         | Optional `/etc/iianka-backup/healthcheck.url` (root 0600, one `https://` ping URL, e.g. healthchecks.io with a 1-day period and 2-hour grace); no file, no pings                                               |
 
-Therefore, backups are an external operational responsibility today. Do not claim that deploys
-automatically protect SQLite.
+Each run:
 
-### Minimum manual snapshot
+1. Pings the optional health check `/start`, then refuses to start below 600 MiB `MemAvailable`.
+2. Takes the deploy lock `/var/www/iianka/.artifact-deploy.lock` (waits up to 30 min), so a backup
+   and a deploy never overlap. A deploy started during a backup fails fast; retry after the run.
+3. Per environment: `sqlite3 .backup` into `/var/lib/iianka-backup/stage/<env>/`,
+   `PRAGMA integrity_check` must return `ok`, records the `current` release path, then backs up the
+   snapshot plus `shared/storage/app` (excluding `private/quotation-pdf-cache`). Tags: `<env>` and
+   the run tag.
+4. With both environments: backs up host config (`/etc/iianka-artifact-deploy`, `/etc/nginx`,
+   `/etc/php-fpm.d`, `/etc/php.ini`, `/etc/php.d`, `/etc/letsencrypt/renewal`, iianka systemd
+   units and `*.service.d` drop-ins, `/usr/local/sbin/iianka-*`, `/usr/local/libexec/iianka-deploy`,
+   `/etc/sudoers.d/iianka*`) tagged `host-config`.
+5. Applies retention, removes the staged copies, writes `last-status` and pings the health check
+   (success, or `/fail`).
 
-Before any production migration, take a SQLite-native snapshot, verify it, and copy it to encrypted
-off-host storage. The following is a template; confirm every explicit path and service name first:
+Not backed up: `releases/` (rebuilt from tags), `storage/framework`, `storage/logs`, deploy
+artifact directories, Let's Encrypt keys (re-issue), and `shared/.env` files. Keep each
+environment's `.env` (especially `APP_KEY`) in the password manager; without the matching
+`APP_KEY`, encrypted columns in a restored database are unreadable.
+
+`restic` commands below need a root shell with the repository settings loaded:
 
 ```bash
-set -euo pipefail
+sudo -i
+set -a; . /etc/iianka-backup/r2.env; set +a
+export RESTIC_PASSWORD_FILE=/etc/iianka-backup/restic.pass RESTIC_CACHE_DIR=/var/cache/iianka-backup
+```
 
+### Run a backup / check status
+
+```bash
+sudo systemctl start iianka-backup.service
+cat /var/log/iianka-backup/last-status
+journalctl -u iianka-backup -n 50 --no-pager
+systemctl list-timers iianka-backup.timer
+```
+
+### Pre-migration snapshot
+
+Required before any release that contains migrations, before activating it:
+
+```bash
+sudo /usr/local/sbin/iianka-backup --tag pre-migration --env production
+cat /var/log/iianka-backup/last-status   # must start with today's time and OK
+```
+
+Use `--env staging` for a staging release. For the strongest boundary, run it after
+`php artisan down` and stopping `iianka-queue@<env>` / `iianka-scheduler@<env>`; the SQLite
+`.backup` is consistent either way. Record the snapshot ID (next section) in the release notes.
+
+### List snapshots
+
+```bash
+restic snapshots --host iianka                       # all
+restic snapshots --host iianka --tag production       # one environment
+restic snapshots --host iianka --tag pre-migration
+restic stats --mode raw-data                         # repository size in R2
+```
+
+### Restore to a scratch location
+
+Never restore over live paths. Restore, verify, then follow the live replacement procedure below.
+
+```bash
 environment_name=production
-application_root="/var/www/iianka/${environment_name}/current"
-database_file="/var/www/iianka/${environment_name}/shared/database/database.sqlite"
-backup_directory="/var/www/iianka/${environment_name}/shared/backups"
-snapshot_timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
-snapshot_file="${backup_directory}/database-${snapshot_timestamp}.sqlite"
+scratch="/var/lib/iianka-backup/restore-$(date -u +%Y%m%dT%H%M%SZ)"
+restic restore latest --host iianka --tag "$environment_name" --target "$scratch"
 
-test -d "$application_root"
-test -f "$database_file"
-install -d -m 0750 "$backup_directory"
-
-cd "$application_root"
-php artisan down --render="errors::503" --retry=60
-sudo systemctl stop "iianka-queue@${environment_name}" "iianka-scheduler@${environment_name}"
-
-sqlite3 "$database_file" ".backup '${snapshot_file}'"
-test "$(sqlite3 "$snapshot_file" 'PRAGMA integrity_check;')" = "ok"
-gzip -c "$snapshot_file" > "${snapshot_file}.gz"
+restored_db="$scratch/var/lib/iianka-backup/stage/$environment_name/database.sqlite"
+test "$(sqlite3 -readonly "$restored_db" 'PRAGMA integrity_check;')" = ok
+test -z "$(sqlite3 -readonly "$restored_db" 'PRAGMA foreign_key_check;')"
+cat "$scratch/var/lib/iianka-backup/stage/$environment_name/current-release.txt"
+find "$scratch/var/www/iianka/$environment_name/shared/storage/app" -type f | wc -l
 ```
 
-After the compressed snapshot has been copied off-host and verified:
+Use a snapshot ID instead of `latest` for an older point. Single files:
+`restic restore <id> --target "$scratch" --include '/var/www/iianka/production/shared/storage/app/private/site-guides'`.
+Host config: `restic restore latest --host iianka --tag host-config --target "$scratch"`.
+Delete the scratch directory when finished (`rm -rf "$scratch"`); it contains user data.
 
-```bash
-sudo systemctl start "iianka-queue@${environment_name}" "iianka-scheduler@${environment_name}"
-php artisan up
-```
+### Rotate the R2 credential
 
-The SQLite `.backup` command creates a transactionally consistent snapshot. Maintenance mode and
-stopped background workers also reduce application writes and make the operational boundary
-obvious.
+1. Cloudflare dashboard → R2 → Manage API tokens → create a new token with Object Read & Write
+   scoped to `iianka-backups` only.
+2. On the host, replace the two `AWS_*` values in `/etc/iianka-backup/r2.env`, keeping root:root
+   0600 (`sudo install -m 0600 -o root -g root new.env /etc/iianka-backup/r2.env`, then shred the
+   temporary file).
+3. `sudo systemctl start iianka-backup.service` and confirm `last-status` is `OK`.
+4. Revoke the old token in Cloudflare.
 
-Add retention, encryption, failure alerting, and periodic restore drills in the external backup
-system. A local file on the same server is not sufficient disaster recovery.
+The restic repository password is separate. To rotate it: `restic key add` (new password from a
+file), update `restic.pass` and the off-host copy, `restic key list`, then `restic key remove <old-id>`.
 
-### Restore procedure
+### Restore drill
+
+Restore the staging database and storage to a scratch location at least quarterly and record
+the date, snapshot ID and checks here.
+
+| Date       | Snapshot                        | Checks                                                                                                                        | Result |
+| ---------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
+| 2026-11-03 | `bdbfe57d` (staging)            | integrity_check ok, 0 FK violations, 45/45 table row counts and schema hash equal live, 46/46 storage files sha256 equal live | Pass   |
+| 2026-11-03 | `5f8c1ede` (production DB only) | integrity_check ok, 0 FK violations                                                                                           | Pass   |
+
+### Replace live data from a verified snapshot
 
 Restoring replaces live data. Schedule downtime, identify the code version compatible with the
 snapshot, and have a second operator verify paths.
 
-1. Download/decrypt the chosen raw SQLite snapshot.
+1. Restore the chosen snapshot to a scratch location (above).
 2. Verify `PRAGMA integrity_check` before touching the live database.
 3. Enter maintenance mode and stop every process that can write: queue, scheduler, and any other
    worker.
@@ -310,13 +377,13 @@ Before enabling it:
 
 ## Verified operational gaps
 
-| Gap                                           | Evidence                                                                                    | Required decision                                                             |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| No automated backup or pre-migration snapshot | No automatic snapshot; artifact deployment blocks pending migrations                         | Implement tracked automation or an externally monitored equivalent            |
-| Deployment topology mismatch                  | Artifact deploy requires release directories/current symlink; actual host layout remains unverified | Confirm the atomic-release prerequisites before enabling artifact deployment |
-| Scheduler provisioned with no app tasks       | `schedule:list` reports none                                                                | Keep service for future use or remove unnecessary operational surface         |
-| Nightly automation targets missing branch     | Default `develop`; remote currently only has `main`                                         | Configure the actual base branch before enabling                              |
-| Local schema drift                            | Current local DB lacks `work_memo`; fresh migrations include it                             | Check persistent environments and add a forward migration if affected         |
+| Gap                                       | Evidence                                                                                            | Required decision                                                            |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Deployment topology mismatch              | Artifact deploy requires release directories/current symlink; actual host layout remains unverified | Confirm the atomic-release prerequisites before enabling artifact deployment |
+| No production deploy sudo rule            | Blanket iianka sudo removed 2026-11-03; only staging launcher rules exist                           | Add a reviewed production rule before enabling production artifact deploys   |
+| Scheduler provisioned with no app tasks   | `schedule:list` reports none                                                                        | Keep service for future use or remove unnecessary operational surface        |
+| Nightly automation targets missing branch | Default `develop`; remote currently only has `main`                                                 | Configure the actual base branch before enabling                             |
+| Local schema drift                        | Current local DB lacks `work_memo`; fresh migrations include it                                     | Check persistent environments and add a forward migration if affected        |
 
 Track these as explicit work items. Do not silently encode an assumed resolution in an unrelated
 change.
