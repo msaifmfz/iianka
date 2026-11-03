@@ -71,7 +71,10 @@ test('creates a quotation with item-aware inputs and downloads both Japanese PDF
     await expect(
         dialog.getByRole('img', { name: '見積書 1ページ', exact: true }),
     ).toHaveAttribute('data-rendered', 'true');
-    await expect(dialog.getByText(/株式会社 山田建設 御中/)).toBeAttached();
+    // Assert on the preview region so a failure reports the extracted text it actually received.
+    await expect(
+        dialog.getByRole('region', { name: '見積書PDFプレビュー' }),
+    ).toContainText('株式会社 山田建設 御中');
     const canvas = dialog.getByRole('img', {
         name: '見積書 1ページ',
         exact: true,
@@ -151,7 +154,12 @@ test('creates a quotation with item-aware inputs and downloads both Japanese PDF
 
     const detailUrl = page.url();
     await page.getByRole('link', { name: '一覧へ', exact: true }).click();
-    const card = page.locator('article').filter({ hasText: companyName });
+    // Match by id: repeated runs against the same database reuse the company name.
+    const card = page.locator('article').filter({
+        has: page.locator(
+            `a[href$="${new URL(detailUrl).pathname}/pdf/quotation"]`,
+        ),
+    });
 
     for (const label of ['見積書PDF', '内訳書PDF']) {
         const downloadPromise = page.waitForEvent('download');
