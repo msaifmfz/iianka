@@ -7,6 +7,7 @@ import {
     show,
 } from '@/actions/App/Http/Controllers/QuotationController';
 import quotationPdf from '@/actions/App/Http/Controllers/QuotationPdfController';
+import { SavedPdfPreviewButton } from '@/components/quotations/pdf-preview';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { yen } from '@/lib/quotation';
@@ -110,6 +111,10 @@ export default function QuotationIndex({
                                 </div>
                             </Link>
                             <div className="mt-4 flex flex-wrap gap-2 border-t pt-4">
+                                <SavedPdfPreviewButton
+                                    quotationId={quote.id}
+                                    size="sm"
+                                />
                                 {(['quotation', 'breakdown'] as const).map(
                                     (document) => (
                                         <Button

@@ -176,6 +176,53 @@ test('creates a quotation with item-aware inputs and downloads both Japanese PDF
     await expect(page.getByLabel('デッキ貫通', { exact: true })).toBeChecked();
 });
 
+test('previews saved PDFs from the quotation list and detail page', async ({
+    page,
+}) => {
+    await login(page);
+    await page.getByLabel(/^得意先/).fill('PDF確認株式会社');
+    await page.getByLabel(/^工事名/).fill('保存済みPDF確認');
+    await selectItem(page, '0001');
+    await page.getByLabel('施工寸法（mm）', { exact: true }).fill('300');
+    await page.getByRole('button', { name: '見積を発行', exact: true }).click();
+    await expect(page).toHaveURL(/\/quotations\/\d+$/);
+    const detailPath = new URL(page.url()).pathname;
+    const dialog = page.getByRole('dialog', { name: 'PDFを確認' });
+    const detailPreview = page.getByRole('button', {
+        name: 'PDFを確認',
+        exact: true,
+    });
+
+    await detailPreview.click();
+    await expect(
+        dialog.getByRole('img', { name: '見積書 1ページ', exact: true }),
+    ).toHaveAttribute('data-rendered', 'true');
+    await expect(
+        dialog.getByRole('region', { name: '見積書PDFプレビュー' }),
+    ).toContainText(/PDF\s*確\s*認\s*株\s*式\s*会\s*社/u);
+    await page.keyboard.press('Escape');
+    await expect(detailPreview).toBeFocused();
+
+    await page.getByRole('link', { name: '一覧へ', exact: true }).click();
+    const card = page.locator('article').filter({
+        has: page.locator(`a[href="${detailPath}"]`),
+    });
+    const listPreview = card.getByRole('button', {
+        name: 'PDFを確認',
+        exact: true,
+    });
+    await listPreview.click();
+    await dialog.getByRole('button', { name: '内訳書', exact: true }).click();
+    await expect(
+        dialog.getByRole('img', { name: '内訳書 1ページ', exact: true }),
+    ).toHaveAttribute('data-rendered', 'true');
+    await expect(
+        dialog.getByRole('link', { name: '別タブで開く' }),
+    ).toHaveAttribute('href', `${detailPath}/pdf/breakdown?inline=1`);
+    await page.keyboard.press('Escape');
+    await expect(listPreview).toBeFocused();
+});
+
 test('rounds line amounts and expenses to whole yen while preserving rates through preview and issuance', async ({
     page,
 }, testInfo) => {

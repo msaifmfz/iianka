@@ -417,6 +417,20 @@ test('PDF exports are real downloadable Japanese documents using the saved calcu
     expect(min(array_column($footer, 'x')))->toBeGreaterThan(300);
 })->with(['quotation' => ['quotation', '御見積書'], 'breakdown' => ['breakdown', '内訳明細書']]);
 
+test('viewers can open a saved quotation PDF inline', function (): void {
+    $quote = Quotation::factory()->create();
+    $viewer = User::factory()->create(['role' => UserRole::Viewer]);
+
+    $response = $this->actingAs($viewer)->get(route('quotations.pdf', [
+        'quotation' => $quote, 'document' => 'quotation', 'inline' => 1,
+    ]));
+
+    $response->assertOk()->assertHeader('Content-Type', 'application/pdf')
+        ->assertHeader('Content-Disposition', 'inline; filename="'.$quote->number.'-quotation.pdf"')
+        ->assertHeader('Cache-Control', 'no-store, private');
+    expect($response->getContent())->toStartWith('%PDF-');
+});
+
 test('quotation PDF caches are private and Japanese fonts work without a prewarmed cache', function (): void {
     $quote = Quotation::factory()->make();
     $storage = storage_path();
