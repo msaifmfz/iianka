@@ -341,6 +341,19 @@ test('items without construction conditions ignore stale surcharges and keep nor
     expect($quote->calculation['lines'][0]['surcharge_rate'])->toBe('0');
 });
 
+test('an omitted construction condition clears its stale rate before validation', function (): void {
+    $input = quotationValidationPayload(['items.0.rates.deck' => '-1']);
+    unset($input['items'][0]['conditions']['deck']);
+    $editor = User::factory()->editor()->create();
+
+    $this->actingAs($editor)->postJson(route('quotations.store'), $input)->assertRedirect();
+
+    $quote = Quotation::query()->sole();
+    expect($quote->input['items'][0]['conditions']['deck'])->toBeFalse();
+    expect($quote->input['items'][0]['rates']['deck'])->toBe('20');
+    expect($quote->calculation['lines'][0]['surcharge_rate'])->toBe('0');
+});
+
 test('optional delivery locations may be null', function (): void {
     $input = quotationValidationPayload(['delivery_location' => null]);
     $editor = User::factory()->create(['role' => UserRole::Editor]);

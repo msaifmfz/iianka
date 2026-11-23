@@ -96,7 +96,16 @@ class QuotationController extends Controller
                 'issuer' => config('quotation.issuer'),
                 'version' => 1,
             ]);
-            $quote->update(['number' => 'Q-'.$quote->issued_on->format('Ymd').'-'.str_pad((string) $quote->id, 5, '0', STR_PAD_LEFT)]);
+
+            // The insert holds SQLite's write lock through number assignment, serializing concurrent requests.
+            $prefix = 'Q-'.$quote->issued_on->format('Ymd').'-';
+            $lastNumber = Quotation::query()
+                ->whereLike('number', $prefix.'%', caseSensitive: true)
+                ->orderByRaw('length(number) desc')
+                ->orderByDesc('number')
+                ->value('number');
+            $lastSequence = (int) substr((string) $lastNumber, strlen($prefix));
+            $quote->update(['number' => sprintf('%s%05d', $prefix, $lastSequence + 1)]);
 
             return $quote;
         });
