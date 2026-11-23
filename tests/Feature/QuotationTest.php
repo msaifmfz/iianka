@@ -72,6 +72,31 @@ test('creating a quotation recomputes totals and snapshots source prices', funct
     $this->get(route('quotations.show', $quote))->assertInertia(fn (Assert $page): Assert => $page->component('quotations/show')->where('quotation.calculation.total', '15000')->where('canManage', true));
 });
 
+test('quotation numbers increment within an issue date and restart on the next date', function (): void {
+    $this->actingAs(User::factory()->create(['role' => UserRole::Editor]));
+    $input = quotationRequestFixture();
+
+    $this->post(route('quotations.store'), [...$input, 'issued_on' => '2026-11-01'])->assertRedirect();
+    $this->post(route('quotations.store'), [...$input, 'issued_on' => '2026-11-01'])->assertRedirect();
+    $this->post(route('quotations.store'), [...$input, 'issued_on' => '2026-11-02'])->assertRedirect();
+
+    $this->assertDatabaseHas('quotations', ['number' => 'Q-20261101-00001']);
+    $this->assertDatabaseHas('quotations', ['number' => 'Q-20261101-00002']);
+    $this->assertDatabaseHas('quotations', ['number' => 'Q-20261102-00001']);
+});
+
+test('quotation numbering continues past existing numbers even after an issue date is edited', function (): void {
+    $this->actingAs(User::factory()->create(['role' => UserRole::Editor]));
+    Quotation::factory()->create(['number' => 'Q-20261101-99999', 'issued_on' => '2026-11-02']);
+    $input = [...quotationRequestFixture(), 'issued_on' => '2026-11-01'];
+
+    $this->post(route('quotations.store'), $input)->assertRedirect();
+    $this->post(route('quotations.store'), $input)->assertRedirect();
+
+    $this->assertDatabaseHas('quotations', ['number' => 'Q-20261101-100000']);
+    $this->assertDatabaseHas('quotations', ['number' => 'Q-20261101-100001']);
+});
+
 test('preview uses the same calculation without saving', function (): void {
     $input = quotationRequestFixture();
     $input['holiday'] = true;
@@ -234,7 +259,7 @@ test('updates retain original catalog snapshots and reject stale edits', functio
     expect($quote->fresh()->version)->toBe(2);
     expect($quote->fresh()->input)->not->toHaveKey('version');
     expect($quote->fresh()->issued_on->toDateString())->toBe('2026-11-01');
-    $this->assertDatabaseHas('quotations', ['id' => $quote->id, 'client_name' => '更新後の得意先', 'project_name' => '更新後の工事']);
+    $this->assertDatabaseHas('quotations', ['id' => $quote->id, 'number' => $quote->number, 'client_name' => '更新後の得意先', 'project_name' => '更新後の工事']);
     $this->assertDatabaseHas('audit_logs', ['event' => 'quotations.updated', 'outcome' => 'success', 'actor_user_id' => $editor->id, 'subject_type' => Quotation::class, 'subject_id' => (string) $quote->id]);
     $this->put(route('quotations.update', $quote), [...$input, 'client_name' => '古い変更'])->assertSessionHasErrors('version');
     expect($quote->fresh()->client_name)->toBe($input['client_name']);

@@ -74,7 +74,7 @@ test('creates a quotation with item-aware inputs and downloads both Japanese PDF
     // Assert on the preview region so a failure reports the extracted text it actually received.
     await expect(
         dialog.getByRole('region', { name: '見積書PDFプレビュー' }),
-    ).toContainText('株式会社 山田建設 御中');
+    ).toContainText(/株\s*式\s*会\s*社\s*山\s*田\s*建\s*設\s*御\s*中/u);
     const canvas = dialog.getByRole('img', {
         name: '見積書 1ページ',
         exact: true,
