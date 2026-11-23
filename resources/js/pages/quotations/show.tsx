@@ -5,6 +5,7 @@ import {
     index,
 } from '@/actions/App/Http/Controllers/QuotationController';
 import quotationPdf from '@/actions/App/Http/Controllers/QuotationPdfController';
+import { SavedPdfPreviewButton } from '@/components/quotations/pdf-preview';
 import { Button } from '@/components/ui/button';
 import { yen } from '@/lib/quotation';
 import type { Quotation } from '@/types/quotation';
@@ -71,7 +72,8 @@ export default function QuotationShow({
                         )}
                     </div>
                     <div className="flex flex-wrap gap-3">
-                        <Button asChild>
+                        <SavedPdfPreviewButton quotationId={q.id} />
+                        <Button asChild variant="outline">
                             <a
                                 href={quotationPdf.url({
                                     quotation: q.id,

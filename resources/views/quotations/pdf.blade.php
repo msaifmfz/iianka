@@ -11,6 +11,13 @@ table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .recipient { font-size: 14pt; }
 .muted { color: #596772; font-size: 8pt; }
 .company { font-size: 12pt; }
+.issuer {
+    background-image: url('{{ resource_path('views/quotations/company-seal.png') }}');
+    background-repeat: no-repeat;
+    background-position: right top;
+    background-image-resolution: 360dpi;
+    background-image-opacity: 0.55;
+}
 .amount { background: #eef3f6; padding: 4mm; margin: 5mm 0; font-size: 18pt; }
 .amount span { font-size: 10pt; }
 .lines th { background: #e9eef2; font-size: 8pt; font-weight: normal; border: 0.2mm solid #b8c3cb; padding: 2.5mm 1.5mm; }
@@ -43,7 +50,7 @@ table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     <table class="meta"><tr>
         <td style="width:55%"><p class="recipient">{{ $text($input['client_name']) }} 御中</p><p>工事名：{{ $text($input['project_name']) }}</p><p>引渡場所：{{ $text(($input['delivery_location'] ?? '') ?: $input['project_name']) }}</p>
         @if($isCover)<p class="muted">下記の通り御見積り申し上げます。<br>何卒ご用命の程御願い申し上げます。</p>@endif</td>
-        <td style="width:45%" class="right"><p class="company">{{ $text($quote->issuer['name']) }}</p><p class="muted">{{ $text($quote->issuer['address']) }}<br>TEL {{ $text($quote->issuer['telephone']) }}　FAX {{ $text($quote->issuer['fax']) }}<br>登録番号 {{ $text($quote->issuer['registration_number']) }}<br>担当：{{ $text($input['person_in_charge']) }}</p></td>
+        <td style="width:45%" class="issuer right"><p class="company">{{ $text($quote->issuer['name']) }}</p><p class="muted">{{ $text($quote->issuer['address']) }}<br>TEL {{ $text($quote->issuer['telephone']) }}　FAX {{ $text($quote->issuer['fax']) }}<br>登録番号 {{ $text($quote->issuer['registration_number']) }}<br>担当：{{ $text($input['person_in_charge']) }}</p></td>
     </tr></table>
     @if($isCover)
         <div class="amount"><span>御見積金額　</span>￥{{ $money($calculation['total']) }} <span>（税別）</span></div>
